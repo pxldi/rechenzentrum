@@ -6,4 +6,3 @@ resources:
   - helmrelease.yaml
   - dashboard-secret.yaml
   - middleware-auth.yaml
-  - dashboard-ingress.yaml

@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflare-ddns
+  namespace: cloudflare-ddns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflare-ddns
+  template:
+    metadata:
+      labels:
+        app: cloudflare-ddns
+    spec:
+      containers:
+      - name: cloudflare-ddns
+        image: oznu/cloudflare-ddns:latest
+        env:
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cloudflare-credentials
+              key: CLOUDFLARE_API_TOKEN
+        - name: ZONE
+          valueFrom:
+            secretKeyRef:
+              name: cloudflare-credentials
+              key: CLOUDFLARE_ZONE_ID
+        - name: SUBDOMAIN
+          value: "*"
+        - name: PROXIED
+          value: "false"
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 50m
+            memory: 64Mi

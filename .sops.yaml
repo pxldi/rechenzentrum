@@ -2,10 +2,8 @@ creation_rules:
   - path_regex: kubernetes/.*\.ya?ml$
     encrypted_regex: ^(data|stringData)$
     age: >-
-      # TODO: Add age public key after generation
-      # age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
+      age14xuuf3xthzqf679mncw0xqwj9thc99yh5e5r34t0cvmkhjx8kakqv0njl0
 
   - path_regex: nix/secrets/.*\.ya?ml$
     age: >-
-      # TODO: Add age public key after generation
-      # age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
+      age14xuuf3xthzqf679mncw0xqwj9thc99yh5e5r34t0cvmkhjx8kakqv0njl0

@@ -5,8 +5,7 @@
     isNormalUser = true;
     extraGroups = [ "wheel" "networkmanager" "docker" ];
     openssh.authorizedKeys.keys = [
-      # TODO: Add SSH public key here after generation
-      # "ssh-ed25519 AAAAC3... your-key-here"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIK/pgT6dODgD6smX51WEvvonato0LePX/NpPOv2S1dYQ lsl@DESKTOP-E9I9BHO"
     ];
   };
 

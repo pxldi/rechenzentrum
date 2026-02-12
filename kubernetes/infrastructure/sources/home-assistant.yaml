@@ -1,7 +1,7 @@
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
-  name: pajikos
+  name: home-assistant
   namespace: home-assistant
 spec:
   interval: 1h

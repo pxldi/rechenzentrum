@@ -26,11 +26,17 @@ spec:
           valueFrom:
             secretKeyRef:
               name: cloudflare-credentials
-              key: CLOUDFLARE_ZONE_ID
+              key: CLOUDFLARE_ZONE
         - name: SUBDOMAIN
-          value: "*"
+          valueFrom:
+            secretKeyRef:
+              name: cloudflare-credentials
+              key: CLOUDFLARE_SUBDOMAIN
         - name: PROXIED
-          value: "false"
+          valueFrom:
+            secretKeyRef:
+              name: cloudflare-credentials
+              key: CLOUDFLARE_PROXIED
         resources:
           requests:
             cpu: 10m

@@ -16,3 +16,4 @@ resources:
   - minecraft-server.yaml
   - home-assistant.yaml
   - openebs.yaml
+  - jetstack.yaml

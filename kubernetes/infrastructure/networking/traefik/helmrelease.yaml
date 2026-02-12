@@ -28,24 +28,29 @@ spec:
   values:
     deployment:
       replicas: 1
-    
+
     ports:
       web:
-        port: 80
-        expose: true
+        port: 8000
+        expose:
+          default: true
         exposedPort: 80
+        protocol: TCP
+      
       websecure:
-        port: 443
-        expose: true
-        exposedPort: 443
-        http3:
-          enabled: true
-        tls:
-          enabled: true
-          certResolver: letsencrypt
+          port: 8443
+          expose:
+            default: true
+          exposedPort: 443
+          protocol: TCP
+          http3:
+            enabled: true
+      
       metrics:
         port: 9100
-        expose: false
+        expose:
+          default: false
+        protocol: TCP
 
     service:
       type: LoadBalancer
@@ -68,14 +73,6 @@ spec:
         enabled: true
         publishedService:
           enabled: true
-    
-    certResolvers:
-      letsencrypt:
-        email: 89982382+pxldi@users.noreply.github.com
-        storage: /data/acme.json
-        tlsChallenge: true
-        httpChallenge:
-          entryPoint: web
 
     persistence:
       enabled: true

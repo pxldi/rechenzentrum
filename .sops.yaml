@@ -1,9 +1,6 @@
 creation_rules:
-  - path_regex: kubernetes/.*\.ya?ml$
-    encrypted_regex: ^(data|stringData)$
-    age: >-
-      age14xuuf3xthzqf679mncw0xqwj9thc99yh5e5r34t0cvmkhjx8kakqv0njl0
-
-  - path_regex: nix/secrets/.*\.ya?ml$
-    age: >-
-      age14xuuf3xthzqf679mncw0xqwj9thc99yh5e5r34t0cvmkhjx8kakqv0njl0
+  - path_regex: .*\.yaml$
+    encrypted_regex: "^(data|stringData)$"
+    key_groups:
+      - age:
+          - "age14xuuf3xthzqf679mncw0xqwj9thc99yh5e5r34t0cvmkhjx8kakqv0njl0"

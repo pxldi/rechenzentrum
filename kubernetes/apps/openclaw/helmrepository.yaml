@@ -1,0 +1,9 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: openclaw
+  namespace: openclaw
+spec:
+  interval: 12h
+  url: https://chrisbattarbee.github.io/openclaw-helm

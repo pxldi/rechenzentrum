@@ -16,11 +16,11 @@ spec:
         namespace: velero
       interval: 12h
   install:
-    crds: CreateReplace
+    crds: Skip
     remediation:
       retries: 3
   upgrade:
-    crds: CreateReplace
+    crds: Skip
     remediation:
       retries: 3
   values:

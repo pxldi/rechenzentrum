@@ -14,6 +14,7 @@ spec:
       - velero
       - cert-manager
       - traefik
+      - openclaw
       # - immich
       # - jellyfin
       # - nextcloud

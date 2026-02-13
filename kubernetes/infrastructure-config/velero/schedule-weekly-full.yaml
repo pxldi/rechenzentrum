@@ -1,0 +1,43 @@
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: weekly-full-backup
+  namespace: velero
+spec:
+  # Run every Sunday at 3 AM
+  schedule: "0 3 * * 0"
+  
+  template:
+    # Backup entire cluster
+    includedNamespaces:
+      - '*'
+    
+    # Exclude system namespaces that don't need backup
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+    
+    # Backup all resources
+    includedResources:
+      - '*'
+    
+    # Use kopia to backup PVCs
+    defaultVolumesToFsBackup: true
+    
+    # Snapshot timeout
+    csiSnapshotTimeout: 10m
+    
+    # Item operation timeout
+    itemOperationTimeout: 2h
+    
+    # TTL for backups (90 days for weekly backups)
+    ttl: 2160h
+    
+    # Storage location
+    storageLocation: default
+    
+    # Volume snapshot locations
+    volumeSnapshotLocations:
+      - default

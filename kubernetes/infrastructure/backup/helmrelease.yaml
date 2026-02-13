@@ -1,0 +1,103 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: velero
+  namespace: velero
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: velero
+      version: 8.2.0
+      sourceRef:
+        kind: HelmRepository
+        name: vmware-tanzu
+        namespace: velero
+      interval: 12h
+  install:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  upgrade:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  values:
+    # Velero configuration
+    configuration:
+      # Backblaze B2 as S3-compatible backend
+      backupStorageLocation:
+        - name: default
+          provider: aws
+          bucket: rechenzentrum-backups
+          default: true
+          config:
+            region: eu-central-003
+            s3ForcePathStyle: "true"
+            s3Url: https://s3.eu-central-003.backblazeb2.com
+      
+      # Volume snapshot location (disabled for now, using restic/kopia instead)
+      volumeSnapshotLocation:
+        - name: default
+          provider: aws
+          config:
+            region: eu-central-003
+      
+      # Use node-agent (formerly restic) for volume backups
+      uploaderType: kopia
+    
+    # Credentials for B2
+    credentials:
+      useSecret: true
+      existingSecret: b2-credentials
+      secretContents: {}
+    
+    # Deploy node-agent (kopia) for PVC backups
+    deployNodeAgent: true
+    
+    # Node agent configuration
+    nodeAgent:
+      podVolumePath: /var/lib/kubelet/pods
+      privileged: false
+      extraEnvVars:
+        KOPIA_PASSWORD:
+          secretKeyRef:
+            name: kopia-encryption
+            key: repository-password
+      resources:
+        requests:
+          memory: 200Mi
+          cpu: 100m
+        limits:
+          memory: 1Gi
+          cpu: 500m
+    
+    # Velero server resources
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 512Mi
+        cpu: 500m
+    
+    # Init containers for plugins
+    initContainers:
+      - name: velero-plugin-for-aws
+        image: velero/velero-plugin-for-aws:v1.11.0
+        volumeMounts:
+          - mountPath: /target
+            name: plugins
+    
+    # Backup schedules
+    schedules: {}
+    
+    # Cleanup configuration
+    cleanUpCRDs: false
+    
+    # Metrics
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: false

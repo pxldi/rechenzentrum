@@ -1,0 +1,42 @@
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-critical-backup
+  namespace: velero
+spec:
+  # Run at 2 AM every night
+  schedule: "0 2 * * *"
+  
+  template:
+    includedNamespaces:
+      - flux-system
+      - velero
+      - cert-manager
+      - traefik
+      # - immich
+      # - jellyfin
+      # - nextcloud
+    
+    # Backup all resources in these namespaces
+    includedResources:
+      - '*'
+    
+    # Use kopia to backup PVCs
+    defaultVolumesToFsBackup: true
+    
+    # Snapshot timeout
+    csiSnapshotTimeout: 10m
+    
+    # Item operation timeout
+    itemOperationTimeout: 1h
+    
+    # TTL for backups (30 days)
+    ttl: 720h
+    
+    # Storage location
+    storageLocation: default
+    
+    # Volume snapshot locations
+    volumeSnapshotLocations:
+      - default

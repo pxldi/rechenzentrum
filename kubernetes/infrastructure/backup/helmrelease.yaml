@@ -24,6 +24,10 @@ spec:
     remediation:
       retries: 3
   values:
+    kubectl:
+        image:
+          repository: docker.io/bitnami/kubectl
+          tag: "1.31.4"
     # Velero configuration
     configuration:
       # Backblaze B2 as S3-compatible backend

@@ -22,6 +22,11 @@ spec:
     remediation:
       retries: 3
   values:
+    env:
+      - name: HOME
+        value: /tmp
+      - name: npm_config_cache
+        value: /tmp/.npm
     # Use existing secret for API keys
     credentials:
       existingSecret: openclaw-credentials

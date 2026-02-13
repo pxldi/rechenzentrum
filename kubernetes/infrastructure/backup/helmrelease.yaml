@@ -16,14 +16,17 @@ spec:
         namespace: velero
       interval: 12h
   install:
-    crds: Skip
+    crds: SCreateReplacep
     remediation:
       retries: 3
   upgrade:
-    crds: Skip
+    crds: CreateReplace
     remediation:
       retries: 3
   values:
+    kubectl:
+      image:
+        repository: docker.io/bitnamilegacy/kubectl
     # Velero configuration
     configuration:
       # Backblaze B2 as S3-compatible backend

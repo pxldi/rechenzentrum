@@ -16,7 +16,7 @@ spec:
         namespace: velero
       interval: 12h
   install:
-    crds: SCreateReplacep
+    crds: CreateReplace
     remediation:
       retries: 3
   upgrade:

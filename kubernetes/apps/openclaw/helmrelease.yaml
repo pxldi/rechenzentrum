@@ -27,26 +27,49 @@ spec:
         value: /tmp
       - name: npm_config_cache
         value: /tmp/.npm
-    config:
+
+    openclaw:
       agents:
         defaults:
-          model:
-            primary: "zai/glm-4.7"
-          models:
-            "zai/glm-4.7":
-              alias: "GLM"
-    # Use existing secret for API keys
+          model: "zai/glm-4.7"
+          thinkingDefault: "low"
+          timeoutSeconds: 600
+      
+      # Skills to install
+      skills:
+        - web-search-plus
+      
+      # Advanced config merged into openclaw.json
+      configOverrides:
+        agents:
+          defaults:
+            models:
+              "zai/glm-4.7":
+                alias: "GLM"
+        tools:
+          web:
+            search:
+              enabled: true
+            fetch:
+              enabled: true
+        skills:
+          install:
+            nodeManager: "npm"
+          entries:
+            web-search-plus:
+              enabled: true
+              env:
+                SEARXNG_INSTANCE_URL: "http://searxng.searxng.svc.cluster.local:8080"
+
     credentials:
       existingSecret: openclaw-credentials
-    
-    # Persistence for OpenClaw state
+
     persistence:
       enabled: true
       storageClass: local-ssd
       size: 10Gi
       accessMode: ReadWriteOnce
-    
-    # Resource limits
+
     resources:
       requests:
         memory: 512Mi
@@ -54,8 +77,7 @@ spec:
       limits:
         memory: 2Gi
         cpu: 1000m
-    
-    # Security context
+
     securityContext:
       runAsNonRoot: true
       runAsUser: 1000

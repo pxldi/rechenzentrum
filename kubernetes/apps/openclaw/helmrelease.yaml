@@ -42,9 +42,14 @@ spec:
       # Advanced config merged into openclaw.json
       configOverrides:
         browser:
+          enabled: true
+          headless: true
+          noSandbox: true
+          defaultProfile: "openclaw"
           profiles:
             openclaw:
-              color: "#4A90D9"
+              cdpPort: 9222
+              color: '#4A90D9'
               
         agents:
           defaults:

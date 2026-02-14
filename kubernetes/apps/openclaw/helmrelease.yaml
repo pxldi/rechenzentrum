@@ -41,6 +41,11 @@ spec:
       
       # Advanced config merged into openclaw.json
       configOverrides:
+        browser:
+          profiles:
+            openclaw:
+              color: "#4A90D9"
+              
         agents:
           defaults:
             models:

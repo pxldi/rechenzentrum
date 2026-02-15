@@ -28,9 +28,34 @@ spec:
       networkpolicies:
         main:
           enabled: true
+          controller: main
+          policyTypes:
+            - Ingress
+            - Egress
           rules:
+            ingress:
+              - from:
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: traefik
+                ports:
+                  - protocol: TCP
+                    port: 18789
             egress:
-              # Local SearXNG instance
+              # DNS
+              - to:
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: kube-system
+                    podSelector:
+                      matchLabels:
+                        k8s-app: kube-dns
+                ports:
+                  - protocol: UDP
+                    port: 53
+                  - protocol: TCP
+                    port: 53
+              # SearXNG
               - to:
                   - namespaceSelector:
                       matchLabels:
@@ -38,6 +63,16 @@ spec:
                 ports:
                   - protocol: TCP
                     port: 8080
+              # External internet (blocks private ranges)
+              - to:
+                  - ipBlock:
+                      cidr: 0.0.0.0/0
+                      except:
+                        - 10.0.0.0/8
+                        - 172.16.0.0/12
+                        - 192.168.0.0/16
+                        - 169.254.0.0/16
+                        - 100.64.0.0/10
 
       controllers:
         main:

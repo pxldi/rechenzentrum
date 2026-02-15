@@ -16,3 +16,7 @@ spec:
   # Apps depend on infrastructure being ready
   dependsOn:
     - name: infrastructure-config
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age

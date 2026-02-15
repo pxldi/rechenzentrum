@@ -23,16 +23,12 @@ spec:
       retries: 3
   values:
     app-template:
-      openclawVersion: "2026.2.14"
       configMode: merge
 
       controllers:
         main:
           containers:
             main:
-              env:
-                HOME: /tmp
-                npm_config_cache: /tmp/.npm
               envFrom:
                 - secretRef:
                     name: openclaw-credentials
@@ -95,9 +91,3 @@ spec:
                   }
                 }
               }
-
-      service:
-        main:
-          ports:
-            http:
-              port: 18789

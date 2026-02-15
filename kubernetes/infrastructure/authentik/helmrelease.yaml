@@ -22,10 +22,11 @@ spec:
     remediation:
       retries: 3
   values:
-    image:
-      repository: ghcr.io/goauthentik/server
-      tag: 2025.12.0
-      pullPolicy: Always
+    global:
+      image:
+        repository: ghcr.io/goauthentik/server
+        tag: "2025.12.0"
+        pullPolicy: IfNotPresent
     
     envFrom:
       - secretRef:
@@ -45,10 +46,10 @@ spec:
     
     postgresql:
       enabled: true
-      postgresqlHost: authentik-postgresql.authentik.svc.cluster.local
-      postgresqlDatabase: authentik
-      postgresqlUser: authentik
-      existingSecret: authentik-postgres
+      auth:
+        existingSecret: authentik-postgres
+        username: authentik
+        database: authentik
     
     redis:
       enabled: false

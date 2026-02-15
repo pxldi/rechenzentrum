@@ -1,0 +1,70 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: jellyfin
+  namespace: jellyfin
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: jellyfin
+      version: "0.4.0"
+      sourceRef:
+        kind: HelmRepository
+        name: jellyfin
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: jellyfin/jellyfin
+      tag: latest
+      pullPolicy: Always
+    env:
+      TZ: "Europe/Berlin"
+      JELLYFIN__PREFERRED_METADATA_LANGUAGE: "de"
+      JELLYFIN__ENABLE_QUICKSYNC: "false"
+    envFrom:
+      - secretRef:
+          name: jellyfin-credentials
+    service:
+      main:
+        ports:
+          http:
+            port: 8096
+    ingress:
+      main:
+        enabled: false
+    persistence:
+      config:
+        enabled: true
+        type: pvc
+        storageClass: local-ssd
+        accessMode: ReadWriteOnce
+        size: 10Gi
+      cache:
+        enabled: true
+        type: pvc
+        storageClass: local-ssd
+        accessMode: ReadWriteOnce
+        size: 5Gi
+      media:
+        enabled: true
+        type: custom
+        volumeSpec:
+          nfs:
+            server: "192.168.0.153"
+            path: "/mnt/media"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi

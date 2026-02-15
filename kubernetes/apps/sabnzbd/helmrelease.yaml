@@ -1,0 +1,56 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: sabnzbd
+  namespace: sabnzbd
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: sabnzbd
+      version: "15.2.0"
+      sourceRef:
+        kind: HelmRepository
+        name: k8s-at-home
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: ghcr.io/onedr0p/sabnzbd
+      tag: latest
+      pullPolicy: Always
+    env:
+      TZ: "Europe/Berlin"
+      SABNZBD__HOST_WHITELIST_ENTRIES: "sabnzbd.pxldi.de,192.168.0.153"
+    envFrom:
+      - secretRef:
+          name: sabnzbd-credentials
+    service:
+      main:
+        ports:
+          http:
+            port: 8080
+    ingress:
+      main:
+        enabled: false
+    persistence:
+      config:
+        enabled: true
+        type: pvc
+        storageClass: local-ssd
+        accessMode: ReadWriteOnce
+        size: 5Gi
+      media:
+        enabled: true
+        type: custom
+        volumeSpec:
+          nfs:
+            server: "192.168.0.153"
+            path: "/mnt/downloads"

@@ -16,5 +16,7 @@ resources:
   - minecraft-server.yaml
   - home-assistant.yaml
   - openebs.yaml
+  - k8s-at-home.yaml
+  - jellyfin.yaml
   - jetstack.yaml
   - vmware-tanzu.yaml

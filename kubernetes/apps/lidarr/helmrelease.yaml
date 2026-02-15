@@ -54,8 +54,9 @@ spec:
         size: 5Gi
       media:
         enabled: true
-        type: custom
-        volumeSpec:
-          nfs:
-            server: "192.168.0.153"
-            path: "/mnt/media"
+        type: pvc
+        storageClass: local-hdd1
+        accessMode: ReadWriteOnce
+        size: 1Ti
+        labels:
+          backup.velero.io/backup-volumes-exclude: "true"

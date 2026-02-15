@@ -16,8 +16,13 @@ spec:
       - traefik
       - openclaw
       - searxng
+      - prowlarr
+      - radarr
+      - sonarr
+      - lidarr
+      - sabnzbd
+      - jellyfin
       # - immich
-      # - jellyfin
       # - nextcloud
     
     # Backup all resources in these namespaces

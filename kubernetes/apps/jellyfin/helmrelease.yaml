@@ -54,13 +54,6 @@ spec:
         storageClass: local-ssd
         accessMode: ReadWriteOnce
         size: 5Gi
-      media:
-        enabled: true
-        type: custom
-        volumeSpec:
-          nfs:
-            server: "192.168.0.153"
-            path: "/mnt/media"
     resources:
       requests:
         cpu: 100m

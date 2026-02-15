@@ -4,3 +4,9 @@ kind: Kustomization
 resources:
   - openclaw
   - searxng
+  - prowlarr
+  - radarr
+  - sonarr
+  - lidarr
+  - sabnzbd
+  - jellyfin

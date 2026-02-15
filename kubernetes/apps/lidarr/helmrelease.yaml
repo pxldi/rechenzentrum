@@ -1,0 +1,57 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: lidarr
+  namespace: lidarr
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: lidarr-hearring-aid
+      version: "1.0.0"
+      sourceRef:
+        kind: HelmRepository
+        name: harring-aid
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: ghcr.io/onedr0p/lidarr-develop
+      tag: develop
+      pullPolicy: Always
+    env:
+      TZ: "Europe/Berlin"
+      LIDARR__LOG_LEVEL: "info"
+      LIDARR__INSTANCE_NAME: "Lidarr"
+      LIDARR__UPDATE_AUTOMATICALY: "true"
+      LIDARR__PLUGIN_AUTO_UPDATE: "true"
+    service:
+      main:
+        ports:
+          http:
+            port: 8686
+    ingress:
+      main:
+        enabled: false
+    persistence:
+      config:
+        enabled: true
+        type: pvc
+        storageClass: local-ssd
+        accessMode: ReadWriteOnce
+        size: 5Gi
+      media:
+        enabled: true
+        type: pvc
+        storageClass: local-hdd1
+        accessMode: ReadWriteOnce
+        size: 1Ti
+        labels:
+          backup.velero.io/backup-volumes-exclude: "true"

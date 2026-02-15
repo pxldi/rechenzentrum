@@ -1,0 +1,58 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: sonarr
+  namespace: sonarr
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: sonarr
+      version: "21.0.0"
+      sourceRef:
+        kind: HelmRepository
+        name: k8s-at-home
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: ghcr.io/onedr0p/sonarr-develop
+      tag: develop
+      pullPolicy: Always
+    env:
+      TZ: "Europe/Berlin"
+      SONARR__LOG_LEVEL: "info"
+      SONARR__INSTANCE_NAME: "Sonarr"
+    envFrom:
+      - secretRef:
+          name: sonarr-credentials
+    service:
+      main:
+        ports:
+          http:
+            port: 8989
+    ingress:
+      main:
+        enabled: false
+    persistence:
+      config:
+        enabled: true
+        type: pvc
+        storageClass: local-ssd
+        accessMode: ReadWriteOnce
+        size: 5Gi
+      media:
+        enabled: true
+        type: pvc
+        storageClass: local-hdd1
+        accessMode: ReadWriteOnce
+        size: 4Ti
+        labels:
+          backup.velero.io/backup-volumes-exclude: "true"

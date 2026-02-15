@@ -1,0 +1,62 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: authentik
+      version: "2025.12.0"
+      sourceRef:
+        kind: HelmRepository
+        name: authentik
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: ghcr.io/goauthentik/server
+      tag: 2025.12.0
+      pullPolicy: Always
+    
+    envFrom:
+      - secretRef:
+          name: authentik-credentials
+    
+    env:
+      TZ: "Europe/Berlin"
+    
+    ingress:
+      enabled: true
+      className: "traefik"
+      hosts:
+        - host: authentik.pxldi.de
+          paths:
+            - path: /
+              pathType: Prefix
+    
+    postgresql:
+      enabled: true
+      postgresqlHost: authentik-postgresql.authentik.svc.cluster.local
+      postgresqlDatabase: authentik
+      postgresqlUser: authentik
+      existingSecret: authentik-postgres
+    
+    redis:
+      enabled: false
+    
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi

@@ -33,7 +33,8 @@ spec:
           name: authentik-credentials
     
     env:
-      TZ: "Europe/Berlin"
+      - name: TZ
+        value: "Europe/Berlin"
     
     ingress:
       enabled: true

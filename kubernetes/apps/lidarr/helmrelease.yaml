@@ -23,8 +23,8 @@ spec:
       retries: 3
   values:
     image:
-      repository: ghcr.io/onedr0p/lidarr-develop
-      tag: develop
+      repository: blampe/lidarr
+      tag: lidarr-plugins-3.1.2.4913
       pullPolicy: Always
     env:
       TZ: "Europe/Berlin"

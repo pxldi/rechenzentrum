@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - dashboard-ingress.yaml
   - middleware-auth.yaml
+  - middleware-authentik.yaml

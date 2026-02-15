@@ -16,6 +16,7 @@ spec:
       - traefik
       - openclaw
       - searxng
+      - authentik
       - prowlarr
       - radarr
       - sonarr

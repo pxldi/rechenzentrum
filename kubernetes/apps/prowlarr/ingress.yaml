@@ -10,6 +10,9 @@ spec:
   routes:
     - match: Host(`prowlarr.pxldi.de`)
       kind: Rule
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: traefik
       services:
         - name: prowlarr
           port: 9696

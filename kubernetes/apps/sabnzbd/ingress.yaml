@@ -10,6 +10,9 @@ spec:
   routes:
     - match: Host(`sabnzbd.pxldi.de`)
       kind: Rule
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: traefik
       services:
         - name: sabnzbd
           port: 8080

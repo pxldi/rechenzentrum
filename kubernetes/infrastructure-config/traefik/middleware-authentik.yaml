@@ -9,7 +9,7 @@ spec:
     address: https://authentik.pxldi.de/outpost.goauthentik.io/auth/traefik/forward
     trustForwardHeader: true
     authResponseHeaders:
-      X-Authentik-User: true
-      X-Authentik-Email: true
-      X-Authentik-Groups: true
-      X-Authentik-Name: true
+      - X-Authentik-User
+      - X-Authentik-Email
+      - X-Authentik-Groups
+      - X-Authentik-Name

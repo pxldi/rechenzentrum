@@ -8,11 +8,11 @@ spec:
   interval: 30m
   chart:
     spec:
-      chart: lidarr-hearring-aid
-      version: "1.0.0"
+      chart: lidarr
+      version: 16.1.0
       sourceRef:
         kind: HelmRepository
-        name: harring-aid
+        name: k8s-at-home
         namespace: flux-system
       interval: 12h
   install:
@@ -23,8 +23,8 @@ spec:
       retries: 3
   values:
     image:
-      repository: ghcr.io/onedr0p/lidarr-develop
-      tag: develop
+      repository: blampe/lidarr
+      tag: lidarr-plugins-3.1.2.4913
       pullPolicy: Always
     env:
       TZ: "Europe/Berlin"

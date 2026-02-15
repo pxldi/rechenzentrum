@@ -11,11 +11,11 @@ resources:
   - bitnami.yaml
   - bjw-s.yaml
   - authelia.yaml
+  - authentik.yaml
   - nextcloud.yaml
   - prometheus.yaml
   - minecraft-server.yaml
   - home-assistant.yaml
   - openebs.yaml
-  - harring-aid.yaml
   - jetstack.yaml
   - vmware-tanzu.yaml

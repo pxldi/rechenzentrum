@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: openclaw
-      version: '*'  # Use latest version
+      version: '1.3.7'
       sourceRef:
         kind: HelmRepository
         name: openclaw
@@ -22,73 +22,80 @@ spec:
     remediation:
       retries: 3
   values:
-    env:
-      - name: HOME
-        value: /tmp
-      - name: npm_config_cache
-        value: /tmp/.npm
-
+    configMode: merge
+    
+    # OpenClaw configuration
     openclaw:
       agents:
         defaults:
           model: "zai/glm-4.7"
           thinkingDefault: "low"
           timeoutSeconds: 600
+          models:
+            "zai/glm-4.7":
+              alias: "GLM"
       
-      # Skills to install
+      browser:
+        enabled: true
+        headless: true
+        noSandbox: true
+        defaultProfile: "openclaw"
+        profiles:
+          openclaw:
+            cdpPort: 9222
+            color: '#4A90D9'
+      
+      tools:
+        web:
+          search:
+            enabled: true
+          fetch:
+            enabled: true
+      
       skills:
-        - web-search-plus
-      
-      # Advanced config merged into openclaw.json
-      configOverrides:
-        browser:
-          enabled: true
-          headless: true
-          noSandbox: true
-          defaultProfile: "openclaw"
-          profiles:
-            openclaw:
-              cdpPort: 9222
-              color: '#4A90D9'
-              
-        agents:
-          defaults:
-            models:
-              "zai/glm-4.7":
-                alias: "GLM"
-        tools:
-          web:
-            search:
-              enabled: true
-            fetch:
-              enabled: true
-        skills:
-          install:
-            nodeManager: "npm"
-          entries:
-            web-search-plus:
-              enabled: true
+        install:
+          nodeManager: "npm"
+        entries:
+          web-search-plus:
+            enabled: true
+            env:
+              SEARXNG_INSTANCE_URL: "http://searxng.searxng.svc.cluster.local:8080"
+    
+    app-template:
+      controllers:
+        main:
+          containers:
+            main:
               env:
-                SEARXNG_INSTANCE_URL: "http://searxng.searxng.svc.cluster.local:8080"
-
-    credentials:
-      existingSecret: openclaw-credentials
-
-    persistence:
-      enabled: true
-      storageClass: local-ssd
-      size: 10Gi
-      accessMode: ReadWriteOnce
-
-    resources:
-      requests:
-        memory: 512Mi
-        cpu: 250m
-      limits:
-        memory: 2Gi
-        cpu: 1000m
-
-    securityContext:
-      runAsNonRoot: true
-      runAsUser: 1000
-      fsGroup: 1000
+                HOME: /tmp
+                npm_config_cache: /tmp/.npm
+              envFrom:
+                - secretRef:
+                    name: openclaw-credentials
+      
+      persistence:
+        data:
+          enabled: true
+          storageClass: local-ssd
+          size: 10Gi
+          accessMode: ReadWriteOnce
+          existingClaim: "openclaw"
+      
+      service:
+        main:
+          ports:
+            http:
+              port: 18789
+      
+      resources:
+        requests:
+          memory: 512Mi
+          cpu: 250m
+        limits:
+          memory: 2Gi
+          cpu: 1000m
+      
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000

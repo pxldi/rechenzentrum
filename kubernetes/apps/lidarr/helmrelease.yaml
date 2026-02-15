@@ -8,11 +8,11 @@ spec:
   interval: 30m
   chart:
     spec:
-      chart: lidarr
-      version: "17.0.0"
+      chart: lidarr-hearring-aid
+      version: "1.0.0"
       sourceRef:
         kind: HelmRepository
-        name: k8s-at-home
+        name: harring-aid
         namespace: flux-system
       interval: 12h
   install:
@@ -32,11 +32,6 @@ spec:
       LIDARR__INSTANCE_NAME: "Lidarr"
       LIDARR__UPDATE_AUTOMATICALY: "true"
       LIDARR__PLUGIN_AUTO_UPDATE: "true"
-      LIDARR__PLUGINS__HEARING_AID: "true"
-      LIDARR__PLUGINS__TUBIFARRY: "true"
-    envFrom:
-      - secretRef:
-          name: lidarr-credentials
     service:
       main:
         ports:

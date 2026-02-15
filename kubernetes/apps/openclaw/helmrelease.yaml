@@ -25,6 +25,20 @@ spec:
     app-template:
       configMode: merge
 
+      networkpolicies:
+        main:
+          enabled: true
+          rules:
+            egress:
+              # Local SearXNG instance
+              - to:
+                  - namespaceSelector:
+                      matchLabels:
+                        kubernetes.io/metadata.name: searxng
+                ports:
+                  - protocol: TCP
+                    port: 8080
+
       controllers:
         main:
           containers:

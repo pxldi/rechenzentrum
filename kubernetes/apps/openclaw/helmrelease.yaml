@@ -73,12 +73,6 @@ spec:
                 - secretRef:
                     name: openclaw-credentials
       
-      persistence:
-        data:
-          enabled: true
-          type: persistentVolumeClaim
-          existingClaim: "openclaw"
-      
       service:
         main:
           ports:

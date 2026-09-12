@@ -60,10 +60,11 @@ new Deployment at the new `cantus-postgresql-app` secret.
 
 ## Plan for slskd
 
-1. **Retain first.** Patch the live PVs for `downloads-pvc` and
-   `cantus-music-pvc` to `persistentVolumeReclaimPolicy: Retain`. Live-only
-   change; OpenEBS-provisioned PVs are not in git. Record it here with the
-   date. Without this, step 5 deletes the directories.
+1. **Retain first.** Patch the live PVs for `downloads-pvc`,
+   `cantus-music-pvc` and `slskd-config-pvc` to
+   `persistentVolumeReclaimPolicy: Retain`. Live-only change; OpenEBS
+   provisioned PVs are not in git. Without this, step 5 deletes the
+   directories. Done 2026-09-13 for all three.
 2. **Namespace.** Add `kubernetes/namespaces/slskd.yaml` with `enforce:
    privileged` for the gluetun sidecar, and `media` moves to `baseline`. Add the
    ingress policies the media apps need from slskd, and the reverse.
@@ -87,6 +88,8 @@ new Deployment at the new `cantus-postgresql-app` secret.
 7. **Cleanup.** `kubernetes/namespaces/cantus.yaml` actually defines the
    `media` namespace. Rename it to `media.yaml` in the same PR.
 
-Check before step 4: Cantus stores the slskd URL in its own settings, not in a
-manifest. If it is a short service name like `slskd:5030`, it must become
-`slskd.slskd.svc.cluster.local:5030` before slskd moves.
+Cantus stores the slskd URL in its own settings table as `http://slskd:5030`.
+Rather than change a setting under the running app, an ExternalName Service
+named `slskd` stays in `media` and points at `slskd.slskd.svc.cluster.local`,
+with a matching ingress allowance from `media` in the new namespace. The alias
+can go once the setting names the full address.

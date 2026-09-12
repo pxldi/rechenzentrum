@@ -74,9 +74,6 @@
   "apps/v1/Deployment/media/navidrome": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/media/slskd": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/minecraft/minecraft": {
     "kind": "Deployment"
   },
@@ -123,6 +120,9 @@
     "kind": "Deployment"
   },
   "apps/v1/Deployment/searxng/searxng": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/slskd/slskd": {
     "kind": "Deployment"
   },
   "apps/v1/Deployment/sure/sure-web": {
@@ -538,10 +538,6 @@
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
   },
-  "v1/PersistentVolumeClaim/media/slskd-config-pvc": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
-  },
   "v1/PersistentVolumeClaim/media/sonarr-config-pvc": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
@@ -613,6 +609,18 @@
   "v1/PersistentVolumeClaim/ryot/ryot-postgres-pvc": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/slskd/slskd-config": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "d56df5df2bc90f74af1e6023416c6ab4ce16039db8395d2f93e79458cfeedf00"
+  },
+  "v1/PersistentVolumeClaim/slskd/slskd-downloads": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "8c58224c037c65698eecfdfe777faa3a17a40105e12d373f7914191534d9de83"
+  },
+  "v1/PersistentVolumeClaim/slskd/slskd-music": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "d77568db6cd240a4af4a5e70f412a39861c49914862712c8d8a82f53589573eb"
   },
   "v1/PersistentVolumeClaim/sure/sure-app-storage": {
     "kind": "PersistentVolumeClaim",

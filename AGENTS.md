@@ -1,82 +1,74 @@
-# AGENTS.md — working on `rechenzentrum`
+# Working on rechenzentrum
 
-House rules for any AI agent (OpenClaw, Claude Code, …) making changes in this repo.
-Read this before you touch anything.
+This is a single-node NixOS/K3s homelab managed by Flux. Changes merged to the
+active GitOps source are live deployment changes. Preserve the existing
+applications and persistent data while completing the user's request.
 
-## What this repo is
+## Authorization and delivery
 
-A **GitOps-managed** single-node NixOS + K3s homelab. Flux continuously reconciles
-`kubernetes/` against the cluster. **Merging to `main` changes the live cluster.**
-There is no separate "apply" step — the manifest *is* the deployment.
+- Treat the user's request as authorization to complete work within its scope.
+  Do not repeatedly ask for approval for implementation, validation, PR creation
+  or merging that the user has already authorized.
+- Work on a branch, use Conventional Commits, open a descriptive PR, and wait for
+  required CI. **Agents may squash-merge their own PRs after required checks pass.**
+  A separate human review is not required unless the user requests one.
+- Keep branch protection and required checks. Do not bypass failed checks,
+  force-push main, or rewrite existing history to get a change merged.
+- Carry authorized migrations through deployment verification. Inspect live
+  Flux/Helm/workload health and PVC bindings, then fix or safely roll back
+  regressions rather than stopping at a merged PR.
+- Ask only for genuinely missing information or authorization outside the task,
+  such as deleting unrelated data or choosing which personal services may lose
+  public access. Explain the concrete decision and continue independent work.
 
-## The golden rule: PRs only, never merge
+## Preserve deployments and data
 
-1. Never commit to `main`. Never `git push` to `main`. Never merge your own PR.
-2. Work on a branch, commit, and open a PR with `gh pr create`. A human reviews and merges.
-3. The new public repository requires PRs and successful CI on `main`.
-   The initial fresh-history bootstrap is the only initialization exception,
-   authorized by the repository owner. Subsequent changes require a reviewed PR.
-   Do not merge your own PR. The existing private repository is not modified by
-   publishing here. Read `docs/MIGRATION.md` before changing reconciliation sources.
-4. Use Conventional Commit messages matching the history: `feat(apps): …`,
-   `chore(deps): …`, `fix(<scope>): …`.
+- Inspect the current rendered manifests and deployed revision before editing.
+  An older local checkout is not an acceptable migration baseline.
+- Keep names, namespaces, selectors, Helm release identities and PVC specs unless
+  changing them is an intentional, verified part of the task.
+- Follow the staged handover in `docs/MIGRATION.md` when present. Before moving
+  resources between Flux owners, disable old-owner pruning and verify it has
+  reconciled. Verify new inventories before restoring pruning. Namespace deletion
+  is explicit; its dedicated owner intentionally does not prune.
+- A namespace move is not a storage migration. Verify restores and shared-volume
+  dependencies before moving stateful workloads. Do not fabricate restore results.
+- Use RollingUpdate only when concurrent instances, storage access and available
+  capacity support it. Retain deliberate Recreate strategies for stateful apps.
 
-## Secrets: SOPS + age
+## Secrets and access
 
-- Secrets are encrypted with [SOPS](https://github.com/getsops/sops) + age. Only the
-  `data`/`stringData` fields are encrypted (see `.sops.yaml`).
-- To add or edit a secret: `sops kubernetes/apps/<app>/secret.yaml` (edits decrypted,
-  re-encrypts on save), or create plaintext then `sops --encrypt --in-place <file>`.
-- **Never** commit a plaintext secret. **Never** read, print, move, or commit `age.key`
-  (the private key, gitignored). Never alter recipients in `.sops.yaml` unless asked.
+- SOPS-encrypted Secrets belong in Git; unencrypted secrets do not. Empty optional
+  SOPS values may remain empty. Keep existing recipients unless asked to rotate.
+- Never print, publish, copy into the public repository, or inspect the raw age
+  private key. Use SOPS through the operator's configured decryption mechanism.
+- Never put credentials, raw sensitive logs, Terraform state or kubeconfigs in
+  commits, PR descriptions, CI artifacts or user-facing output.
+- Prefer GitOps for persistent cluster changes. Use narrowly scoped operational
+  commands when authorized and permitted by the available RBAC. Do not bypass a
+  denied API permission through pod exec, node access or another identity.
+- Do not assume a namespace alone is a security boundary. Pod mutation and exec
+  can expose its mounted secrets and ServiceAccount privileges.
 
-## kubectl: read/debug only
+## Implementation conventions
 
-Your ServiceAccount can `get/list/watch` most resource types cluster-wide (logs
-included) and `exec`/`attach`/`port-forward` into pods in **app namespaces only**.
-It **cannot** create/update/delete anything. That is intentional: **you change the
-cluster by editing manifests and opening a PR**, not with `kubectl apply/edit/delete`.
+- Retain the existing modular layout; do not restructure solely for aesthetics.
+  After migration, app definitions live in `kubernetes/apps/`, namespaces in
+  `kubernetes/namespaces/`, and CNPG resources in `kubernetes/databases/`.
+- Software belongs in separate repositories; do not add Git submodules.
+- Apply components at app boundaries. Metadata labels must not silently change
+  selectors or pod templates. Helm-generated pods need chart values/postRenderers.
+- Use explicit image versions/digests. Updates flow through PRs and required CI.
+- Public PR workflows run on GitHub-hosted runners without cluster credentials.
+  Never execute public PR code on the internal ARC runners.
 
-Two things you will hit and should not try to work around:
+## Validation
 
-- **Secrets are not readable.** `kubectl get secret -o yaml` will 403. If a task
-  needs an existing secret value, ask the operator — do not try to reach it by
-  exec'ing into a pod that mounts it.
-- **`exec` is namespace-scoped.** It is bound in app namespaces but *not* in
-  `home-assistant`, `jellyfin`, or `homepage` (those run privileged or hostPath
-  pods, where exec is a route to root on the node), nor in `authentik`, `backup`,
-  `velero`, `cnpg`, `networking`, `flux-system`, `kube-system` (credential-bearing).
-
-A 403 in those places is the design working, not a bug to route around. Say what you
-were trying to do and ask.
-
-## Adding or changing an app
-
-- One directory per app: `kubernetes/apps/<name>/`. Namespaces live in
-  `kubernetes/namespaces/`; CNPG resources live in `kubernetes/databases/<name>/`. Mirror an existing app —
-  `n8n` (Helm via bjw-s `app-template` + Postgres) or `glance`/`gethomepage`
-  (raw `Deployment`) are good templates.
-- Typical files: `namespace.yaml`, `kustomization.yaml`, a workload
-  (`helmrelease.yaml` or `deployment.yaml`), `service.yaml`/`ingress.yaml`, `pvc.yaml`,
-  `secret.yaml`, plus the shared networkpolicy `components`. Do not duplicate
-  namespaces or database resources into an app build.
-- Register the app in `kubernetes/apps/kustomization.yaml`.
-- Ingress = Traefik `IngressRoute` on host `<app>.pxldi.de`, TLS via cert-manager,
-  SSO via the `authentik-forward-auth` middleware (copy the two-route pattern from
-  `n8n/ingress.yaml`).
-- Storage classes: `local-ssd` (default — DBs, configs), `local-hdd1` (media),
-  `local-hdd2` (downloads/large mutable). Databases → CloudNativePG (see `n8n`).
-
-## Before opening a PR
-
-- `kubectl kustomize kubernetes/apps/<name>` must build cleanly (and
-  `kubectl kustomize kubernetes/apps` for cross-cutting changes).
-- Keep YAML prettier-clean (repo uses Prettier; see `.prettierignore`).
-- Pin image tags in manifests — Renovate bumps them weekly, so don't use `latest`.
-- Don't touch `kubernetes/flux-system/` or bootstrap wiring unless explicitly asked.
-
-## When in doubt
-
-Anything destructive, irreversible, or outward-facing (deleting data/PVCs, changing
-DNS, touching auth/ingress for existing apps, editing another app you weren't asked to)
-→ stop and ask the operator in the PR description instead of proceeding.
+- Use `task validate` and `task secrets:scan` when available, or their underlying
+  commands documented in `docs/VALIDATION.md`.
+- Build Flux roots including patches, validate Kubernetes and custom-resource
+  schemas, check Secret fields and scan the current tree with Gitleaks.
+- For this migration, run `python3 scripts/verify-preservation.py` after building.
+- Test meaningful failure cases for security-sensitive checks. Do not describe
+  static validation as proof of live health, policy enforcement or recovery.
+- Report what was merged, what reconciled, and any specific unfinished gates.

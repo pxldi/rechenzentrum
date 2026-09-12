@@ -38,7 +38,7 @@ available without the cluster or this workstation. Never put them in this repo.
    `kubernetes/flux-system/gotk-sync.yaml`: set the public HTTPS URL and remove
    `spec.secretRef` from the GitRepository. Keep names, path and sourceRef.
    The public apps root also keeps pruning disabled while database and namespace
-   resources transfer to their new owners. A human reviews and merges both PRs.
+   resources transfer to their new owners. An authorized agent may merge both PRs after their checks pass.
 4. Observe `flux get sources git -A`, `flux get kustomizations -A`, and
    `flux get helmreleases -A`. Each source/reconciliation must report the public
    revision and Ready. Compare workload and PVC identities before and after.

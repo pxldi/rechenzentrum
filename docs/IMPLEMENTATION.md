@@ -1,30 +1,25 @@
-# Masterplan implementation
+# Implementation status
 
-The masterplan describes several independently deployable changes. This table
-distinguishes implemented configuration from live activation and prerequisites.
+Status as of 2026-09-12. Configured does not mean live or restore-tested.
 
-| Area | Current state | Remaining work / gate |
-| --- | --- | --- |
-| Public repo / fresh history | New `pxldi/rechenzentrum`, exported current deployed tree | Reviewed Flux handover |
-| Secrets | SOPS ciphertext retained; per-field validation and Gitleaks | Independent key recovery verification |
-| Hosted CI / protection | Offline Flux builds, schemas, policies and secret checks | Required checks must pass on each PR |
-| Repository layout | Existing modular apps and infrastructure retained | Avoid resource ownership changes merely for naming |
-| Components | Existing ingress isolation components retained | Add opt-in rollout/hardening/egress components |
-| Reliability | Existing probes, deliberate Recreate workloads, Flux minReadySeconds | Per-workload concurrency and capacity checks |
-| Flux | Existing dependencies, waits and Helm drift detection | Separate database readiness from operator readiness |
-| Admission | Existing image/request CEL and namespace PSA | Additional audit-first policies |
-| Cantus isolation | Shared PVC dependencies identified | Storage design, restore verification, controlled migration |
-| Exposure / edge | Existing TLS and Authentik retained | Operator's required external-access list |
-| Egress | Existing ingress isolation retained | Per-app egress allowances and reachability tests |
-| Resources | Existing requests retained | Measured limits/quotas; avoid arbitrary OOM changes |
-| Backups | Six CNPG clusters healthy; recent completed backups observed | New isolated restores and data verification |
-| Taskfile | Common validation and status tasks | Operational tasks require operator credentials |
-| Monitoring | Existing Prometheus/Grafana/Gotify retained | Agent-specific dashboards after deployment |
-| Image automation | Existing suspended Flux automation retained | PR branch workflow and write identity |
-| ZeroClaw | Not deployed | Provider, Telegram identity/token, supported image/config |
-| Tandoor MCP | Not deployed | Separate software repo, API token, tests and published image |
-| Homelab MCP | Not deployed | Separate software repo, scoped RBAC, tested implementation |
-| Agent actions | Existing access documented | Separate diagnostic/action identities and action authorization |
+| Area | Status |
+| --- | --- |
+| Public repository | Created with fresh history; bootstrap CI passed |
+| Protection | Required PR/CI, no force pushes; agents may merge authorized work |
+| Validation | Flux builds, schemas, policy/secret checks and preservation baseline |
+| GitOps handover | In progress; old source still active until verified cutover |
+| Databases | Six readiness gates configured; database/PVC specs preserved |
+| Namespaces | Separate owner configured; namespace deletion remains explicit |
+| Components/labels | Metadata-only app labels; opt-in rollout, hardening, DNS/egress |
+| Rollout pilot | Excalidraw startup probe and zero-unavailable rolling update configured |
+| Admission | Existing policies retained; additional Pod checks in Audit/Warn |
+| Exposure | Inventory recorded; internet/VPN choices still needed |
+| Backups | Recent CNPG backups completed; no new restore test |
+| Image automation | PR workflow configured; writer/PR credentials needed; suspended |
+| Cantus namespace | Pending shared-volume design and verified migration |
+| NixOS/Renovate | Still target the private repository; separate consumer migration needed |
+| Edge/egress expansion | Pending service requirements and reachability tests |
+| ZeroClaw/MCP | Not deployed; provider/bot setup, software and scoped credentials needed |
 
-Never mark a restore tested, a service deployed or a policy enforced solely
-because its manifests build successfully.
+See [MASTERPLAN.md](MASTERPLAN.md) for the remaining scope and
+[MIGRATION.md](MIGRATION.md) for handover/rollback steps.

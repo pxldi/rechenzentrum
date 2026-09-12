@@ -2,13 +2,19 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - postgres-cluster.yaml
-  - objectstore.yaml
-  - scheduledbackup.yaml
-  - cnpg-b2-credentials-secret.yaml
-  - networkpolicy.yaml
   - deployment.yaml
   - service.yaml
   - auth-secret.yaml
   - middleware-proxy-key.yaml
   - ingress.yaml
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: cantus
+      app.kubernetes.io/instance: cantus
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

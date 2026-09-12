@@ -3,7 +3,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: minecraft
 resources:
-  - namespace.yaml
   - pvcs.yaml
   - deployment.yaml
   - service.yaml
@@ -12,3 +11,14 @@ components:
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-monitoring
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: minecraft
+      app.kubernetes.io/instance: minecraft
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

@@ -1,0 +1,61 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: workload-security-audit
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods, pods/ephemeralcontainers]
+  variables:
+    - name: containers
+      expression: >-
+        object.spec.containers +
+        (has(object.spec.initContainers) ? object.spec.initContainers : []) +
+        (has(object.spec.ephemeralContainers) ? object.spec.ephemeralContainers : [])
+  validations:
+    - expression: >-
+        variables.containers.all(c,
+          !has(c.securityContext) || !has(c.securityContext.privileged) ||
+          !c.securityContext.privileged)
+      message: Privileged containers require a reviewed namespace exception before enforcement.
+    - expression: >-
+        !has(object.spec.volumes) || object.spec.volumes.all(v, !has(v.hostPath))
+      message: hostPath volumes require a reviewed namespace exception before enforcement.
+    - expression: >-
+        variables.containers.all(c,
+          has(c.securityContext) &&
+          has(c.securityContext.allowPrivilegeEscalation) &&
+          !c.securityContext.allowPrivilegeEscalation)
+      message: Containers should explicitly disable privilege escalation.
+    - expression: >-
+        variables.containers.all(c,
+          (has(c.securityContext) && has(c.securityContext.runAsNonRoot))
+            ? c.securityContext.runAsNonRoot
+            : (has(object.spec.securityContext) &&
+               has(object.spec.securityContext.runAsNonRoot) &&
+               object.spec.securityContext.runAsNonRoot))
+      message: Containers should run as non-root, directly or through pod defaults.
+    - expression: >-
+        variables.containers.all(c,
+          has(c.securityContext) && has(c.securityContext.capabilities) &&
+          has(c.securityContext.capabilities.drop) &&
+          c.securityContext.capabilities.drop.exists(cap, cap == 'ALL'))
+      message: Containers should drop all capabilities and add only reviewed necessities.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: workload-security-audit
+spec:
+  policyName: workload-security-audit
+  validationActions: [Audit, Warn]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: [kube-system, kube-public, kube-node-lease, flux-system]

@@ -8,3 +8,14 @@ resources:
   - ingress.yaml
   - protonvpn-secret.yaml
   - soulseek-secret.yaml
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: slskd
+      app.kubernetes.io/instance: slskd
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

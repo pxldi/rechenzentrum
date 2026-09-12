@@ -6,3 +6,14 @@ resources:
   - service.yaml
   - ingress.yaml
   - secret.yaml
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: navidrome
+      app.kubernetes.io/instance: navidrome
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

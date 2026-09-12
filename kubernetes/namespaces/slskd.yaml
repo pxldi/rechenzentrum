@@ -1,0 +1,15 @@
+---
+# privileged because gluetun adds NET_ADMIN to bring up the WireGuard tunnel,
+# which baseline forbids and PSA cannot exempt per pod. slskd is the only
+# workload here, so the label covers exactly one pod. Everything else that
+# used to share this exemption in media no longer does.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: slskd
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/audit-version: latest
+    name: slskd

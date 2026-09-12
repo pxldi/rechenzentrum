@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: slskd
-  namespace: media
+  namespace: slskd
   labels:
     app: slskd
 spec:
@@ -199,13 +199,13 @@ spec:
       volumes:
         - name: config
           persistentVolumeClaim:
-            claimName: slskd-config-pvc
+            claimName: slskd-config
         - name: downloads
           persistentVolumeClaim:
-            claimName: downloads-pvc
+            claimName: slskd-downloads
         - name: music
           persistentVolumeClaim:
-            claimName: cantus-music-pvc
+            claimName: slskd-music
         - name: slskd-configmap
           secret:
             secretName: slskd-config

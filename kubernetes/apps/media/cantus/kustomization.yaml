@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
+  - slskd-alias.yaml
   - auth-secret.yaml
   - middleware-proxy-key.yaml
   - ingress.yaml

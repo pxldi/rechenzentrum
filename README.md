@@ -40,6 +40,7 @@ Terraform state and kubeconfigs are excluded.
 ## Operations
 
 - [Backups and restore acceptance](docs/BACKUPS.md)
+- [Cantus isolation design](docs/CANTUS_ISOLATION.md)
 - [Exposure inventory](docs/EXPOSURE.md)
 - [Rollout inventory](docs/ROLLOUTS.md)
 - [Image automation](docs/IMAGE_AUTOMATION.md)

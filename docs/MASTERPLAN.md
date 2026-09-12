@@ -81,8 +81,8 @@ Configured does not mean live or restore-tested.
 | Rollout pilot | Excalidraw has a startup probe and zero-unavailable rolling update |
 | Admission | Existing policies retained; additional Pod checks in Audit/Warn |
 | Exposure | Inventory recorded in [EXPOSURE.md](EXPOSURE.md); internet/VPN choices still open |
-| Backups | CNPG backups complete; no recent restore test, see [BACKUPS.md](BACKUPS.md) |
+| Backups | CNPG backups complete; cantus restore verified 2026-09-12, see [BACKUPS.md](BACKUPS.md); Velero file restore untested |
 | Image automation | PR workflow configured; writer credential needed; suspended |
-| Cantus namespace | Pending the shared-volume design above and a verified restore |
+| Cantus namespace | Pending the shared-volume design above; database restore verified |
 | Edge/egress expansion | Pending service requirements and reachability tests |
 | ZeroClaw/MCP | Not deployed; provider/bot setup, software and scoped credentials needed |

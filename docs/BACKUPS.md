@@ -12,7 +12,8 @@ Database backup settings live in `kubernetes/databases/`. Large media and scratc
 volumes may be excluded; check coverage before assuming a file is recoverable.
 
 **Evidence, 2026-09-12:** recent backups for all six CNPG clusters reported
-`completed`. The last restore test predates that date.
+`completed`. A point-in-time restore of `cantus-postgresql` into an isolated
+namespace was verified the same day; see below.
 
 ## Restore acceptance
 
@@ -29,6 +30,26 @@ volumes may be excluded; check coverage before assuming a file is recoverable.
 
 Define RPO/RTO targets before moving stateful workloads. A completed backup or healthy
 Postgres process alone is not a successful application restore.
+
+## CNPG restore test
+
+`scripts/restore-test/cnpg-restore.yaml` creates a `restore-test` namespace
+with default-deny ingress, an ObjectStore that reads the live backup path, and a
+recovery Cluster with no WAL archiver and a `targetTime`. It is applied by hand
+and deleted afterwards; Flux does not own it.
+
+1. Capture the live state at a known time: database size, table count and a
+   row count per table. Use that time as `targetTime`.
+2. Apply the manifest, then the source namespace's `cnpg-b2-credentials` SOPS
+   file with the namespace changed to `restore-test`.
+3. When the Cluster reports healthy, run the same counts against it and a
+   create/insert/select/drop cycle. Confirm `spec.plugins` is empty so nothing
+   was archived back.
+4. Record the result here and delete the namespace.
+
+| Run | Source | Target time (UTC) | Duration | Result |
+| --- | --- | --- | --- | --- |
+| 2026-09-12 | cantus-postgresql, base backup 20260912T001500 plus WAL | 21:47:36 | 5 min from apply to healthy | 1264 MB, 68 tables, 1,264,629 rows identical to the live snapshot; read/write cycle passed |
 
 References: [CNPG](https://cloudnative-pg.io/documentation/current/recovery/),
 [Barman plugin](https://cloudnative-pg.io/plugin-barman-cloud/docs/),

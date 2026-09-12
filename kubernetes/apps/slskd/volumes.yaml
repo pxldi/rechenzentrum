@@ -1,0 +1,125 @@
+---
+# slskd left the media namespace on 2026-09-13 so that media could drop from
+# `privileged` to `baseline`; gluetun's NET_ADMIN was the only violation there.
+# A PVC cannot be referenced from another namespace, so the three volumes it
+# needs are bound a second time here: static PVs on the same OpenEBS
+# directories the media claims use. Two PV objects per directory is fine on a
+# single node, a local volume is a plain directory with no lock.
+#
+# The PVs are Retain, and the originals in media were patched to Retain the
+# same day (they were Delete, and deleting a claim would have deleted the
+# 5.8 TB library). If a claim here is ever removed, the PV goes Released and
+# the directory stays; delete the PV object by hand afterwards.
+#
+# Sizes match the original claims. They are bookkeeping only: OpenEBS local
+# volumes do not enforce them.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: slskd-downloads
+spec:
+  capacity:
+    storage: 500Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-hdd2
+  local:
+    path: /mnt/hdd2/openebs/pvc-a9c8f61f-f37a-435a-9550-8c67e1557a54
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - rechenzentrum
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: slskd-downloads
+  namespace: slskd
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-hdd2
+  volumeName: slskd-downloads
+  resources:
+    requests:
+      storage: 500Gi
+---
+# The Cantus music library, shared read-only as the Soulseek share.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: slskd-music
+spec:
+  capacity:
+    storage: 500Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-hdd1
+  local:
+    path: /mnt/hdd1/openebs/pvc-e9719f98-6b64-4042-9469-0a19d0144c35
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - rechenzentrum
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: slskd-music
+  namespace: slskd
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-hdd1
+  volumeName: slskd-music
+  resources:
+    requests:
+      storage: 500Gi
+---
+# slskd's own state, previously media/slskd-config-pvc. Same directory, so the
+# Soulseek account, shares database and transfer history carry over.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: slskd-config
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-ssd
+  local:
+    path: /var/openebs/local/ssd/pvc-50d75736-8af2-4e08-b8f8-00c6c76f367b
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - rechenzentrum
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: slskd-config
+  namespace: slskd
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  volumeName: slskd-config
+  resources:
+    requests:
+      storage: 5Gi

@@ -1,0 +1,24 @@
+---
+# Cantus (media) drives slskd over its API. It reaches the pod through the
+# `slskd` ExternalName alias left behind in media, so the traffic arrives from
+# the media namespace and has to be let in here. gluetun's FIREWALL_INPUT_PORTS
+# already admits 5030 on the tunnel side.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-media
+  namespace: slskd
+spec:
+  podSelector:
+    matchLabels:
+      app: slskd
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: media
+      ports:
+        - port: 5030
+          protocol: TCP

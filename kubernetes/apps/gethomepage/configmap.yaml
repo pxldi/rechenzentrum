@@ -205,7 +205,7 @@ data:
             href: https://slskd.pxldi.de
             icon: slskd.png
             description: Soulseek client
-            siteMonitor: http://slskd.media.svc.cluster.local:5030
+            siteMonitor: http://slskd.slskd.svc.cluster.local:5030
         - Velero UI:
             href: https://velero.pxldi.de
             icon: velero.png

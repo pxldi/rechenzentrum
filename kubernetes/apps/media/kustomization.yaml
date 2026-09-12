@@ -9,7 +9,6 @@ resources:
   - sonarr
   - sabnzbd
   - jellyfin
-  - slskd
   - navidrome
   - seerr
   - cantus

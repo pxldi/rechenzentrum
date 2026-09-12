@@ -3,7 +3,6 @@ kind: Kustomization
 resources:
   - actions-runner.yaml
   - adventurelog.yaml
-  - cantus.yaml
   - claudebox.yaml
   - excalidraw.yaml
   - fredy.yaml
@@ -15,6 +14,7 @@ resources:
   - immich.yaml
   - jdownloader.yaml
   - karakeep.yaml
+  - media.yaml
   - minecraft.yaml
   - monitoring.yaml
   - multica-daemon.yaml
@@ -28,6 +28,7 @@ resources:
   - paperless-ngx.yaml
   - ryot.yaml
   - searxng.yaml
+  - slskd.yaml
   - sparky-fitness.yaml
   - sure.yaml
   - tandoor.yaml

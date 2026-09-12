@@ -26,4 +26,4 @@ spec:
   healthCheckExprs:
     - apiVersion: postgresql.cnpg.io/v1
       kind: Cluster
-      current: has(status) && has(status.conditions) && status.conditions.exists(c, c.type == 'Ready' && c.status == 'True')
+      current: has(status.conditions) && status.conditions.exists(c, c.type == 'Ready' && c.status == 'True')

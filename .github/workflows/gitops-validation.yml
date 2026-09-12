@@ -33,7 +33,9 @@ jobs:
           gitleaks dir . --redact=100 --no-banner
           python3 scripts/check-secrets.py
       - name: Validate YAML
-        run: yamllint -c .yamllint.yml kubernetes .github Taskfile.yml
+        run: yamllint -c .yamllint.yml kubernetes components .github Taskfile.yml
+      - name: Test secret-check failure cases
+        run: python3 -m unittest discover -s tests
       - name: Build Flux roots including patches
         run: python3 scripts/build.py
       - name: Validate Kubernetes and custom-resource schemas

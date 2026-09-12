@@ -1,0 +1,633 @@
+{
+  "apps/v1/DaemonSet/device-plugins/generic-device-plugin": {
+    "kind": "DaemonSet"
+  },
+  "apps/v1/Deployment/adventurelog/adventurelog-backend": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/adventurelog/adventurelog-db": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/adventurelog/adventurelog-frontend": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/branding/branding": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/claudebox/claudebox": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/cloudflare-ddns/cloudflare-ddns": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/excalidraw/excalidraw": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/flux-system/helm-controller": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/flux-system/image-automation-controller": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/flux-system/image-reflector-controller": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/flux-system/kustomize-controller": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/flux-system/notification-controller": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/flux-system/source-controller": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/fredy/fredy": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/glance/glance": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/gotify/gotify": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/grimmory/grimmory-mariadb": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/home-assistant/matter-server": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/home-assistant/otbr": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/homepage/homepage": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/jdownloader/jdownloader": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/karakeep/karakeep": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/media/cantus": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/media/navidrome": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/media/slskd": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/minecraft/minecraft": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/monitoring/uptime-kuma": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/multica-daemon/multica-daemon": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/observability/gotify-bridge-critical": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/observability/gotify-bridge-flux": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/observability/gotify-bridge-warning": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/observability/speedtest-exporter": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/ollama/ollama": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/overleaf/overleaf-redis": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/palworld/palworld": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/paperless/paperless": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/paperless/paperless-postgres": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/paperless/paperless-redis": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/ryot/ryot": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/ryot/ryot-postgres": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/searxng/searxng": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/sure/sure-web": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/sure/sure-worker": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/wardrowbe/wardrowbe-backend": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/wardrowbe/wardrowbe-frontend": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/wardrowbe/wardrowbe-worker": {
+    "kind": "Deployment"
+  },
+  "apps/v1/Deployment/whisper-cpp/whisper-cpp": {
+    "kind": "Deployment"
+  },
+  "apps/v1/StatefulSet/karakeep/karakeep-meilisearch": {
+    "kind": "StatefulSet"
+  },
+  "apps/v1/StatefulSet/obsidian-sync/obsidian-sync": {
+    "kind": "StatefulSet"
+  },
+  "apps/v1/StatefulSet/overleaf/overleaf-mongo": {
+    "kind": "StatefulSet"
+  },
+  "apps/v1/StatefulSet/sparkyfitness/sparkyfitness-postgresql": {
+    "kind": "StatefulSet"
+  },
+  "apps/v1/StatefulSet/sure/sure-db": {
+    "kind": "StatefulSet"
+  },
+  "apps/v1/StatefulSet/sure/sure-redis": {
+    "kind": "StatefulSet"
+  },
+  "apps/v1/StatefulSet/wardrowbe/wardrowbe-redis": {
+    "kind": "StatefulSet"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/arc-runners/homelab-runners": {
+    "kind": "HelmRelease",
+    "spec_sha256": "ce48826b1521fc6d5f021815d1ff737e6f551c8ffcb0ffaea6e6ce9eebab06d5"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/arc-systems/arc-controller": {
+    "kind": "HelmRelease",
+    "spec_sha256": "abf66d0e196edfa5a6a53b327c2bfd954207c000b09a2c5f67d0f98cdcec83c5"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/authentik/authentik": {
+    "kind": "HelmRelease",
+    "spec_sha256": "e4e1dc5a6863d236d5f9287b99ebb63e1ed26a23f0f6730308c2ec13341a1a66"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/cert-manager/cert-manager": {
+    "kind": "HelmRelease",
+    "spec_sha256": "3bbb2366914c1cfea1ec2cef33a3c47577243843fbad74f5b8af94832a3a6f02"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/cnpg-system/barman-cloud": {
+    "kind": "HelmRelease",
+    "spec_sha256": "01ecf9dd466dc26f85e0c8be029ec573e6614a4e8898e43439c2399ac10e8b39"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/cnpg-system/cnpg": {
+    "kind": "HelmRelease",
+    "spec_sha256": "3cfbce85bc34f1df58c41dab732ea47fbe2b4b736da19d3667d729f2a3d56528"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/grimmory/grimmory": {
+    "kind": "HelmRelease",
+    "spec_sha256": "39bd73389ee48e2419df8e24a3bc075b48cd1668e22fc152ff914c187b40d679"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/home-assistant/home-assistant": {
+    "kind": "HelmRelease",
+    "spec_sha256": "ba1f50108d418ad5cea71ff9062fc48b4dec8b12c94b835f2d69d0c083d72f67"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/immich/immich": {
+    "kind": "HelmRelease",
+    "spec_sha256": "7127c5cdf4930249bb790927fc7a25f48b8411a21baa90101c6987b846632242"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/media/jellyfin": {
+    "kind": "HelmRelease",
+    "spec_sha256": "0d1d0135e3663200e57b5298569f87c657622b6e7b69afd22434346d81be49a6"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/media/prowlarr": {
+    "kind": "HelmRelease",
+    "spec_sha256": "65a636ef9e91810fca3ff6974029a70d39cf2f39a524aaa7333f770d8299bdfc"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/media/radarr": {
+    "kind": "HelmRelease",
+    "spec_sha256": "ac360852c711c8f6b0702a79be53dc01cfd8a118389d5b80985be6bb84a5466e"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/media/sabnzbd": {
+    "kind": "HelmRelease",
+    "spec_sha256": "564130db86371d9955a85bf8ea88cfe685a9f9c13c4290ff59981d840723f9d3"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/media/seerr": {
+    "kind": "HelmRelease",
+    "spec_sha256": "1206f651a175ebb3a328ca59e1892536ffec33fae2510d8e25e7c70f41840dcc"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/media/sonarr": {
+    "kind": "HelmRelease",
+    "spec_sha256": "d14d2d074dbb74077f283e7f9b2116f46b49a4a0b605a6a4ff5fc89baefb97d3"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/multica/multica": {
+    "kind": "HelmRelease",
+    "spec_sha256": "32ae14aed99293ea8ae2fb9120fb8a3bf03b49d602d23132a55e65995882409f"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/n8n/n8n": {
+    "kind": "HelmRelease",
+    "spec_sha256": "a402563198c0b582970a18bceefc13cdb107fd468528e428ff9c9288b8ac7576"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/nextcloud/nextcloud": {
+    "kind": "HelmRelease",
+    "spec_sha256": "f0b8c5d2e5152450c3f0a109a738c4c8dcc1babc0090f215e556e5be80368ded"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/observability/kube-prometheus-stack": {
+    "kind": "HelmRelease",
+    "spec_sha256": "08a4279145a85977ff8e387a187f45e9bdf8bf696bb91b7888437ac14bc095f4"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/openebs/openebs": {
+    "kind": "HelmRelease",
+    "spec_sha256": "6c8be2e3a1344df9e35d0820a9da8a694e43fea938fa19f1cca5cdec61d8b79d"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/overleaf/overleaf": {
+    "kind": "HelmRelease",
+    "spec_sha256": "7352104c1cad0b9612f575fd7ad8dbb199b0e631afbb5c94c7cdf434f43bb521"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/sparkyfitness/sparkyfitness": {
+    "kind": "HelmRelease",
+    "spec_sha256": "3ef7105ff6fd857bb04fb3f52b06859aa1cc939e04cfb36461e23aa411ffb7f7"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/tandoor/tandoor": {
+    "kind": "HelmRelease",
+    "spec_sha256": "f96298b395111dd01d5da9483ac6b03eea177ef1c198c120633a55aa257a9c04"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/traefik/traefik": {
+    "kind": "HelmRelease",
+    "spec_sha256": "446a4017f1532cd5db4821d0b33ddd8867853a5ec496c8f62431c78a27b44050"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/velero/velero": {
+    "kind": "HelmRelease",
+    "spec_sha256": "d1b4f776ecb94457ba24e22401e740a4a6f0f44789e49752f7ffeaccef254fc7"
+  },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/velero/velero-ui": {
+    "kind": "HelmRelease",
+    "spec_sha256": "4150d0eec24cb34e47e16436de4f8cdf887f5456168152138b7d89c23c53101a"
+  },
+  "postgresql.cnpg.io/v1/Cluster/immich/immich-postgresql": {
+    "kind": "Cluster",
+    "spec_sha256": "6401e8421c5ca813e3b819a33ffa3145d0c498a8a7a3752e3aa8a1db2853a216"
+  },
+  "postgresql.cnpg.io/v1/Cluster/media/cantus-postgresql": {
+    "kind": "Cluster",
+    "spec_sha256": "98066bb88336862b364ffb69f04cfa11a96055df38481b184ef9c764f38c4118"
+  },
+  "postgresql.cnpg.io/v1/Cluster/multica/multica-postgresql": {
+    "kind": "Cluster",
+    "spec_sha256": "ad079a901da167f28e20110d0de02abb9d1073422dcc956f6bb2f137f5e319c8"
+  },
+  "postgresql.cnpg.io/v1/Cluster/n8n/n8n-postgresql": {
+    "kind": "Cluster",
+    "spec_sha256": "5d5cf720cbb1e1a912a8cba17fdb28e5bcbdc29f71a16af52b8fb1b27c15be5c"
+  },
+  "postgresql.cnpg.io/v1/Cluster/tandoor/tandoor-postgresql": {
+    "kind": "Cluster",
+    "spec_sha256": "b679dbe2d9ffbf480ddf7ba682cb6562894c38e9b2b35ee90de5db302b5ff9de"
+  },
+  "postgresql.cnpg.io/v1/Cluster/wardrowbe/wardrowbe-postgresql": {
+    "kind": "Cluster",
+    "spec_sha256": "d9efcaf1b29c8b0d390c4c4f147713db852c597f8d10878e9296ee2482dbec43"
+  },
+  "v1/Namespace//adventurelog": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//arc-runners": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//arc-systems": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//authentik": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//branding": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//cert-manager": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//claudebox": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//cloudflare-ddns": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//cnpg-system": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//default": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//device-plugins": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//excalidraw": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//flux-system": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//fredy": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//glance": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//gotify": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//grimmory": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//home-assistant": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//homepage": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//immich": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//jdownloader": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//karakeep": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//media": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//minecraft": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//monitoring": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//multica": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//multica-daemon": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//n8n": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//nextcloud": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//observability": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//obsidian-sync": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//ollama": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//openebs": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//overleaf": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//palworld": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//paperless": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//renovate": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//ryot": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//searxng": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//sparkyfitness": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//sure": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//tandoor": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//traefik": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//velero": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//wardrowbe": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//whisper-cpp": {
+    "kind": "Namespace"
+  },
+  "v1/PersistentVolumeClaim/adventurelog/adventurelog-db": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/adventurelog/adventurelog-media": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "12aa304e456bb83d8a9f73712a653df884b52c7843c3056b6c0f1165762446dd"
+  },
+  "v1/PersistentVolumeClaim/claudebox/claudebox-data-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "e0f1c01c78cf03ca1fce2ae9ed978deaefd670efb009209ae8217da540fbabcd"
+  },
+  "v1/PersistentVolumeClaim/fredy/fredy-config": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "a6777e4e1b11fd9f8d491776e5fff1ea48ae86dc340612ff25e603bcf655d96d"
+  },
+  "v1/PersistentVolumeClaim/fredy/fredy-data": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "080fc65af7b8c09a79d9dc57d30a5b1afdd62c66aa9c10a1e5cd2223d120a8ec"
+  },
+  "v1/PersistentVolumeClaim/gotify/gotify-data-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/grimmory/grimmory-bookdrop-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "12aa304e456bb83d8a9f73712a653df884b52c7843c3056b6c0f1165762446dd"
+  },
+  "v1/PersistentVolumeClaim/grimmory/grimmory-books-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "733cb5e48806feb3ec25ed06f1630d0f5159f42d6c1ebcf215948c3a31a31c4b"
+  },
+  "v1/PersistentVolumeClaim/grimmory/grimmory-data-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/grimmory/grimmory-mariadb-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/home-assistant/matter-server-data": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "a6777e4e1b11fd9f8d491776e5fff1ea48ae86dc340612ff25e603bcf655d96d"
+  },
+  "v1/PersistentVolumeClaim/home-assistant/otbr-data": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "94d6b45883ffa9ec71d49292fbb869ce2e3019d512818ccc83c750f635ce37ca"
+  },
+  "v1/PersistentVolumeClaim/immich/immich-library-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "30f36e4ca319e355b7d117af098d1f0f72b83a425e5db7f275cdb104c3076e2c"
+  },
+  "v1/PersistentVolumeClaim/jdownloader/jdownloader-config": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "d71cb8aefcfd6429d432158bca8079ea0d80fbd246f9607bfceb9d5c0421ee88"
+  },
+  "v1/PersistentVolumeClaim/jdownloader/jdownloader-downloads": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "0424da9e7eb8219d812f1d30ac675bce4acbcbe549585bb3aded6917fef9263b"
+  },
+  "v1/PersistentVolumeClaim/karakeep/karakeep-data": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "eebe9bb88a2cb4d66748e587222cad199b9e934ad6034974e56eadb9c1230139"
+  },
+  "v1/PersistentVolumeClaim/media/cantus-music-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "934cc182bd99f0e1f42d476145b0e1da3ec0fa93acadfd79b3f7403236990211"
+  },
+  "v1/PersistentVolumeClaim/media/cantus-uploads-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "cc33814ba1bcea57c9e5ba1650e9bd1893a9c508d14e5d47883811dc2d907440"
+  },
+  "v1/PersistentVolumeClaim/media/downloads-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "ce25821a34490fa87cbd521f17d14c7704669766bbbd0f87669e006ed2f800c0"
+  },
+  "v1/PersistentVolumeClaim/media/jellyfin-config-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "12aa304e456bb83d8a9f73712a653df884b52c7843c3056b6c0f1165762446dd"
+  },
+  "v1/PersistentVolumeClaim/media/jellyfin-data-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "c53eb770972894c55ef0a97f6dbf5a58e8a56ee922b1b5d4db7793c9dec489f2"
+  },
+  "v1/PersistentVolumeClaim/media/media-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "820859d8b521f9ed2c3b609ec450d1fb33a19948dbeb5b7281f466e03273a19d"
+  },
+  "v1/PersistentVolumeClaim/media/navidrome-data-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/media/prowlarr-config-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/media/radarr-config-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/media/sabnzbd-config-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/media/seerr-config-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/media/slskd-config-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/media/sonarr-config-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/media/soundcloud-music-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "d05b54c471896af2d8e25a2eff1e49258f0f5b8474e77ef1b40f35e76d52f70f"
+  },
+  "v1/PersistentVolumeClaim/minecraft/minecraft-data": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "e0f1c01c78cf03ca1fce2ae9ed978deaefd670efb009209ae8217da540fbabcd"
+  },
+  "v1/PersistentVolumeClaim/monitoring/uptime-kuma-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "a6777e4e1b11fd9f8d491776e5fff1ea48ae86dc340612ff25e603bcf655d96d"
+  },
+  "v1/PersistentVolumeClaim/multica-daemon/multica-daemon-data-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "733cb5e48806feb3ec25ed06f1630d0f5159f42d6c1ebcf215948c3a31a31c4b"
+  },
+  "v1/PersistentVolumeClaim/n8n/n8n-data-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "12aa304e456bb83d8a9f73712a653df884b52c7843c3056b6c0f1165762446dd"
+  },
+  "v1/PersistentVolumeClaim/nextcloud/nextcloud-data-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "d05b54c471896af2d8e25a2eff1e49258f0f5b8474e77ef1b40f35e76d52f70f"
+  },
+  "v1/PersistentVolumeClaim/obsidian-sync/obsidian-sync-data-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "96093a8145a2ec319c79a32d855e7f209747dc092a63846f3d7dd93e988714c4"
+  },
+  "v1/PersistentVolumeClaim/ollama/ollama-models": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "96093a8145a2ec319c79a32d855e7f209747dc092a63846f3d7dd93e988714c4"
+  },
+  "v1/PersistentVolumeClaim/overleaf/overleaf-data-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "6c62a5b5ce12f55bf58dd5fe14f712e31add47fe6ff2f83e4f51ad546ced6e89"
+  },
+  "v1/PersistentVolumeClaim/palworld/palworld-data": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "c10fc8bfdc498ac61cafc48e5de72df8a3e29b939049e23ba751e91cde72f993"
+  },
+  "v1/PersistentVolumeClaim/paperless/paperless-consume-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/paperless/paperless-data-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/paperless/paperless-export-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "eebe9bb88a2cb4d66748e587222cad199b9e934ad6034974e56eadb9c1230139"
+  },
+  "v1/PersistentVolumeClaim/paperless/paperless-media-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "6c62a5b5ce12f55bf58dd5fe14f712e31add47fe6ff2f83e4f51ad546ced6e89"
+  },
+  "v1/PersistentVolumeClaim/paperless/paperless-postgres-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/paperless/paperless-redis-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "a6777e4e1b11fd9f8d491776e5fff1ea48ae86dc340612ff25e603bcf655d96d"
+  },
+  "v1/PersistentVolumeClaim/ryot/ryot-postgres-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/sure/sure-app-storage": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/tandoor/tandoor-media-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "733cb5e48806feb3ec25ed06f1630d0f5159f42d6c1ebcf215948c3a31a31c4b"
+  },
+  "v1/PersistentVolumeClaim/wardrowbe/wardrowbe-uploads": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "eebe9bb88a2cb4d66748e587222cad199b9e934ad6034974e56eadb9c1230139"
+  },
+  "v1/PersistentVolumeClaim/whisper-cpp/whisper-cpp-models": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  }
+}

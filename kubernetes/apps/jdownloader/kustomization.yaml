@@ -3,7 +3,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: jdownloader
 resources:
-  - namespace.yaml
   - pvcs.yaml
   - deployment.yaml
   - service.yaml
@@ -14,3 +13,14 @@ components:
   - ../../infrastructure-config/networkpolicies/allow-from-traefik
   - ../../infrastructure-config/networkpolicies/allow-from-monitoring
   - ../../infrastructure-config/networkpolicies/allow-from-homepage
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: jdownloader
+      app.kubernetes.io/instance: jdownloader
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

@@ -17,7 +17,6 @@ configMapGenerator:
       - codex-mcp/monitor.mjs
       - codex-mcp/package.json
 resources:
-  - namespace.yaml
   - rbac.yaml
   - pvc.yaml
   - secret.yaml
@@ -30,3 +29,14 @@ components:
   # multica-daemon.
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-from-monitoring
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: claudebox
+      app.kubernetes.io/instance: claudebox
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

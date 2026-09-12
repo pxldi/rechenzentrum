@@ -44,6 +44,13 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 30
             timeoutSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
           securityContext:
             allowPrivilegeEscalation: false
             # Root, because the image is unmodified nginx: the master binds :80

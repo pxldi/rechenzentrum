@@ -5,3 +5,10 @@ resources:
   - infrastructure.yaml
   - infrastructure-config.yaml
   - apps.yaml
+  - database-tandoor.yaml
+  - database-n8n.yaml
+  - database-immich.yaml
+  - database-multica.yaml
+  - database-wardrowbe.yaml
+  - database-cantus.yaml
+  - namespaces.yaml

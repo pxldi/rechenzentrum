@@ -3,7 +3,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: sparkyfitness
 resources:
-  - namespace.yaml
   - secret.yaml
   - helmrepository.yaml
   - postgres.yaml
@@ -12,3 +11,14 @@ resources:
   - networkpolicy.yaml
 components:
   - ../../infrastructure-config/networkpolicies/allow-from-homepage
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: sparky-fitness
+      app.kubernetes.io/instance: sparky-fitness
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

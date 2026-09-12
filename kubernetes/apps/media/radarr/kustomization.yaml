@@ -4,3 +4,14 @@ kind: Kustomization
 resources:
   - helmrelease.yaml
   - ingress.yaml
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: radarr
+      app.kubernetes.io/instance: radarr
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

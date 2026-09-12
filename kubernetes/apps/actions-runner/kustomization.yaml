@@ -7,9 +7,19 @@ kind: Kustomization
 # their own and rely on this field to land somewhere; arc-runners needs a
 # stricter egress policy than any of them provide anyway. See networkpolicy.yaml.
 resources:
-  - namespace.yaml
   - limits.yaml
   - networkpolicy.yaml
   - secret.yaml
   - helmrelease-controller.yaml
   - helmrelease-runners.yaml
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: actions-runner
+      app.kubernetes.io/instance: actions-runner
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

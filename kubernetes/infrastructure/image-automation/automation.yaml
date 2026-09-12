@@ -35,7 +35,7 @@ spec:
         {{ end }}
         Automated image tag update by Flux image automation.
     push:
-      branch: main
+      branch: automation/images
   update:
     path: ./kubernetes
     strategy: Setters

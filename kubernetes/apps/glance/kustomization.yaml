@@ -2,7 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: glance
 resources:
-  - namespace.yaml
   - configmap.yaml
   - secret.yaml
   - deployment.yaml
@@ -13,3 +12,14 @@ components:
   - ../../infrastructure-config/networkpolicies/allow-from-traefik
   - ../../infrastructure-config/networkpolicies/allow-from-monitoring
   - ../../infrastructure-config/networkpolicies/allow-from-homepage
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: glance
+      app.kubernetes.io/instance: glance
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

@@ -30,13 +30,22 @@ available without the cluster or this workstation. Never put them in this repo.
 2. Confirm `main` protection and successful required CI. Confirm the public root
    `GitRepository/flux-system` points to `https://github.com/pxldi/rechenzentrum`.
    Public read access needs no deploy key. Image writes use a separate identity.
-3. Open a PR in the **private** repository changing only
+3. First merge a **preparation PR in the private repository** setting only
+   `apps.spec.prune: false`. Wait until the live apps Kustomization reports that
+   new generation Ready. This is a separate reconciliation boundary, not a
+   change bundled with the URL switch.
+   Then merge the **handover PR in the private repository**, changing only
    `kubernetes/flux-system/gotk-sync.yaml`: set the public HTTPS URL and remove
-   `spec.secretRef` from the GitRepository. Keep the same resource names,
-   `spec.path`, sourceRef and pruning settings. A human merges that handover PR.
+   `spec.secretRef` from the GitRepository. Keep names, path and sourceRef.
+   The public apps root also keeps pruning disabled while database and namespace
+   resources transfer to their new owners. A human reviews and merges both PRs.
 4. Observe `flux get sources git -A`, `flux get kustomizations -A`, and
    `flux get helmreleases -A`. Each source/reconciliation must report the public
    revision and Ready. Compare workload and PVC identities before and after.
+   Verify all six `database-*` inventories own their resources and `apps` no
+   longer lists them, then restore `apps.spec.prune: true` in a separate PR.
+   Verify the `namespaces` inventory as well. Its pruning remains disabled
+   intentionally: namespace retirement must not cascade-delete workloads or PVCs.
 5. Separately migrate the NixOS `system.autoUpgrade.flake` URL. The host currently
    pulls the private repository independently of Flux. Apply through the
    existing host workflow and verify its next upgrade succeeds.

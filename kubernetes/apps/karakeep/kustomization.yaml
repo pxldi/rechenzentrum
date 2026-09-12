@@ -12,7 +12,6 @@ configMapGenerator:
       - config.env
 
 resources:
-  - namespace.yaml
   - secret.yaml
   - meilisearch.yaml
   - pvc.yaml
@@ -26,3 +25,14 @@ resources:
 # header of networkpolicy.yaml.
 components:
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: karakeep
+      app.kubernetes.io/instance: karakeep
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

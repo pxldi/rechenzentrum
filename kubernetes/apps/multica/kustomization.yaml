@@ -3,14 +3,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: multica
 resources:
-  - namespace.yaml
-  - secret-db.yaml
   - secret.yaml
-  - postgres-cluster.yaml
-  - objectstore.yaml
-  - scheduledbackup.yaml
-  - cnpg-b2-credentials-secret.yaml
-  - networkpolicy.yaml
   - helmrelease.yaml
   - ingress.yaml
 components:
@@ -21,3 +14,14 @@ components:
   # The agent daemon runs in its own namespace and polls multica-backend
   # directly over the Service, bypassing the public host.
   - ../../infrastructure-config/networkpolicies/allow-from-multica-daemon
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: multica
+      app.kubernetes.io/instance: multica
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

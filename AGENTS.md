@@ -52,12 +52,14 @@ were trying to do and ask.
 
 ## Adding or changing an app
 
-- One directory per app: `kubernetes/apps/<name>/`. Mirror an existing app —
+- One directory per app: `kubernetes/apps/<name>/`. Namespaces live in
+  `kubernetes/namespaces/`; CNPG resources live in `kubernetes/databases/<name>/`. Mirror an existing app —
   `n8n` (Helm via bjw-s `app-template` + Postgres) or `glance`/`gethomepage`
   (raw `Deployment`) are good templates.
 - Typical files: `namespace.yaml`, `kustomization.yaml`, a workload
   (`helmrelease.yaml` or `deployment.yaml`), `service.yaml`/`ingress.yaml`, `pvc.yaml`,
-  `secret.yaml`, plus the shared networkpolicy `components`.
+  `secret.yaml`, plus the shared networkpolicy `components`. Do not duplicate
+  namespaces or database resources into an app build.
 - Register the app in `kubernetes/apps/kustomization.yaml`.
 - Ingress = Traefik `IngressRoute` on host `<app>.pxldi.de`, TLS via cert-manager,
   SSO via the `authentik-forward-auth` middleware (copy the two-route pattern from

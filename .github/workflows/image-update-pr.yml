@@ -1,0 +1,33 @@
+name: Image Update PR
+
+on:
+  push:
+    branches: [automation/images]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  open-pr:
+    if: vars.ENABLE_IMAGE_AUTOMATION == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # No checkout and no execution of image-branch code with this credential.
+      # A dedicated App/user token triggers normal PR CI; GITHUB_TOKEN would
+      # suppress the pull_request workflow created by this operation.
+      - name: Open the image update PR
+        env:
+          GH_TOKEN: ${{ secrets.IMAGE_AUTOMATION_PR_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          count=$(gh pr list --head automation/images --base main --state open --json number --jq length)
+          if [ "$count" -eq 0 ]; then
+            gh pr create --head automation/images --base main \
+              --title 'chore(images): update approved image versions' \
+              --body 'Flux proposed image updates. Review the version changes and required CI before merging. No live image changes occur until this PR is merged.'
+          fi

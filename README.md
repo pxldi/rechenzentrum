@@ -206,45 +206,22 @@ Backups are run by Velero with the Kopia uploader, shipped to a Backblaze B2 buc
 
 Volume data is captured via Kopia file-system backup (`defaultVolumesToFsBackup: true`). Large, easily re-acquired data (media library, downloads) is excluded.
 
-### Restoring a namespace
+### Restore validation
 
-```bash
-# List available backups
-velero backup get
+See [BACKUPS.md](docs/BACKUPS.md) for database-native and file restore acceptance,
+namespace isolation and recovery material needed independently of the cluster.
+Historical restore tests are not a substitute for verifying the backup used in
+a new migration. No new restore has been executed as part of this public export.
 
-# Restore into a sandbox namespace (recommended for testing)
-velero restore create test-$(date +%s) \
-  --from-backup <backup-name> \
-  --namespace-mappings <src>:<src>-test \
-  --include-namespaces <src> \
-  --exclude-resources ingressroutes.traefik.io,middlewares.traefik.io,networkpolicies.networking.k8s.io
-
-# Watch progress
-velero restore describe <restore-name>
-kubectl get pods -n <src>-test -w
-```
-
-When restoring in-place, drop `--namespace-mappings` and the original resources will be recreated.
-
-### Known caveats
-
-The restore path is verified to work end-to-end (tested with Nextcloud, Immich/CNPG, and AdventureLog), but two real-world gotchas surfaced during testing:
-
-- **Vanilla Postgres images stall in `Init:0/1`.** Velero injects a `restore-wait` init container running as UID 1000; some upstream Postgres images (e.g. `postgis/postgis:15-3.3`) create the data directory as UID 999 with mode `0700`, which blocks the wait helper from reading its marker file. The data lands on the PVC correctly — the pod just can't proceed. Workaround: mount the PVC into a debug pod and `pg_dumpall` the data, or set a pod-level `securityContext.fsGroup`. Bitnami and CNPG-managed Postgres pods do not have this issue.
-- **B2 occasionally drops mid-transfer on large restores.** A 22 GB Immich restore failed once with `unexpected EOF` retries, then succeeded cleanly on the second attempt. Velero marks the run as `PartiallyFailed` and won't auto-retry — you have to recreate the restore. Smaller restores (sub-GB) have not failed.
-
-### Full-cluster disaster recovery
-
-1. Reinstall NixOS from the flake in `nix/`.
-2. Bootstrap Flux against this repo.
-3. Once Velero is back up, `velero restore create --from-backup <latest-weekly>`.
-4. Re-link external secrets (B2 credentials, Cloudflare token, age key) — these live outside the cluster.
 
 ---
 
 ## Roadmap
 
-Rough direction, not a checklist: Prometheus + Grafana with alerting into Gotify, external-HDD backup automation as a NixOS systemd timer, migrating remaining vanilla Postgres pods to CNPG, and eventually a second node (low-power ARM) with replicated storage.
+Follow [MASTERPLAN.md](docs/MASTERPLAN.md) and the explicit gates in
+[IMPLEMENTATION.md](docs/IMPLEMENTATION.md). The current focus is one cluster,
+recoverable deployments, service isolation and later scoped MCP/ChatOps access.
+
 
 ---
 

@@ -113,7 +113,7 @@ data:
             widgets:
               - type: repository
                 title: rechenzentrum
-                repository: pxldi-labs/rechenzentrum
+                repository: pxldi/rechenzentrum
                 token: ${GITHUB_TOKEN}
                 pull-requests-limit: 5
                 issues-limit: 5

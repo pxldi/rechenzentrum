@@ -17,7 +17,8 @@ Status as of 2026-09-12. Configured does not mean live or restore-tested.
 | Backups | Recent CNPG backups completed; no new restore test |
 | Image automation | PR workflow configured; writer/PR credentials needed; suspended |
 | Cantus namespace | Pending shared-volume design and verified migration |
-| NixOS/Renovate | Still target the private repository; separate consumer migration needed |
+| NixOS/branding | Auto-upgrade flake and branding git-sync fetch the public repository anonymously; applied by the 04:45 timer and the next branding rollout |
+| Renovate | Still targets the private repository; the App must be installed on `pxldi` and the installation id in the secret updated first |
 | Edge/egress expansion | Pending service requirements and reachability tests |
 | ZeroClaw/MCP | Not deployed; provider/bot setup, software and scoped credentials needed |
 

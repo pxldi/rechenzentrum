@@ -62,6 +62,14 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /opt/couchdb/data
+            # CouchDB reads every *.ini in local.d at start. Without this mount
+            # the ConfigMap was never applied, so CORS stayed off and
+            # Self-hosted LiveSync could not enable live mode (native fetch
+            # fails without CORS, only the request API worked).
+            - name: config
+              mountPath: /opt/couchdb/etc/local.d/obsidian.ini
+              subPath: obsidian.ini
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /
@@ -82,3 +90,6 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: obsidian-sync-data-pvc
+        - name: config
+          configMap:
+            name: obsidian-sync-config

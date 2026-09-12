@@ -4,8 +4,8 @@ Single-node NixOS/K3s homelab managed with Flux, Kustomize, Helm and SOPS.
 This public repository has fresh history; the previous repository remains at
 `pxldi-labs/rechenzentrum`.
 
-**Migration status:** public bootstrap published; implementation and live source
-handover in progress. See [implementation status](docs/IMPLEMENTATION.md).
+**Migration status:** Flux reconciles from this repository since 2026-09-12.
+See [implementation status](docs/IMPLEMENTATION.md) for what is still open.
 
 ## Layout
 

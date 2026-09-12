@@ -10,9 +10,7 @@ spec:
     kind: GitRepository
     name: flux-system
   path: ./kubernetes/apps
-  # Temporary ownership handover: restore pruning after inventory verification.
-  # See docs/MIGRATION.md; this prevents deleting resources now owned by database-* roots.
-  prune: false
+  prune: true
   wait: true
   timeout: 5m
   # Apps depend on infrastructure being ready

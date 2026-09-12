@@ -7,7 +7,7 @@ Status as of 2026-09-12. Configured does not mean live or restore-tested.
 | Public repository | Created with fresh history; bootstrap CI passed |
 | Protection | Required PR/CI, no force pushes; agents may merge authorized work |
 | Validation | Flux builds, schemas, policy/secret checks and preservation baseline |
-| GitOps handover | In progress; old source still active until verified cutover |
+| GitOps handover | Done 2026-09-12; Flux fetches this repository, all roots Ready, `apps` pruning restored |
 | Databases | Six readiness gates configured; database/PVC specs preserved |
 | Namespaces | Separate owner configured; namespace deletion remains explicit |
 | Components/labels | Metadata-only app labels; opt-in rollout, hardening, DNS/egress |

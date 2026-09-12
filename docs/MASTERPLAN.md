@@ -1,11 +1,11 @@
 # Homelab masterplan
 
 Goal: improve the existing single-cluster homelab incrementally, preserving its
-applications and data. Implementation status is tracked in [IMPLEMENTATION.md](IMPLEMENTATION.md).
+applications and data.
 
 ## Repository and delivery
 
-- Public GitOps monorepo with fresh history; keep the private repository as an archive.
+- Public GitOps monorepo.
 - Separate repositories for Cantus and MCP software; no submodules.
 - GitHub-hosted public CI, required PR checks, and agent-authorized merges.
 - YAML, Flux/Kustomize, Kubernetes/CRD schema, policy and secret validation.
@@ -28,7 +28,13 @@ applications and data. Implementation status is tracked in [IMPLEMENTATION.md](I
 - Classify services: A public, B internet behind extra authentication, C VPN-only,
   D cluster-internal. Preserve required clients/API routes during changes.
 - Default-deny ingress/egress with explicit DNS and application allowances.
-- Isolate Cantus in its own namespace after resolving shared media PVCs.
+- Isolate Cantus in its own namespace after resolving shared media PVCs. Cantus
+  mounts `media/cantus-music-pvc`, `media/cantus-uploads-pvc` and the shared
+  `media/downloads-pvc`, which other media apps also use. A PVC cannot be
+  referenced across namespaces, so changing only `metadata.namespace` breaks the
+  deployment. Resolve the sharing, restore the database into an isolated target,
+  quiesce and sync writes, verify the data, then switch traffic. Keep the old
+  data through the rollback window.
 - Minimum ServiceAccount/RBAC permissions; namespace limits/quotas based on usage.
 - CEL/Pod Security rules for images, privileged containers, hostPath and security
   contexts. Introduce new restrictions in Audit/Warn before enforcement.
@@ -59,5 +65,24 @@ Telegram -> ZeroClaw -> Tandoor MCP
 - Authenticate callers, separate read/action privileges and keep API tokens in MCP services.
 - Proactive messages should cover useful failures, with deduplication and rate limits.
 
-Sequence: validated public baseline -> staged Flux handover -> verified recovery
-and app isolation -> edge/egress changes -> image automation -> MCP/ChatOps.
+Sequence: verified recovery and app isolation -> edge/egress changes -> image
+automation -> MCP/ChatOps.
+
+## Status
+
+Configured does not mean live or restore-tested.
+
+| Area | State |
+| --- | --- |
+| Validation | Flux builds, schemas, policy/secret checks and the preservation baseline run in CI |
+| Databases | Six CNPG readiness gates; database and PVC specs preserved |
+| Namespaces | Separate Flux owner; namespace deletion stays explicit |
+| Components/labels | Metadata-only app labels; opt-in rollout, hardening, DNS/egress components |
+| Rollout pilot | Excalidraw has a startup probe and zero-unavailable rolling update |
+| Admission | Existing policies retained; additional Pod checks in Audit/Warn |
+| Exposure | Inventory recorded in [EXPOSURE.md](EXPOSURE.md); internet/VPN choices still open |
+| Backups | CNPG backups complete; no recent restore test, see [BACKUPS.md](BACKUPS.md) |
+| Image automation | PR workflow configured; writer credential needed; suspended |
+| Cantus namespace | Pending the shared-volume design above and a verified restore |
+| Edge/egress expansion | Pending service requirements and reachability tests |
+| ZeroClaw/MCP | Not deployed; provider/bot setup, software and scoped credentials needed |

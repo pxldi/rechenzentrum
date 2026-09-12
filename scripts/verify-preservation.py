@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Migration check: preserve baseline workload identities and persistent specs.
+"""Check that workload identities and persistent specs match the baseline.
 
-Run explicitly during this migration. Future intentional database/chart/storage
-changes require review against their own baseline, not silently regenerating it.
+An intentional database, chart or storage change updates
+policies/preservation-baseline.json in the same PR. The baseline is never
+regenerated silently.
 """
 from pathlib import Path
 import hashlib

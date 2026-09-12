@@ -12,7 +12,7 @@ Database backup settings live in `kubernetes/databases/`. Large media and scratc
 volumes may be excluded; check coverage before assuming a file is recoverable.
 
 **Evidence, 2026-09-12:** recent backups for all six CNPG clusters reported
-`completed`. No new restore has been tested during this migration.
+`completed`. The last restore test predates that date.
 
 ## Restore acceptance
 
@@ -27,7 +27,7 @@ volumes may be excluded; check coverage before assuming a file is recoverable.
 6. Record backup ID/time, recovery point, duration and checks. Keep user data and
    SQL dumps private. Retain production data through the rollback window.
 
-Define RPO/RTO targets before stateful migration. A completed backup or healthy
+Define RPO/RTO targets before moving stateful workloads. A completed backup or healthy
 Postgres process alone is not a successful application restore.
 
 References: [CNPG](https://cloudnative-pg.io/documentation/current/recovery/),

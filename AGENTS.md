@@ -24,13 +24,12 @@ applications and persistent data while completing the user's request.
 ## Preserve deployments and data
 
 - Inspect the current rendered manifests and deployed revision before editing.
-  An older local checkout is not an acceptable migration baseline.
+  An older local checkout is not an acceptable baseline.
 - Keep names, namespaces, selectors, Helm release identities and PVC specs unless
   changing them is an intentional, verified part of the task.
-- Follow the staged handover in `docs/MIGRATION.md` when present. Before moving
-  resources between Flux owners, disable old-owner pruning and verify it has
-  reconciled. Verify new inventories before restoring pruning. Namespace deletion
-  is explicit; its dedicated owner intentionally does not prune.
+- Before moving resources between Flux owners, disable old-owner pruning and
+  verify it has reconciled. Verify new inventories before restoring pruning.
+  Namespace deletion is explicit; its dedicated owner intentionally does not prune.
 - A namespace move is not a storage migration. Verify restores and shared-volume
   dependencies before moving stateful workloads. Do not fabricate restore results.
 - Use RollingUpdate only when concurrent instances, storage access and available
@@ -53,7 +52,7 @@ applications and persistent data while completing the user's request.
 ## Implementation conventions
 
 - Retain the existing modular layout; do not restructure solely for aesthetics.
-  After migration, app definitions live in `kubernetes/apps/`, namespaces in
+  App definitions live in `kubernetes/apps/`, namespaces in
   `kubernetes/namespaces/`, and CNPG resources in `kubernetes/databases/`.
 - Software belongs in separate repositories; do not add Git submodules.
 - Apply components at app boundaries. Metadata labels must not silently change
@@ -68,7 +67,9 @@ applications and persistent data while completing the user's request.
   commands documented in `docs/VALIDATION.md`.
 - Build Flux roots including patches, validate Kubernetes and custom-resource
   schemas, check Secret fields and scan the current tree with Gitleaks.
-- For this migration, run `python3 scripts/verify-preservation.py` after building.
+- `python3 scripts/verify-preservation.py` checks workload identities and PVC,
+  database and Helm specs against `policies/preservation-baseline.json`. Update
+  the baseline in the same PR as an intentional change to one of those specs.
 - Test meaningful failure cases for security-sensitive checks. Do not describe
   static validation as proof of live health, policy enforcement or recovery.
 - Report what was merged, what reconciled, and any specific unfinished gates.

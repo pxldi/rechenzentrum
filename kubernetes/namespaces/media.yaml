@@ -4,17 +4,15 @@ kind: Namespace
 metadata:
   name: media
   labels:
-    # Still privileged on paper, no longer in practice. slskd's gluetun
-    # sidecar (NET_ADMIN) was the last baseline violation here, and it moved
-    # to its own namespace on 2026-09-13 with the shared volumes bound a second
-    # time (see kubernetes/apps/slskd/volumes.yaml). jellyfin had been clean
-    # since #927.
-    #
-    # Left at privileged for one verification window: `audit: baseline`
-    # records every violation, so an empty audit log after the move is the
-    # proof that flipping enforce to baseline breaks nothing. Flip it then.
-    pod-security.kubernetes.io/enforce: privileged
+    # baseline since 2026-09-13. slskd's gluetun sidecar (NET_ADMIN) was the
+    # last violation here and moved to its own namespace; jellyfin had been
+    # clean since #927. Verified before the flip with a server dry-run of this
+    # label, which warns about every running pod that would violate it and
+    # warned about none.
+    pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/enforce-version: v1.33
-    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
     name: media

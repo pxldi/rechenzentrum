@@ -13,9 +13,9 @@ name: Infrastructure Checks
 # of them touches the cluster or holds a credential, so they belong on
 # throwaway GitHub-hosted infrastructure.
 #
-# Cost is a few minutes a month against the Actions budget that ci-watchdog.yml
-# already accounts for. Worth it to stop PR-authored code from running as root
-# on the machine the cluster lives on.
+# Cost is a few minutes a month of the Actions budget, which is free on a
+# public repo. Worth it to stop PR-authored code from running as root on the
+# machine the cluster lives on.
 #
 # Third-party actions are pinned by digest rather than tag. A tag is a mutable
 # pointer, so `@v4` is a promise from someone else that they will not move it.

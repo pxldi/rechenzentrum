@@ -1,0 +1,146 @@
+name: Infrastructure Checks
+
+# These three jobs used to run on the self-hosted `homelab` runners, whose
+# scale set injects a privileged docker:dind sidecar. That means workflow code
+# *from the pull request branch* executed privileged, on the node, before any
+# human read it. The two credentials that can open a PR here are not people:
+# `pxldi-agent` has write access, and Renovate's App credential lives in a pod
+# in the cluster. Combined with `main` having no branch protection, those
+# credentials were effectively root on the node.
+#
+# Nothing here needs the node. yamllint runs in a pinned container, `terraform
+# fmt` is a text check, and the SOPS check is grep over the working tree. None
+# of them touches the cluster or holds a credential, so they belong on
+# throwaway GitHub-hosted infrastructure.
+#
+# Cost is a few minutes a month against the Actions budget that ci-watchdog.yml
+# already accounts for. Worth it to stop PR-authored code from running as root
+# on the machine the cluster lives on.
+#
+# Third-party actions are pinned by digest rather than tag. A tag is a mutable
+# pointer, so `@v4` is a promise from someone else that they will not move it.
+
+on:
+  pull_request:
+    branches: ["main"]
+
+# The default token is read-only here; nothing in these jobs writes.
+permissions:
+  contents: read
+
+jobs:
+  # Evaluates the whole NixOS system without building it. The node now
+  # applies main on its own every morning (nix/modules/autoupgrade.nix), so
+  # "does this still evaluate" has to be answered before the merge, not by a
+  # failed nixos-upgrade unit at 04:45. Evaluation needs nixpkgs and sops-nix
+  # from the lock file and nothing from the machine: hardware-configuration
+  # is in the repo, and no secret is read at eval time.
+  #
+  # eval only, no build: a build would compile or download the closure of the
+  # system on a hosted runner, which is minutes of nothing this check needs.
+  # A derivation path that exists is the proof that every module, option and
+  # reference resolved.
+  nix-eval:
+    name: NixOS Eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Install nix
+        uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72  # v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Evaluate the system
+        run: |
+          set -euo pipefail
+          drv=$(nix eval --raw \
+            './nix#nixosConfigurations.rechenzentrum.config.system.build.toplevel.drvPath')
+          echo "evaluated: $drv"
+
+  yaml-lint:
+    name: YAML Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      # Kept as a digest-pinned container rather than the hosted yamllint or
+      # ibiqlik/action-yamllint: both move under you when the image is rebuilt,
+      # and a linter version bump that appears as a mystery CI failure is worse
+      # than an explicit Renovate PR. The rules live in .yamllint.yml so a
+      # local `yamllint .` matches CI exactly.
+      - name: Run yamllint
+        run: |
+          docker run --rm -v "$PWD":/data:ro -w /data \
+            cytopia/yamllint:alpine-1@sha256:4fb4e065d5c1382622393b055d59cee5ba238c15aba0b063fa3b55d21b7face8 \
+            -c .yamllint.yml -f parsable .
+
+  terraform-fmt:
+    name: Terraform Format Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e  # v4
+        with:
+          # Nothing here reads the wrapper's stdout/stderr/exitcode outputs, so
+          # it is pure liability — it wraps `terraform` in a node script and
+          # mangles the exit path for no gain.
+          terraform_wrapper: false
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive
+
+  sops-check:
+    name: SOPS Encryption Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Verify Secrets are Encrypted
+        run: |
+          set -euo pipefail
+          ERRORS=0
+          echo "Scanning YAML files for unencrypted secrets..."
+
+          while IFS= read -r file; do
+            # Skip non-Secret files
+            grep -qE "^kind:[[:space:]]+Secret[[:space:]]*$" "$file" || continue
+
+            # Skip SA token secrets (no user data in them)
+            if grep -qE "^type:[[:space:]]+kubernetes\.io/service-account-token[[:space:]]*$" "$file"; then
+              continue
+            fi
+
+            # Skip Secrets with no data payload
+            grep -qE "^(data|stringData):" "$file" || continue
+
+            if ! grep -q "ENC\[" "$file"; then
+              echo "::error file=$file::Unencrypted Kubernetes Secret — missing SOPS encryption."
+              ERRORS=$((ERRORS + 1))
+            fi
+          done < <(find . -type f \( -name "*.yaml" -o -name "*.yml" \) -not -path "./.github/*")
+
+          # Separately verify any file claiming SOPS metadata actually has ENC[] values
+          while IFS= read -r file; do
+            if grep -q "^sops:" "$file" && ! grep -q "ENC\[" "$file"; then
+              echo "::error file=$file::File has SOPS metadata but values are plaintext."
+              ERRORS=$((ERRORS + 1))
+            fi
+          done < <(find . -type f \( -name "*.yaml" -o -name "*.yml" \) -not -path "./.github/*")
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "FAILED: $ERRORS file(s) failed the encryption check."
+            exit 1
+          fi
+          echo "SUCCESS: All secrets are properly encrypted!"

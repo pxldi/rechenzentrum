@@ -1,0 +1,13 @@
+---
+# cloudflare-ddns only ever talks outward: it asks what the public IP is and
+# tells Cloudflare. There is no Service, no ingress route and no scrape target,
+# so nothing in the cluster has a reason to connect to it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: cloudflare-ddns
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress

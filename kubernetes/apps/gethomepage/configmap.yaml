@@ -1,0 +1,472 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage
+  namespace: homepage
+  labels:
+    app.kubernetes.io/name: homepage
+data:
+  kubernetes.yaml: |
+    mode: cluster
+
+  settings.yaml: |
+    title: Rechenzentrum
+    description: Rechenzentrum
+    startUrl: https://pxldi.de
+    # No background block: v2.1.2 draws nothing from a URL, and neither the
+    # title above nor a favicon setting reaches the page. custom.css paints the
+    # wallpaper and custom.js sets the tab, both below.
+    theme: dark
+    # The ramp under this name is redefined in custom.css. Violet is the base
+    # so that the page is still in the right family if that file ever fails to
+    # load.
+    color: violet
+    headerStyle: clean
+    language: en
+    target: _blank
+    hideVersion: true
+    statusStyle: "dot"
+    useEqualHeights: true
+    layout:
+      Infrastructure:
+        style: row
+        columns: 4
+        header: true
+      Media:
+        style: row
+        columns: 4
+        header: true
+      Downloaders:
+        style: row
+        columns: 4
+        header: true
+      Productivity:
+        style: row
+        columns: 4
+        header: true
+      Stuff:
+        style: row
+        columns: 4
+        header: true
+      Personal:
+        style: row
+        columns: 4
+        header: true
+    quicklaunch:
+      searchDescriptions: true
+      hideInternetSearch: false
+      showSearchSuggestions: true
+      hideVisitURL: false
+
+  bookmarks.yaml: ""
+
+  services.yaml: |
+    - Infrastructure:
+        - Authentik:
+            href: https://auth.pxldi.de
+            icon: authentik.png
+            description: Single Sign On
+            siteMonitor: http://authentik-server.authentik.svc.cluster.local
+            widget:
+              type: authentik
+              version: 2
+              url: http://authentik-server.authentik.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_AUTHENTIK_TOKEN}}"
+        - Traefik:
+            href: https://traefik.pxldi.de
+            icon: traefik.png
+            description: Ingress controller
+            widget:
+              type: traefik
+              # Port 8080 moved off the LoadBalancer Service, because it
+              # served the unauthenticated API to the whole LAN. traefik-api
+              # is a ClusterIP Service carrying the same port.
+              url: http://traefik-api.traefik.svc.cluster.local:8080
+        - Uptime Kuma:
+            href: https://uptime.pxldi.de
+            icon: uptime-kuma.png
+            description: Service uptime monitoring
+            siteMonitor: http://uptime-kuma.monitoring.svc.cluster.local:3001
+            widget:
+              type: uptimekuma
+              url: http://uptime-kuma.monitoring.svc.cluster.local:3001
+              slug: default
+        # No siteMonitor: observability runs default-deny-ingress and allows
+        # only flux, traefik, the webhook and its own namespace, so homepage
+        # cannot reach Grafana to check it. Verified from inside the homepage
+        # pod: every other monitor answers 200, this one cannot connect. A tile
+        # with no dot beats a dot that is permanently red; opening the policy
+        # for a status check is not worth it.
+        - Grafana:
+            href: https://grafana.pxldi.de
+            icon: grafana.png
+            description: Metrics and dashboards
+        - Grimmory:
+            href: https://books.pxldi.de
+            icon: "mdi-book-open-variant-#a855f7"
+            description: Book Collection and Kindle Sync / OPDS
+            siteMonitor: http://grimmory.grimmory.svc.cluster.local:6060
+            widget:
+              type: booklore
+              url: https://books.pxldi.de
+              username: "{{HOMEPAGE_VAR_GRIMMORY_USERNAME}}"
+              password: "{{HOMEPAGE_VAR_GRIMMORY_PASSWORD}}"
+
+    - Media:
+        - Jellyfin:
+            href: https://jellyfin.pxldi.de
+            icon: jellyfin.png
+            description: Movies and Shows
+            siteMonitor: http://jellyfin.media.svc.cluster.local:8096
+            widget:
+              type: jellyfin
+              url: http://jellyfin.media.svc.cluster.local:8096
+              key: "{{HOMEPAGE_VAR_JELLYFIN_KEY}}"
+              enableBlocks: true
+              enableNowPlaying: true
+              showEpisodeNumber: true
+              expandOneStreamToTwoRows: false
+        - Navidrome:
+            href: https://music.pxldi.de
+            icon: navidrome.png
+            description: Music Collection and Streaming
+            siteMonitor: http://navidrome.media.svc.cluster.local:4533
+            widget:
+              type: navidrome
+              url: http://navidrome.media.svc.cluster.local:4533
+              user: "{{HOMEPAGE_VAR_NAVIDROME_USER}}"
+              token: "{{HOMEPAGE_VAR_NAVIDROME_TOKEN}}"
+              salt: "{{HOMEPAGE_VAR_NAVIDROME_SALT}}"
+        - Cantus:
+            href: https://cantus.pxldi.de
+            icon: "mdi-music-box-#bfa3e8"
+            description: Music library
+            siteMonitor: http://cantus.media.svc.cluster.local:8080
+        - Immich:
+            href: https://photos.pxldi.de
+            icon: immich.png
+            description: Photo gallery
+            siteMonitor: http://immich-server.immich.svc.cluster.local:2283
+            widget:
+              type: immich
+              url: http://immich-server.immich.svc.cluster.local:2283
+              key: "{{HOMEPAGE_VAR_IMMICH_KEY}}"
+              version: 2
+        - Seerr:
+            href: https://request.pxldi.de
+            icon: jellyseerr.png
+            description: Media requests for Jellyfin
+            siteMonitor: http://seerr-seerr-chart.media.svc.cluster.local
+            widget:
+              type: jellyseerr
+              url: http://seerr-seerr-chart.media.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_JELLYSEERR_KEY}}"
+
+    - Downloaders:
+        - Radarr:
+            href: https://radarr.pxldi.de
+            icon: radarr.png
+            description: Usenet Movie Manager
+            siteMonitor: http://radarr.media.svc.cluster.local:7878
+            widget:
+              type: radarr
+              url: http://radarr.media.svc.cluster.local:7878
+              key: "{{HOMEPAGE_VAR_RADARR_KEY}}"
+              enableQueue: true
+        - Sonarr:
+            href: https://sonarr.pxldi.de
+            icon: sonarr.png
+            description: Usenet Shows Manager
+            siteMonitor: http://sonarr.media.svc.cluster.local:8989
+            widget:
+              type: sonarr
+              url: http://sonarr.media.svc.cluster.local:8989
+              key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
+              enableQueue: true
+        - Prowlarr:
+            href: https://prowlarr.pxldi.de
+            icon: prowlarr.png
+            description: Indexer manager
+            siteMonitor: http://prowlarr.media.svc.cluster.local:9696
+            widget:
+              type: prowlarr
+              url: http://prowlarr.media.svc.cluster.local:9696
+              key: "{{HOMEPAGE_VAR_PROWLARR_KEY}}"
+        - SABnzbd:
+            href: https://sabnzbd.pxldi.de
+            icon: sabnzbd.png
+            description: Usenet downloader
+            siteMonitor: http://sabnzbd.media.svc.cluster.local:10097
+            widget:
+              type: sabnzbd
+              url: http://sabnzbd.media.svc.cluster.local:10097
+              key: "{{HOMEPAGE_VAR_SABNZBD_KEY}}"
+        - slskd:
+            href: https://slskd.pxldi.de
+            icon: slskd.png
+            description: Soulseek client
+            siteMonitor: http://slskd.media.svc.cluster.local:5030
+        - Velero UI:
+            href: https://velero.pxldi.de
+            icon: velero.png
+            description: UI for Backup Management
+            siteMonitor: http://velero-ui.velero.svc.cluster.local:3000
+
+    - Productivity:
+        - Nextcloud:
+            href: https://cloud.pxldi.de
+            icon: nextcloud.png
+            description: Files & collaboration
+            siteMonitor: http://nextcloud.nextcloud.svc.cluster.local:8080
+            widget:
+              type: nextcloud
+              url: https://cloud.pxldi.de
+              username: "{{HOMEPAGE_VAR_NEXTCLOUD_USER}}"
+              password: "{{HOMEPAGE_VAR_NEXTCLOUD_PASS}}"
+        - Paperless-ngx:
+            href: https://paperless.pxldi.de
+            icon: paperless.png
+            description: Document archive
+            siteMonitor: http://paperless.paperless.svc.cluster.local
+            widget:
+              type: paperlessngx
+              url: http://paperless.paperless.svc.cluster.local
+              username: "{{HOMEPAGE_VAR_PAPERLESS_USER}}"
+              password: "{{HOMEPAGE_VAR_PAPERLESS_PASS}}"
+        - Tandoor:
+            href: https://recipes.pxldi.de
+            icon: tandoor-recipes.png
+            description: Recipes
+            siteMonitor: http://tandoor.tandoor.svc.cluster.local
+            widget:
+              type: tandoor
+              url: http://tandoor.tandoor.svc.cluster.local
+              key: "{{HOMEPAGE_VAR_TANDOOR_KEY}}"
+        - Fredy:
+            href: https://immo.pxldi.de
+            icon: "mdi-home-search-#38bdf8"
+            description: Real estate finder
+            siteMonitor: http://fredy.fredy.svc.cluster.local:9998
+        - Karakeep:
+            href: https://links.pxldi.de
+            icon: karakeep.png
+            description: Bookmarks & web archive
+            siteMonitor: http://karakeep.karakeep.svc.cluster.local:3000
+    - Stuff:
+        - Overleaf:
+            href: https://latex.pxldi.de
+            icon: overleaf.png
+            description: LaTeX editor
+            siteMonitor: http://overleaf.overleaf.svc.cluster.local
+        - n8n:
+            href: https://automation.pxldi.de
+            icon: n8n.png
+            description: Automation workflows
+            siteMonitor: http://n8n.n8n.svc.cluster.local:5678
+        - SearXNG:
+            href: https://search.pxldi.de
+            icon: searxng.png
+            description: Metasearch engine
+            siteMonitor: http://searxng.searxng.svc.cluster.local:8080
+        # No href: ollama has no IngressRoute, it is reached in-cluster by the
+        # things that use it. The tile is here to say whether it is up.
+        - Ollama:
+            icon: ollama.png
+            description: Local LLM runtime, in-cluster only
+            siteMonitor: http://ollama.ollama.svc.cluster.local:11434
+        - Excalidraw:
+            href: https://draw.pxldi.de
+            icon: excalidraw.png
+            description: Whiteboard and diagrams
+            siteMonitor: http://excalidraw.excalidraw.svc.cluster.local:80
+        - Glance:
+            href: https://glance.pxldi.de
+            icon: glance.png
+            description: Feed and status dashboard
+            siteMonitor: http://glance.glance.svc.cluster.local:8080
+
+    - Personal:
+        - Sure (Finance):
+            href: https://finance.pxldi.de
+            icon: "mdi-finance-#22c55e"
+            description: Personal Finance Tracking
+            siteMonitor: http://sure-web.sure.svc.cluster.local:3000/up
+        - SparkyFitness:
+            href: https://fit.pxldi.de
+            icon: "mdi-dumbbell-#f97316"
+            description: Fitness and Health Tracking
+            siteMonitor: http://sparkyfitness-frontend.sparkyfitness.svc.cluster.local
+        - AdventureLog:
+            href: https://travel.pxldi.de
+            icon: "mdi-map-marker-#0ea5e9"
+            description: Travel planning and logging
+            siteMonitor: http://adventurelog-frontend.adventurelog.svc.cluster.local:3000
+        - Home Assistant:
+            href: https://home.pxldi.de
+            icon: home-assistant.png
+            description: Home automation
+            siteMonitor: http://home-assistant.home-assistant.svc.cluster.local:8123
+        - Ryot:
+            href: https://track.pxldi.de
+            icon: ryot.png
+            description: Media and fitness tracking
+            # / redirects to the login page; /health answers 200.
+            siteMonitor: http://ryot.ryot.svc.cluster.local:8000/health
+        - Gotify:
+            href: https://gotify.pxldi.de
+            icon: gotify.png
+            description: Push notifications
+            siteMonitor: http://gotify.gotify.svc.cluster.local
+
+  widgets.yaml: |
+    - resources:
+        backend: kubernetes
+        expanded: true
+        cpu: true
+        memory: true
+        cputemp: false
+        disk:
+        - /host/nvme
+        - /host/hdd1
+        - /host/hdd2
+    - search:
+        provider: custom
+        url: https://search.pxldi.de/search?q=
+        target: _blank
+
+  docker.yaml: ""
+  custom.css: |
+    /* Rechenzentrum on gethomepage: the same world as the login page and the
+       authentik interfaces. See terraform/authentik/brand.css for the palette this
+       ramp is cut from.
+
+       Homepage is Tailwind, and its whole palette is ten space-separated RGB
+       triples on the html element. Redefining them is the rebrand: every card,
+       label and hairline in the app is some step of this ramp at some alpha. The
+       steps keep their meaning -- 50 lightest, 900 darkest -- so the light theme
+       and the dark theme both come out of it. */
+
+    @font-face {
+      font-family: 'Schibsted Grotesk';
+      font-style: normal;
+      font-weight: 400 800;
+      font-display: fallback;
+      src: url('https://branding.pxldi.de/fonts/schibsted-grotesk-latin-var.woff2') format('woff2');
+    }
+
+    @font-face {
+      font-family: 'Azeret Mono';
+      font-style: normal;
+      font-weight: 500;
+      font-display: fallback;
+      src: url('https://branding.pxldi.de/fonts/azeret-mono-latin-500.woff2') format('woff2');
+    }
+
+    html.theme-violet {
+      --color-50: 251 248 252;
+      --color-100: 243 238 245;
+      --color-200: 236 229 234;
+      --color-300: 188 178 184;
+      --color-400: 170 160 170;
+      --color-500: 139 127 146;
+      --color-600: 74 58 80;
+      --color-700: 61 47 66;
+      --color-800: 36 26 39;
+      --color-900: 14 11 16;
+      --color-logo-start: 191 163 232;
+      --color-logo-stop: 109 74 168;
+    }
+
+    /* The room. Homepage's own background setting drew nothing at all from a URL
+       in v2.1.2, so the wallpaper is painted here, the same way brand.css paints it
+       behind the login card. It goes on <html>: homepage paints an opaque ground on
+       both <html> and #__next, and those two cover anything on <body>.
+
+       --rz-grain is the second layer, and it is what stops the room banding. WebP
+       codes a gradient this shallow as flat plates and quantises away the dither
+       baked into the render, so the dither has to be applied here instead, where
+       the browser draws it per pixel and no encoder can touch it. See
+       terraform/authentik/brand.css, which carries the same two layers and the same
+       amplitudes; the wallpapers are pre-compensated for them in
+       branding/wallpapers/build-login-bg.sh. */
+    html {
+      --rz-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)' opacity='0.04'/%3E%3C/svg%3E");
+      background-color: #0e0b10 !important;
+      background-image: var(--rz-grain), url('https://branding.pxldi.de/wallpapers/login-bg.avif') !important;
+      background-size: 140px 140px, cover !important;
+      background-position: center, center !important;
+      background-repeat: repeat, no-repeat !important;
+      background-attachment: fixed !important;
+    }
+
+    html:not(.dark) {
+      --rz-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)' opacity='0.06'/%3E%3C/svg%3E");
+      background-color: #f3eef5 !important;
+      background-image: var(--rz-grain), url('https://branding.pxldi.de/wallpapers/login-bg-light.webp') !important;
+    }
+
+    body,
+    #__next {
+      background-color: transparent !important;
+    }
+
+    body {
+      font-family: 'Schibsted Grotesk', 'Avenir Next', 'Segoe UI', sans-serif !important;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Depth is tonal here too: a hairline and a surface, never a raise. Homepage
+       lifts every card on a shadow instead, so the shadows are taken off and the
+       edge is drawn. */
+    .service-card,
+    .bookmark-card,
+    #information-widgets .widget-container {
+      border: 1px solid rgb(var(--color-700) / 0.9) !important;
+      box-shadow: none !important;
+    }
+
+    /* The accent, spent where it says something: the search field's focus and the
+       quick-launch selection. */
+    #search-bar input:focus,
+    input[type="text"]:focus {
+      outline: 2px solid #bfa3e8 !important;
+      outline-offset: 1px !important;
+      border-color: transparent !important;
+    }
+
+    /* Numbers are the mono face, the way they are on every other surface. */
+    .service-block .font-bold.text-xs.uppercase,
+    .widget-container .font-bold {
+      font-family: 'Azeret Mono', ui-monospace, SFMono-Regular, Menlo, monospace !important;
+    }
+
+    .service-block .font-bold.text-xs.uppercase {
+      white-space: nowrap;
+      font-size: 0.6rem;
+    }
+
+    /* The labels under a widget are held on one line so a row of four reads as
+       a row. On a phone that row is one card wide, and holding it pushes the
+       fourth stat past the edge -- "AUTHS (24H)" was cut in half on a 390px
+       screen. There, they wrap. */
+    @media (max-width: 640px) {
+      .service-block .font-bold.text-xs.uppercase {
+        white-space: normal;
+      }
+    }
+  custom.js: |
+    // homepage v2.1.2 ignores settings.yaml's title and serves its own favicons, so
+    // the tab is the one part of the brand that has to be set from here.
+    document.title = "Rechenzentrum";
+
+    for (const link of document.querySelectorAll(
+      'link[rel~="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"], link[rel="mask-icon"]',
+    )) {
+      link.remove();
+    }
+
+    const icon = document.createElement("link");
+    icon.rel = "icon";
+    icon.href = "https://branding.pxldi.de/icons/house-mark.svg";
+    document.head.appendChild(icon);
+  proxmox.yaml: ""

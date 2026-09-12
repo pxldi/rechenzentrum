@@ -1,0 +1,212 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: renovate
+  namespace: renovate
+spec:
+  # 03:30, not 03:00. Every night at 03:00:00 local the node loses its
+  # internet for about a minute: enp7s0 receives nothing, CoreDNS times out
+  # against *both* upstreams at once, and tailscaled reports UDP blocked -- at
+  # no other time of day. The LAN link never flaps, so it is the WAN side,
+  # most likely a scheduled reconnect on the router. A run that starts at
+  # 03:00 sharp mints its token fine and then dies in Renovate's platform
+  # init, exit 1, inside sixty seconds. Three nights in a row (08-25..27) went
+  # that way before anyone read the metrics. Nothing else runs at 03:30:
+  # velero daily is 04:00 local, weekly 05:00, fredy-restart 05:17.
+  schedule: "30 3 * * *"
+  # Cron in Kubernetes is UTC unless told otherwise, so "0 3" has been firing
+  # at 04:00 local in summer and 03:00 local in winter -- the run time drifted
+  # an hour twice a year and nothing said so. k8s 1.27+ takes timeZone; 1.33
+  # here.
+  timeZone: "Europe/Berlin"
+  # Everything below this line is about failure, not about scheduling.
+  #
+  # On 2026-08-06 the GitHub App this job authenticates as lost its installation
+  # (the repo moved from the pxldi account to the pxldi-labs org). mint-token
+  # started failing, and because a CronJob with no bounds is a CronJob that
+  # never gives up, the cluster accumulated five jobs stuck in Init:0/1 — the
+  # oldest running for 18 days — while Renovate opened no PRs for 17. Nothing
+  # was down, so nothing was noticed.
+  #
+  # Forbid: a run that is still going when the next one is due means the last
+  # one is wedged, and starting a second is strictly worse than skipping.
+  # NOTE: with Forbid, a wedged job blocks every future run, so the deadline
+  # below is what makes this safe rather than a new way to hang forever.
+  concurrencyPolicy: Forbid
+  # If the controller was down at 03:30, run late rather than skipping the day.
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # Successful runs took 6-12 minutes; an hour is generous and still bounded.
+      # This is the backstop that turns "hung forever, silent" into "failed, and
+      # KubeJobFailed fires".
+      activeDeadlineSeconds: 3600
+      # One retry. The failure modes here are a bad credential or a GitHub
+      # outage, and neither is fixed by hammering.
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          securityContext:
+            fsGroup: 1000
+          initContainers:
+            # Renovate authenticates as a GitHub App, but it only accepts an
+            # installation access token — it cannot use the App private key
+            # directly. Installation tokens expire after an hour, so one is minted
+            # per run here: sign a short-lived RS256 JWT with the App key, exchange
+            # it for an installation token, drop it on a tmpfs the main container
+            # reads.
+            #
+            # This is what gives Renovate an identity distinct from both the
+            # operator and the openclaw agent, which in turn lets the branch
+            # ruleset grant automerge bypass to Renovate alone.
+            # Same image as the main container, on purpose. It already ships
+            # curl, openssl, jq and node, so nothing is installed at runtime.
+            #
+            # This used to be alpine:3.24 running `apk add curl openssl jq` on
+            # every run, which made minting a token depend on DNS *and* on the
+            # Alpine CDN being reachable. On 2026-08-25 at 01:00 UTC that is
+            # exactly how the run died: 63 DNS timeouts for
+            # dl-cdn.alpinelinux.org, the apk failed, and the job was over
+            # before it ever spoke to GitHub. This was first blamed on
+            # Renovate's own DNS burst; it was in fact the nightly 03:00
+            # outage described at the top of this file. The change still
+            # stands on its own merits.
+            #
+            # Reusing the renovate image also means the layer is already
+            # present, one less thing to pull, and one less supply chain.
+            - name: mint-token
+              image: renovate/renovate:39
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+
+                  # base64url, unpadded, as JWT requires
+                  b64() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+
+                  now=$(date +%s)
+                  # iat backdated 60s to tolerate clock skew; exp well under
+                  # GitHub's 10 minute ceiling for App JWTs.
+                  header=$(printf '%s' '{"alg":"RS256","typ":"JWT"}' | b64)
+                  payload=$(printf '{"iat":%s,"exp":%s,"iss":"%s"}' \
+                    "$((now - 60))" "$((now + 540))" "${APP_ID}" | b64)
+                  sig=$(printf '%s.%s' "$header" "$payload" \
+                    | openssl dgst -sha256 -sign /app-key/private-key.pem | b64)
+                  jwt="${header}.${payload}.${sig}"
+
+                  echo "requesting installation token for installation ${INSTALLATION_ID}..."
+                  # Retried, because a single DNS hiccup should not cost a whole
+                  # nightly run. --retry covers connection and DNS failures as
+                  # well as 5xx; the JWT above is valid for 540s, so three
+                  # attempts fit comfortably inside its lifetime.
+                  resp=$(curl -sS -X POST \
+                    --retry 3 --retry-delay 5 --retry-connrefused --max-time 60 \
+                    -H "Authorization: Bearer ${jwt}" \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "X-GitHub-Api-Version: 2022-11-28" \
+                    "https://api.github.com/app/installations/${INSTALLATION_ID}/access_tokens")
+
+                  token=$(printf '%s' "$resp" | jq -r '.token // empty')
+                  if [ -z "$token" ]; then
+                    # Never echo the raw response on success — it contains the token.
+                    echo "failed to mint installation token:" >&2
+                    printf '%s' "$resp" | jq -r '.message // "unknown error"' >&2
+                    exit 1
+                  fi
+
+                  printf '%s' "$token" > /token/token
+                  chmod 0644 /token/token
+                  echo "token minted, expires $(printf '%s' "$resp" | jq -r '.expires_at')"
+              env:
+                - name: APP_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: renovate-app
+                      key: APP_ID
+                - name: INSTALLATION_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: renovate-app
+                      key: INSTALLATION_ID
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+                # Now possible: alpine ran this as root, the renovate image runs
+                # as uid 12021. This was the last `warn: restricted` violation
+                # in the renovate namespace.
+                runAsNonRoot: true
+                seccompProfile:
+                  type: RuntimeDefault
+              volumeMounts:
+                - name: app-key
+                  mountPath: /app-key
+                  readOnly: true
+                - name: token
+                  mountPath: /token
+          containers:
+            - name: renovate
+              image: renovate/renovate:39
+              # RENOVATE_TOKEN must be an env var, and the token only exists at
+              # runtime — so read it off the tmpfs and exec renovate.
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  RENOVATE_TOKEN=$(cat /token/token)
+                  export RENOVATE_TOKEN
+                  exec renovate
+              env:
+                - name: RENOVATE_PLATFORM
+                  value: "github"
+                - name: RENOVATE_REPOSITORIES
+                  value: "pxldi-labs/rechenzentrum"
+                # Tell Renovate it is running as an App rather than a user, so it
+                # attributes commits to the App and skips user-only API calls.
+                - name: RENOVATE_USERNAME
+                  value: "rechenzentrum-renovate[bot]"
+                # Must match the App's canonical bot identity that GitHub
+                # stamps on API commits, otherwise Renovate treats its own
+                # branches as human-edited and refuses to rebase/automerge.
+                - name: RENOVATE_GIT_AUTHOR
+                  value: "rechenzentrum-renovate[bot] <305817171+rechenzentrum-renovate[bot]@users.noreply.github.com>"
+                # debug logged token-bearing request headers on every run.
+                - name: LOG_LEVEL
+                  value: "info"
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+                runAsNonRoot: true
+                seccompProfile:
+                  type: RuntimeDefault
+              volumeMounts:
+                - name: token
+                  mountPath: /token
+                  readOnly: true
+          volumes:
+            - name: app-key
+              secret:
+                secretName: renovate-app
+                items:
+                  - key: private-key.pem
+                    path: private-key.pem
+                defaultMode: 0400
+            - name: token
+              emptyDir:
+                # Keep the installation token off disk.
+                medium: Memory
+          # Never, not OnFailure. With OnFailure the kubelet restarts the
+          # container in place and, once backoffLimit is spent, the job
+          # controller deletes the pod -- and its logs with it. Three failed
+          # nightly runs left nothing to read; the cause had to be
+          # reconstructed from kube-state-metrics and CoreDNS logs. With Never
+          # each attempt is its own pod and the failed ones stay until the
+          # job's TTL removes them.
+          restartPolicy: Never

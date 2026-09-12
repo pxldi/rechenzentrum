@@ -1,0 +1,136 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: overleaf
+  namespace: overleaf
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: "5.1.0"
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+      interval: 12h
+  install:
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+
+  values:
+    controllers:
+      main:
+        type: deployment
+        replicas: 1
+
+        containers:
+          main:
+            image:
+              repository: sharelatex/sharelatex
+              tag: "6.2.2"
+              pullPolicy: IfNotPresent
+
+            env:
+              - name: TZ
+                value: "Europe/Berlin"
+              - name: OVERLEAF_BEHIND_PROXY
+                value: "true"
+              - name: OVERLEAF_PORT
+                value: "80"
+              - name: OVERLEAF_SITE_NAME
+                value: "Homelab Overleaf"
+              - name: OVERLEAF_APP_NAME
+                value: "Overleaf"
+              - name: OVERLEAF_DOMAIN
+                value: "latex.pxldi.de"
+              - name: OVERLEAF_MONGO_URL
+                value: "mongodb://overleaf-mongo:27017/sharelatex?replicaSet=rs0"
+              - name: OVERLEAF_REDIS_HOST
+                value: "overleaf-redis"
+              - name: OVERLEAF_REDIS_PORT
+                value: "6379"
+              - name: SESSION_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: overleaf-credentials
+                    key: SESSION_SECRET
+              - name: OVERLEAF_INVITE_TOKEN_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: overleaf-credentials
+                    key: OVERLEAF_INVITE_TOKEN_SECRET
+              - name: OVERLEAF_ADMIN_EMAIL
+                valueFrom:
+                  secretKeyRef:
+                    name: overleaf-credentials
+                    key: OVERLEAF_ADMIN_EMAIL
+              - name: OVERLEAF_EMAIL_SMTP_HOST
+                value: "smtp.gmail.com"
+              - name: OVERLEAF_EMAIL_SMTP_PORT
+                value: "587"
+              - name: OVERLEAF_EMAIL_SMTP_USER
+                value: "leopold.sappler@gmail.com"
+              - name: OVERLEAF_EMAIL_SMTP_PASS
+                valueFrom:
+                  secretKeyRef:
+                    name: overleaf-credentials
+                    key: SMTP_PASSWORD
+              - name: OVERLEAF_EMAIL_FROM_ADDRESS
+                value: "leopold.sappler@gmail.com"
+              - name: OVERLEAF_SITE_URL
+                value: "https://latex.pxldi.de"
+
+            # Verified against the running pod: /status answers 200, / redirects
+            # (302, which kubelet would also accept) and /health_check is 404.
+            # /status is the route that means the app booted, not just nginx.
+            probes:
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /status
+                    port: 80
+                  initialDelaySeconds: 60
+                  periodSeconds: 15
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+
+            resources:
+              requests:
+                memory: "896Mi"
+                cpu: "100m"
+              limits:
+                memory: "2Gi"
+
+    service:
+      main:
+        controller: main
+        ports:
+          http:
+            port: 80
+
+    ingress:
+      main:
+        enabled: true
+        className: "traefik"
+        hosts:
+          - host: latex.pxldi.de
+            paths:
+              - path: /
+                service:
+                  identifier: main
+                  port: http
+
+    persistence:
+      data:
+        existingClaim: overleaf-data-pvc
+        globalMounts:
+          - path: /var/lib/overleaf

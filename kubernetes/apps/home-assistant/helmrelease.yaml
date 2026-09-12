@@ -1,0 +1,94 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: home-assistant
+  namespace: home-assistant
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: home-assistant
+      version: "0.3.75"
+      sourceRef:
+        kind: HelmRepository
+        name: home-assistant
+        namespace: flux-system
+      interval: 12h
+  install:
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+
+  values:
+    image:
+      repository: ghcr.io/home-assistant/home-assistant
+      tag: "2026.8.3"
+      pullPolicy: IfNotPresent
+
+    # matter-server and otbr already carry rechenzentrum-critical, but Home
+    # Assistant itself did not — the two radio bridges outranked the thing they
+    # exist to feed. Under memory pressure the kubelet would have evicted the
+    # thermostat and kept its Thread dongle.
+    priorityClassName: rechenzentrum-critical
+
+    controller:
+      type: StatefulSet
+
+    nodeSelector:
+      kubernetes.io/hostname: rechenzentrum
+
+    # hostNetwork is required for HA's Thread integration to discover the OTBR
+    # via mDNS (`_meshcop._udp` link-local multicast doesn't traverse the
+    # cluster network). Also generally needed for any future Bluetooth
+    # integrations that depend on mDNS.
+    hostNetwork: true
+    dnsPolicy: ClusterFirstWithHostNet
+
+    env:
+      - name: TZ
+        value: "Europe/Berlin"
+
+    # Home Assistant was BestEffort — no requests, so the kubelet would evict
+    # the house before it evicted a media indexer. 481Mi average / 501Mi peak
+    # over 7d; it is a steady process, so the request tracks it closely.
+    # No memory limit: HA restarting mid-automation is worse than HA using
+    # more RAM than expected, and it has never shown a runaway.
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "100m"
+
+    service:
+      type: ClusterIP
+      port: 8123
+
+    persistence:
+      enabled: true
+      accessMode: ReadWriteOnce
+      size: 10Gi
+      storageClass: local-ssd
+
+    ingress:
+      enabled: false
+
+    configuration:
+      enabled: true
+      forceInit: false
+      trusted_proxies:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+      templateConfig: |-
+        default_config:
+        automation: !include automations.yaml
+        http:
+          use_x_forwarded_for: true
+          trusted_proxies:
+            {{- range .Values.configuration.trusted_proxies }}
+            - {{ . }}
+            {{- end }}

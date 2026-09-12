@@ -1,0 +1,67 @@
+---
+# The guardrails that survive the session they constrain.
+#
+# The server runs its sessions in bypassPermissions mode, which is the mode the
+# docs describe as being for "isolated environments like containers or VMs" —
+# this pod, in other words. It skips every prompt, including the protected-path
+# handling that normally guards `.git` and `.claude`. What it does NOT skip are
+# explicit `deny` and `ask` rules, and that is what this file is.
+#
+# It is delivered as managed settings — /etc/claude-code/managed-settings.json,
+# read-only, from a ConfigMap — rather than as ~/.claude/settings.json, because
+# HOME is the PVC and a session running without prompts can edit anything on
+# it, including its own restrictions. Managed settings are also the highest
+# precedence there is: no user setting, project setting or command-line flag
+# overrides a managed permission rule. So these rules are reviewed here, in
+# git, or they are not rules.
+#
+# What this is NOT: a security boundary. Bash rules match on command prefixes,
+# and the same command spelled differently — through an exec wrapper, with an
+# extra flag before the subcommand, via a script — does not match. These stop
+# the plausible accident, which is the failure mode that actually happens when
+# nobody is watching the approval prompts. The boundaries that hold are
+# elsewhere and are not made of string matching: the branch-protection ruleset
+# on GitHub, the absence of age.key in this pod, and the fact that the
+# ServiceAccount token is not mounted.
+#
+# `gh pr merge` and `git push` are deliberately not denied. A session that can
+# open a PR but not land it leaves every piece of finished work waiting on
+# someone to come back and click merge, which is the opposite of what these
+# sessions are for. Merging is also the point where the real boundary applies:
+# the branch-protection ruleset decides what may land on main, and it is not
+# this file's job to duplicate that badly. Pushing straight to main stays an
+# `ask` rather than a deny — the ruleset would reject it anyway, so the rule is
+# there to catch the mistake early, not to hold a line.
+#
+# Only `Edit(path)` rules are matched by the file permission checks; a
+# `Write(path)` rule matches nothing and Claude Code logs a warning about it on
+# every start. Edit rules already cover every file-editing tool, Write included.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: claudebox-managed-settings
+  namespace: claudebox
+data:
+  managed-settings.json: |
+    {
+      "permissions": {
+        "deny": [
+          "Edit(//home/pxldi/.claude/**)",
+          "Edit(//home/pxldi/.claude.json)",
+          "Read(//home/pxldi/.claude/.credentials.json)",
+          "Read(**/age.key)",
+          "Bash(sops -d:*)",
+          "Bash(sops --decrypt:*)",
+          "Bash(gh repo delete:*)"
+        ],
+        "ask": [
+          "Bash(git push --force:*)",
+          "Bash(git push -f:*)",
+          "Bash(git push --delete:*)",
+          "Bash(git push origin --delete:*)",
+          "Bash(git push origin main:*)",
+          "Bash(git push origin HEAD:main:*)",
+          "Bash(gh release delete:*)"
+        ]
+      }
+    }

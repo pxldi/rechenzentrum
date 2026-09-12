@@ -1,0 +1,42 @@
+name: GitOps Validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitops-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: GitOps Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: |
+          python3 -m pip install -r scripts/requirements.txt
+          python3 scripts/install-tools.py
+          echo "$PWD/.tools" >> "$GITHUB_PATH"
+      - name: Scan for plaintext secrets
+        run: |
+          gitleaks dir . --redact=100 --no-banner
+          python3 scripts/check-secrets.py
+      - name: Validate YAML
+        run: yamllint -c .yamllint.yml kubernetes .github Taskfile.yml
+      - name: Build Flux roots including patches
+        run: python3 scripts/build.py
+      - name: Validate Kubernetes and custom-resource schemas
+        run: python3 scripts/schema-check.py
+      - name: Check repository policies
+        run: python3 scripts/check-policies.py

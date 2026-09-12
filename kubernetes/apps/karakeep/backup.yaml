@@ -1,0 +1,83 @@
+# The database is SQLite on a PVC, which is the one thing this app gives up
+# against the Postgres app it replaces: there is no barman streaming WAL to B2,
+# so nothing outside the cluster holds a copy between Velero runs.
+#
+# Velero copies the volume file by file. A live SQLite database read that way
+# can be torn: the copier can read db.db before a checkpoint and db.db-wal
+# after it. So the file Velero picks up is not the live database but the one
+# this job writes.
+#
+# sqlite3 .backup is the right tool and not just a cp: it uses SQLite's online
+# backup API, which takes the source's read lock page by page and restarts the
+# copy if a writer changes a page underneath it. The result is a consistent
+# database file with no downtime and no application support needed.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: karakeep-db-backup
+  namespace: karakeep
+spec:
+  # Half past three, after the nightly WAN blip at 03:00 and before anything
+  # else on this node wakes up.
+  schedule: "30 3 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          containers:
+            - name: sqlite-backup
+              # Plain alpine, and root, because apk needs root to install and
+              # the sqlite3 CLI is not in any image this cluster already pulls
+              # -- the Karakeep image does not carry it. The alternative is a
+              # third-party sqlite image, which is a supply chain for one
+              # binary. The namespace enforces baseline, which permits this;
+              # everything else about the container stays closed. Same shape as
+              # the branding sidecar.
+              image: alpine:3.22
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  apk add --no-cache sqlite >/dev/null
+                  mkdir -p /data/backups
+                  out="/data/backups/db-$(date -u +%Y%m%dT%H%M%SZ).db"
+                  sqlite3 /data/db.db ".backup '$out'"
+                  printf 'wrote %s (%s)\n' "$out" "$(du -h "$out" | cut -f1)"
+
+                  # Three nights is enough: this is the local copy and Velero is
+                  # what carries it off the node. The file just written is held
+                  # out of the list rather than trusted to sort first, so a
+                  # clock that has moved backwards cannot delete tonight's
+                  # backup. A while loop rather than xargs -r, which busybox
+                  # does not have.
+                  ls -1t /data/backups/db-*.db 2>/dev/null | grep -v -F "$out" |
+                    tail -n +3 | while read -r stale; do rm -f "$stale"; done
+              securityContext:
+                allowPrivilegeEscalation: false
+                seccompProfile:
+                  type: RuntimeDefault
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+          volumes:
+            # The same RWO claim the app holds. RWO binds a volume to one node,
+            # not one pod, and there is one node here, so this mounts alongside
+            # the running app rather than against it.
+            - name: data
+              persistentVolumeClaim:
+                claimName: karakeep-data

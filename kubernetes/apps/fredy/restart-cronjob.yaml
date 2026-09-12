@@ -1,0 +1,92 @@
+---
+# Backstop for the Puppeteer leak. The memory limit in deployment.yaml catches
+# the runs that leak Chrome and grow; this catches the other failure mode, where
+# fredy's in-memory run-state wedges after a hung run without using more memory.
+# The web UI keeps serving in that state, so the HTTP livenessProbe never fires
+# and the pod looks healthy while no jobs run at all.
+#
+# The visible symptom is a burst of notifications hours later, when something
+# finally restarts it and it catches up on everything it missed. Six hours caps
+# how much backlog can build.
+#
+# This is a workaround, not a fix. The fix is upstream fredy handling Puppeteer
+# properly, or a liveness probe that reads jobs.last_run_at from /db.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fredy-restarter
+  namespace: fredy
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: fredy-restarter
+  namespace: fredy
+rules:
+  # Scoped to the single Deployment by name. `rollout restart` is a patch that
+  # stamps an annotation on the pod template; it needs nothing else.
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["fredy"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fredy-restarter
+  namespace: fredy
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: fredy-restarter
+subjects:
+  - kind: ServiceAccount
+    name: fredy-restarter
+    namespace: fredy
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: fredy-restart
+  namespace: fredy
+spec:
+  # 03:17, 09:17, 15:17, 21:17 — off the hour so it does not land on top of the
+  # velero backups at 02:00/03:00 or fredy's own scrape schedule.
+  schedule: "17 3,9,15,21 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          serviceAccountName: fredy-restarter
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: kubectl
+              image: rancher/kubectl@sha256:6ba6f12e846c986ae21bb1bf079dee9e0aeaed1718d7d2ffd2b4331a854f4ecc
+              command:
+                - kubectl
+                - rollout
+                - restart
+                - deployment/fredy
+                - -n
+                - fredy
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]

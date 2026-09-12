@@ -1,0 +1,22 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: media
+resources:
+  - namespace.yaml
+  - pvcs.yaml
+  - prowlarr
+  - radarr
+  - sonarr
+  - sabnzbd
+  - jellyfin
+  - slskd
+  - navidrome
+  - seerr
+  - cantus
+components:
+  - ../../infrastructure-config/networkpolicies/default-deny-ingress
+  - ../../infrastructure-config/networkpolicies/allow-intra-namespace
+  - ../../infrastructure-config/networkpolicies/allow-from-traefik
+  - ../../infrastructure-config/networkpolicies/allow-from-monitoring
+  - ../../infrastructure-config/networkpolicies/allow-from-homepage

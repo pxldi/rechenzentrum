@@ -1,0 +1,16 @@
+---
+# The localpv provisioner watches PVCs through the apiserver and creates
+# directories on the node. That is all outbound; it serves nothing. Verified
+# against the live namespace: one Deployment, zero Services.
+#
+# Ingress-only on purpose — restricting egress here would cut the provisioner
+# off from the apiserver and every PVC in the cluster would stop binding.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: openebs
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress

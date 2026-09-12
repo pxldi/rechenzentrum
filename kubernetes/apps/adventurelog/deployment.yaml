@@ -1,0 +1,190 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adventurelog-db
+  namespace: adventurelog
+  labels:
+    app: adventurelog-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adventurelog-db
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: adventurelog-db
+    spec:
+      containers:
+        - name: db
+          image: postgis/postgis:15-3.3
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_DB
+              value: adventurelog
+            - name: POSTGRES_USER
+              value: adventurelog
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: adventurelog-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+      volumes:
+        - name: db-data
+          persistentVolumeClaim:
+            claimName: adventurelog-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adventurelog-backend
+  namespace: adventurelog
+  labels:
+    app: adventurelog-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adventurelog-backend
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: adventurelog-backend
+      annotations:
+        backup.velero.io/backup-volumes: "media"
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/seanmorley15/adventurelog-backend:beta
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PGHOST
+              value: adventurelog-db
+            - name: PGDATABASE
+              value: adventurelog
+            - name: PGUSER
+              value: adventurelog
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: adventurelog-secret
+                  key: POSTGRES_PASSWORD
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: adventurelog-secret
+                  key: SECRET_KEY
+            - name: DJANGO_ADMIN_USERNAME
+              value: admin
+            - name: DJANGO_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: adventurelog-secret
+                  key: DJANGO_ADMIN_PASSWORD
+            - name: DJANGO_ADMIN_EMAIL
+              value: admin@pxldi.de
+            - name: PUBLIC_URL
+              value: https://travel.pxldi.de
+            - name: FRONTEND_URL
+              value: https://travel.pxldi.de
+            - name: CSRF_TRUSTED_ORIGINS
+              value: https://travel.pxldi.de,https://travel-admin.pxldi.de
+            - name: TZ
+              value: Europe/Berlin
+          volumeMounts:
+            - name: media
+              mountPath: /code/media
+          # Verified against the running pod: / and /api/ both answer 200,
+          # /health/ is 404. There is no dedicated health route, so this
+          # rides on the endpoint the frontend actually depends on.
+          readinessProbe:
+            httpGet:
+              path: /api/
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: adventurelog-media
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adventurelog-frontend
+  namespace: adventurelog
+  labels:
+    app: adventurelog-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adventurelog-frontend
+  # The only adventurelog component with no PVC — the backend holds
+  # adventurelog-media and the db holds its data directory, so both of those
+  # stay Recreate. With the readinessProbe added above, this one can roll.
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: adventurelog-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/seanmorley15/adventurelog-frontend:beta
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PUBLIC_SERVER_URL
+              value: http://adventurelog-backend:80
+            - name: ORIGIN
+              value: https://travel.pxldi.de
+            - name: BODY_SIZE_LIMIT
+              value: "Infinity"
+            - name: TZ
+              value: Europe/Berlin
+          # Verified 200; /health and /healthz are both 404 on this image.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"

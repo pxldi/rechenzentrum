@@ -1,0 +1,40 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: cantus
+  namespace: media
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: "Host(`cantus.pxldi.de`)"
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: traefik
+        # Vouches for the identity headers forward-auth just set. See
+        # middleware-proxy-key.yaml.
+        - name: cantus-proxy-key
+      priority: 10
+      services:
+        - name: cantus
+          port: 8080
+    - kind: Rule
+      match: "Host(`cantus.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`)"
+      priority: 15
+      services:
+        - name: authentik-server
+          namespace: authentik
+          port: 9000
+    # The phone app sends an app token minted in Settings → Phone as a Bearer
+    # header. It cannot follow an authentik redirect, so API calls carrying one
+    # skip forward-auth; Cantus checks the token itself and answers 401 to any
+    # Bearer value it did not mint. No proxy key here, so identity headers on
+    # these requests are never believed.
+    - kind: Rule
+      match: "Host(`cantus.pxldi.de`) && PathPrefix(`/api/`) && HeaderRegexp(`Authorization`, `^Bearer `)"
+      priority: 20
+      services:
+        - name: cantus
+          port: 8080

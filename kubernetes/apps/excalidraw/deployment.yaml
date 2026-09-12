@@ -1,0 +1,58 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: excalidraw
+  namespace: excalidraw
+  labels:
+    app: excalidraw
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: excalidraw
+  template:
+    metadata:
+      labels:
+        app: excalidraw
+    spec:
+      containers:
+        - name: excalidraw
+          # Upstream stopped cutting versioned tags in 2021 - Docker Hub carries
+          # `latest` plus a pile of 2021-era sha-* tags and nothing since. So the
+          # pin is the digest rather than the tag: Renovate opens a PR when
+          # `latest` moves, which is the same review gate a tag bump would be.
+          image: excalidraw/excalidraw:latest@sha256:f7ee194addd607bf831d2af0f0a34463dd4225e426cf35199ef0b12a803398e9
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          # The image is stock nginx serving a static build out of
+          # /usr/share/nginx/html. There is no health route, so `/` is the probe
+          # - the same thing the image's own HEALTHCHECK hits.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            # Root, because the image is unmodified nginx: the master binds :80
+            # and drops the workers to the `nginx` user, and it writes runtime
+            # state to /var/cache/nginx and /var/run. Upstream ships no
+            # unprivileged variant, and rebuilding one to save a UID is not
+            # worth carrying an image build for a static site.
+            readOnlyRootFilesystem: false
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi

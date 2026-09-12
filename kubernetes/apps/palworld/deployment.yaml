@@ -1,0 +1,134 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: palworld
+  namespace: palworld
+  labels:
+    app: palworld
+spec:
+  # Parked. Nobody has played since at least 2026-07-18, which is as far back as
+  # Prometheus retains: transmit held flat at ~580 B/s every day for a month, and
+  # a single connected player is tens to hundreds of KB/s sustained. The two RX
+  # spikes in that window (07-29, 08-12) were receive-heavy with almost no
+  # transmit, so they were Steam/image updates rather than anyone playing.
+  #
+  # Idle is not free here. The server ticks its world whether or not anyone is
+  # connected: ~1.45Gi resident and ~0.7 cores, continuously, plus an 8Gi memory
+  # request that the scheduler reserves against a 32Gi node — which is most of
+  # why the node reads as 81% allocated while actually using far less.
+  #
+  # Nothing is lost by parking it. The world and every player save live on the
+  # PVC and are untouched by this. To play again, set this back to 1 (or, for one
+  # evening without a commit, `kubectl -n palworld scale deploy/palworld
+  # --replicas=1` — Flux will park it again on the next reconcile).
+  replicas: 0
+  selector:
+    matchLabels:
+      app: palworld
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: palworld
+    spec:
+      priorityClassName: rechenzentrum-bulk
+      nodeSelector:
+        kubernetes.io/hostname: rechenzentrum
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: palworld
+          image: thijsvanloef/palworld-server-docker:v2.7.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8211
+              name: game
+              protocol: UDP
+            - containerPort: 25575
+              name: rcon
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            # --- Server identity ---
+            - name: SERVER_NAME
+              value: "pxldi Palworld"
+            - name: SERVER_DESCRIPTION
+              value: "Private friends server"
+            # --- Sizing (3-4 players) ---
+            - name: PLAYERS
+              value: "8"
+            - name: MULTITHREADING
+              value: "true"
+            # --- Gameplay / co-op QoL (world-gen values locked at first boot) ---
+            # Drop only inventory items on death (keep gear + pals) — friendlier co-op.
+            - name: DEATH_PENALTY
+              value: "Item"
+            # Real-time hours to hatch eggs; vanilla default of 72 is punishing.
+            - name: PAL_EGG_DEFAULT_HATCHING_TIME
+              value: "2"
+            # More base workers than the vanilla 15; 25 balances utility vs. base-AI/perf.
+            - name: BASE_CAMP_WORKER_MAXNUM
+              value: "25"
+            # --- Networking ---
+            - name: PORT
+              value: "8211"
+            - name: PUBLIC_PORT
+              value: "8211"
+            # Private: not advertised in the community server browser.
+            - name: COMMUNITY_SERVER
+              value: "false"
+            # --- Admin / RCON ---
+            - name: RCON_ENABLED
+              value: "true"
+            - name: RCON_PORT
+              value: "25575"
+            # --- Lifecycle ---
+            - name: UPDATE_ON_BOOT
+              value: "true"
+            - name: BACKUP_ENABLED
+              value: "true"
+            # Scheduled in-container game-build updates (Supercronic + SteamCMD).
+            # Requires RCON_ENABLED + UPDATE_ON_BOOT (both set above). On a new
+            # build it warns players over RCON, saves, updates, and restarts the
+            # game process in-place — no pod restart / Flux reconcile needed.
+            - name: AUTO_UPDATE_ENABLED
+              value: "true"
+            # Check for a new build every 4h (only warns/restarts if one exists).
+            - name: AUTO_UPDATE_CRON_EXPRESSION
+              value: "0 */4 * * *"
+            # Warn online players 15 min before applying an update.
+            - name: AUTO_UPDATE_WARN_MINUTES
+              value: "15"
+            # Scheduled reboot to clear the memory creep from long uptimes.
+            # k8s restartPolicy defaults to Always, so the container comes back
+            # after the RCON-triggered shutdown. Skips reboot if players online.
+            - name: AUTO_REBOOT_ENABLED
+              value: "true"
+            # Daily at 04:00 (container TZ = Europe/Berlin).
+            - name: AUTO_REBOOT_CRON_EXPRESSION
+              value: "0 4 * * *"
+            - name: AUTO_REBOOT_WARN_MINUTES
+              value: "5"
+          envFrom:
+            - secretRef:
+                name: palworld-credentials
+          volumeMounts:
+            - name: data
+              mountPath: /palworld
+          resources:
+            requests:
+              cpu: "2"
+              memory: 8Gi
+            limits:
+              memory: 12Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: palworld-data

@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - gotk-components.yaml
+  - gotk-sync.yaml
+  - notifications.yaml
+
+# flux ships flux-system with `warn: restricted` and no enforce, so violations
+# are printed and then admitted. All six controllers already satisfy restricted,
+# verified with a server-side dry-run against the live pods, so enforce costs
+# nothing and closes the gap.
+#
+# This is a patch rather than an edit because gotk-components.yaml is generated
+# — it says DO NOT EDIT at the top and `flux bootstrap` rewrites it wholesale on
+# every upgrade. A patch here survives that; an edit there would be silently
+# reverted the next time flux2 is bumped.
+patches:
+  - target:
+      kind: Namespace
+      name: flux-system
+    patch: |
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1enforce
+        value: restricted
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1enforce-version
+        value: v1.33
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1audit
+        value: restricted
+      - op: add
+        path: /metadata/labels/pod-security.kubernetes.io~1audit-version
+        value: latest

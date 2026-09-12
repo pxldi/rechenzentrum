@@ -1,0 +1,68 @@
+---
+# renovate is a CronJob that clones this repo, talks to the GitHub API and every
+# upstream registry, and exits. It holds a GitHub App private key, so it is worth
+# protecting, and it exposes nothing: no Service, no ingress, no scrape target.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: renovate
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Egress. The ingress policy above protects renovate from the cluster; this one
+# protects the cluster from renovate.
+#
+# It holds a GitHub App private key, and with no branch protection on `main`
+# that key can push straight to main -- which, in a repo where merging *is*
+# deploying, makes it one of the most consequential credentials here. Today the
+# pod that holds it can also open a connection to every ClusterIP in the
+# cluster: every database, every admin UI, the Kubernetes API.
+#
+# It has no business talking to any of them. Renovate clones over HTTPS, calls
+# the GitHub API, queries upstream registries, and exits.
+#
+# So: DNS to CoreDNS, and 443/80 to the internet -- with every RFC1918 range
+# and link-local carved out of the destination set. That blocks the whole
+# cluster network, the LAN, and the cloud metadata endpoint, while leaving the
+# only thing it actually needs untouched.
+#
+# 80 is allowed alongside 443 because some registry and changelog endpoints
+# still answer a redirect there. Nothing sensitive is sent over it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: renovate-egress
+  namespace: renovate
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80

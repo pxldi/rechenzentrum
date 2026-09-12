@@ -1,0 +1,84 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: jellyfin
+  namespace: media
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: jellyfin
+      version: "23.7.4"
+      sourceRef:
+        kind: HelmRepository
+        name: truecharts
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    workload:
+      main:
+        podSpec:
+          annotations:
+            backup.velero.io/backup-volumes-excludes: "media,data"
+
+    env:
+      TZ: "Europe/Berlin"
+    persistence:
+      config:
+        enabled: true
+        existingClaim: jellyfin-config-pvc
+      media:
+        enabled: true
+        type: pvc
+        existingClaim: media-pvc
+        mountPath: /media
+        readOnly: false
+      data:
+        enabled: true
+        existingClaim: jellyfin-data-pvc
+    # jellyfin no longer mounts /dev/dri itself and no longer runs privileged.
+    # The device arrives through the generic device plugin
+    # (kubernetes/infrastructure/device-plugins), which is what actually writes
+    # the container's device cgroup entry — the thing the hostPath mount in #922
+    # could not do, and the reason removing `privileged` broke transcoding then.
+    #
+    # Proven before shipping this time, with an unprivileged throwaway pod
+    # requesting devic.es/dri and nothing else:
+    #
+    #   uid=568 gid=568 groups=[568]
+    #   /dev/dri contents: ['renderD128']
+    #   OPEN OK   /dev/dri/renderD128
+    #   ABSENT    /dev/dri/card1
+    #
+    # No supplemental groups are needed: renderD128 is world-writable, and with
+    # the cgroup entry present the file mode is finally the only thing left to
+    # satisfy. card1 is not advertised by the plugin, so jellyfin can no longer
+    # see the privileged display node at all — it could, before.
+    securityContext:
+      container:
+        privileged: false
+        allowPrivilegeEscalation: false
+    # Requests were coming from the chart's own defaults (200Mi), less than
+    # a third of jellyfin's 675Mi steady state — so it ranked for eviction
+    # as if it were idle. Stated explicitly now.
+    resources:
+      requests:
+        memory: 768Mi
+        cpu: 100m
+      # One of the few memory limits kept: a transcode is unbounded work
+      # started by whoever pressed play.
+      limits:
+        memory: 4Gi
+        # Claims one of the plugin's ten allocations of the render node — this is
+        # what makes the kubelet hand the device to the runtime; without it the
+        # container has no /dev/dri at all. Declared under limits because
+        # Kubernetes rejects an extended resource that appears only in requests;
+        # the scheduler mirrors it into requests automatically.
+        devic.es/dri: 1

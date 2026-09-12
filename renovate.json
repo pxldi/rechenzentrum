@@ -1,0 +1,73 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "flux": {
+    "fileMatch": [
+      "kubernetes/.+\\.ya?ml$"
+    ]
+  },
+  "kubernetes": {
+    "fileMatch": [
+      "kubernetes/apps/.+\\.ya?ml$"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The ARC runner's docker:dind pin lives inside a Flux postRenderer patch, which is an opaque string to the flux and kubernetes managers",
+      "fileMatch": [
+        "^kubernetes/apps/actions-runner/helmrelease-runners\\.yaml$"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+value: \\S+:(?<currentValue>\\S+)"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "immich's chart-wide image tag has no sibling repository key - server and machine-learning each supply their own and inherit the tag - so the helm-values manager has no depName and cannot track it",
+      "fileMatch": [
+        "^kubernetes/apps/immich/helmrelease\\.yaml$"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+tag: (?<currentValue>\\S+)"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["velero/velero-plugin-for-aws"],
+      "allowedVersions": "/^v?1\\.14\\.0$/",
+      "description": "Pinned at v1.14.0: newer 1.14.x releases send empty x-amz-tagging to B2"
+    },
+    {
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "schedule": ["at any time"]
+    },
+    {
+      "matchPackageNames": ["boulderbadgedad/soulsync"],
+      "versioning": "loose"
+    },
+    {
+      "matchPackageNames": [
+        "ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set",
+        "ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller"
+      ],
+      "groupName": "actions-runner-controller",
+      "automerge": false,
+      "description": "ARC refuses to run a controller and a scale set on different chart versions, so the two must land in one PR. Not automerged: these are 0.x, where a minor bump has broken the runner API before, and merging here changes the live cluster."
+    }
+  ],
+  "prHourlyLimit": 0,
+  "prConcurrentLimit": 0,
+  "platformAutomerge": false,
+  "timezone": "Europe/Berlin",
+  "schedule": [
+    "after 2am and before 6am"
+  ]
+}

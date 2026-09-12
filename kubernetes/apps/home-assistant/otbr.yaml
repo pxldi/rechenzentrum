@@ -1,0 +1,106 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: otbr-data
+  namespace: home-assistant
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 500Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otbr
+  namespace: home-assistant
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: otbr
+  template:
+    metadata:
+      labels:
+        app: otbr
+    spec:
+      # the Thread border router; every Thread device in the house routes through it
+      priorityClassName: rechenzentrum-critical
+      nodeSelector:
+        kubernetes.io/hostname: rechenzentrum
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: otbr
+          image: openthread/border-router:v2026.07.0
+          # 5Mi average / 8Mi peak over 7d. Tiny, but a request is what keeps
+          # the Thread border router out of the BestEffort eviction bucket.
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "25m"
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_RAW
+                - SYS_ADMIN
+          env:
+            - name: OT_RCP_DEVICE
+              value: "spinel+hdlc+uart:///dev/ttyACM0?uart-baudrate=460800"
+            - name: OT_INFRA_IF
+              value: "enp7s0"
+            - name: OT_THREAD_IF
+              value: "wpan0"
+            - name: OT_LOG_LEVEL
+              value: "5"
+            - name: OT_REST_LISTEN_ADDR
+              value: "0.0.0.0"
+            - name: OT_REST_LISTEN_PORT
+              value: "8081"
+            # NAT64 off: with it on, otbr-agent re-appends its masquerade and
+            # forward rules every ~38s and never removes the previous set. By
+            # 2026-08-25 that was 14,816 copies of one POSTROUTING rule and
+            # 14,364 each of two FORWARD rules -- 58k of the node's 61k total.
+            #
+            # Every packet walks those chains in softirq, so one core sat at 97%
+            # soft while the other eleven idled, and the node's throughput fell
+            # from 230 Mbit to about 20. It degraded continuously from the day
+            # this pod started (2026-08-23 15:31) because the count only grows.
+            #
+            # NAT64 exists so Thread devices can reach IPv4 hosts. This LAN has
+            # no working IPv6 to begin with (curl -6 fails outright), and Matter
+            # devices talk to Home Assistant on-link, so nothing here used it.
+            - name: NAT64
+              value: "0"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: dev-ttyacm0
+              mountPath: /dev/ttyACM0
+            - name: dev-net-tun
+              mountPath: /dev/net/tun
+            - name: dbus
+              mountPath: /var/run/dbus
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: otbr-data
+        - name: dev-ttyacm0
+          hostPath:
+            path: /dev/serial/by-id/usb-Nabu_Casa_ZBT-2_DCB4D90D5D04-if00
+            type: CharDevice
+        - name: dev-net-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+        - name: dbus
+          hostPath:
+            path: /var/run/dbus
+            type: Directory

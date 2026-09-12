@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sure-env
+  namespace: sure
+data:
+  SELF_HOSTED: "true"
+  RAILS_FORCE_SSL: "false"
+  RAILS_ASSUME_SSL: "true"
+  DB_HOST: sure-db
+  DB_PORT: "5432"
+  POSTGRES_USER: sure_user
+  POSTGRES_DB: sure_production
+  REDIS_URL: redis://sure-redis:6379/1

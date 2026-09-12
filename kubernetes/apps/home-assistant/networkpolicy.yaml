@@ -1,0 +1,43 @@
+---
+# Read this before assuming the namespace is now protected: IT IS NOT, YET.
+#
+# All three pods here — home-assistant-0, matter-server and otbr — run with
+# hostNetwork: true, and NetworkPolicy does not apply to hostNetwork pods. They
+# share the node's network namespace, so their traffic never crosses the CNI
+# where these rules are enforced. Verified on the live cluster:
+#
+#   home-assistant-0              hostNetwork=true
+#   matter-server-...             hostNetwork=true
+#   otbr-...                      hostNetwork=true
+#
+# So this policy governs nothing today. It is here because the namespace is the
+# most privileged one in the cluster (hostNetwork, SYS_ADMIN, a hostPath to the
+# Thread radio), and the moment any pod is added here that does *not* need the
+# host network, it should be closed by default rather than open by default.
+#
+# Actually protecting the current three is a different job: it needs host-level
+# firewalling, not NetworkPolicy. Not attempted here.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: home-assistant
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-traefik
+  namespace: home-assistant
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik

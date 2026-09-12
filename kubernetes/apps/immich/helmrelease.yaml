@@ -1,0 +1,167 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: immich
+  namespace: immich
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: immich
+      version: "0.12.0"
+      sourceRef:
+        kind: HelmRepository
+        name: immich
+        namespace: immich
+      interval: 12h
+  install:
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+
+  values:
+    controllers:
+      main:
+        containers:
+          main:
+            # Chart-wide image tag: `server` and `machine-learning` each supply
+            # their own `repository` and inherit this. There is deliberately no
+            # `repository` key here, so Renovate's helm-values manager has no
+            # depName to resolve and cannot track it — hence the annotation and
+            # the matching customManager in renovate.json.
+            #
+            # github-releases rather than docker, because the docker datasource
+            # cannot see this image's newer tags at all. Immich publishes a tag
+            # per commit: the registry lists 28,919 of them, with v2.5.6 at
+            # #18,481, v3.0.0 at #26,230 and v3.1.0 at #27,532. Renovate stops
+            # paging well before that, so the newest tag it finds is older than
+            # the one already pinned here and it reports no update -- with no
+            # warning, because from its side nothing failed. That is why the
+            # image sat on v3.0.0 while v3.1.0 shipped 2026-07-29.
+            #
+            # The GitHub releases list is short and ordered, and immich's
+            # release tags are exactly the image tags, so the value Renovate
+            # writes here stays correct.
+            image:
+              # renovate: datasource=github-releases depName=immich-app/immich
+              tag: v3.1.0
+            env:
+              TZ: Europe/Berlin
+              DB_HOSTNAME: immich-postgresql-rw
+              DB_DATABASE_NAME: immich
+              DB_USERNAME: immich
+              DB_PORT: "5432"
+              REDIS_HOSTNAME: immich-valkey
+            envFrom:
+              - secretRef:
+                  name: immich-credentials
+
+    immich:
+      persistence:
+        library:
+          existingClaim: immich-library-pvc
+
+    # Everything below was addressed to a chart that is not this one.
+    #
+    # immich 0.11.x is built on bjw-s common, where every component is an
+    # app-template instance: containers live at
+    # <component>.controllers.main.containers.main, and volumes at
+    # <component>.persistence.<name>. The values here were written in bitnami
+    # dialect (`master.persistence`, `auth.existingSecret`) and in a flat
+    # `resources:` that no app-template chart reads. Helm does not reject
+    # unknown keys, so all of it rendered to nothing and looked applied:
+    #
+    #   $ kubectl get deploy -n immich -o custom-columns=...
+    #   immich-machine-learning   <none>   <none>
+    #   immich-server             <none>   <none>
+    #   immich-valkey             <none>   <none>
+    #
+    # Three consequences, all live until this commit:
+    #   - all three Deployments were BestEffort, so the kubelet evicted them
+    #     first under memory pressure. immich-server is the second largest
+    #     consumer on this node.
+    #   - `valkey.master.persistence` did nothing, so valkey's queue ran on an
+    #     emptyDir and every restart dropped the job queue.
+    #   - `machine-learning.persistence.cache` set size and storageClass but not
+    #     `type`, and the chart default is emptyDir — so the ML models were
+    #     re-downloaded on every restart, silently, forever.
+    #
+    # NOT fixed here, because it needs checking against a live valkey rather
+    # than guessing: the `auth:` block was equally inert, so valkey has no
+    # password set while the server still gets REDIS_PASSWORD from
+    # immich-credentials. It works today, which suggests the server is not
+    # actually sending AUTH. Worth confirming before assuming valkey is closed.
+    valkey:
+      enabled: true
+      controllers:
+        main:
+          containers:
+            main:
+              resources:
+                requests:
+                  memory: "64Mi"
+                  cpu: "25m"
+      persistence:
+        data:
+          enabled: true
+          type: persistentVolumeClaim
+          storageClass: local-ssd
+          size: 1Gi
+          accessMode: ReadWriteOnce
+
+    server:
+      controllers:
+        main:
+          containers:
+            main:
+              # 7d working set: 1.1Gi average, 2.1Gi peak. Request tracks the
+              # average so eviction ranking is honest; no memory limit, because
+              # a photo import is exactly the bounded-by-the-node workload that
+              # a ceiling turns into a failure instead of a slow request.
+              resources:
+                requests:
+                  memory: "1Gi"
+                  cpu: "250m"
+
+    machine-learning:
+      enabled: true
+      controllers:
+        main:
+          # The model cache is a download, not data. Keep it out of B2.
+          #
+          # `podAnnotations` was the fourth inert key in this file — app-template
+          # reads pod annotations from controllers.<name>.pod.annotations. It had
+          # also been naming a volume ("model-cache") that does not exist; the
+          # volume is "cache". Both wrong, so re-downloadable model weights were
+          # being uploaded to B2 on every weekly run.
+          pod:
+            annotations:
+              backup.velero.io/backup-volumes-excludes: "cache"
+          containers:
+            main:
+              # The one place a memory limit is worth keeping: model loading is
+              # driven by whatever a user uploads, and an unbounded ML container
+              # can take the node with it.
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "4Gi"
+      persistence:
+        cache:
+          enabled: true
+          # `type` is the entire point — without it this is an emptyDir and the
+          # storageClass and size below are decoration.
+          type: persistentVolumeClaim
+          storageClass: local-ssd
+          size: 10Gi
+          accessMode: ReadWriteOnce
+
+    ingress:
+      main:
+        enabled: false

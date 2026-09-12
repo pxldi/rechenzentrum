@@ -1,0 +1,33 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: media
+  labels:
+    # privileged, and deliberately parked here rather than fixed.
+    #
+    # jellyfin was half of the reason until #927 moved it onto the /dev/dri
+    # device plugin; it is fully baseline-clean now. The sole remaining
+    # violation is slskd's gluetun sidecar, which adds NET_ADMIN to bring up a
+    # WireGuard tunnel. That is not optional for gluetun and PSA has no
+    # per-pod granularity, so the only real fix is moving slskd to its own
+    # namespace.
+    #
+    # Which is blocked on storage, not effort. slskd mounts downloads-pvc
+    # (shared with radarr, sonarr, sabnzbd and cantus) and cantus-music-pvc
+    # (shared with cantus and navidrome). PVCs are namespaced, so a split needs
+    # hand-written PVs in the new namespace pointing at the same
+    # /mnt/hdd2/openebs/... and /mnt/hdd1/openebs/... directories. Both current
+    # PVs are reclaimPolicy Delete; a mirrored claim that inherited that would
+    # take the 4Ti library with it when deleted, and nothing in pvcs.yaml would
+    # hint that a second claim on those directories exists at all. Not worth it
+    # for one label.
+    #
+    # `audit: baseline` below is the mitigation that is actually in place:
+    # every violation is recorded, so a *new* privileged workload appearing
+    # here is visible in the audit log rather than silently permitted.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/audit-version: latest
+    name: media

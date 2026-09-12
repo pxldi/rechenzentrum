@@ -1,0 +1,51 @@
+---
+# Where this cluster's base backups and WAL segments land.
+#
+# Its own bucket, NOT velero's. Sharing velero's bucket broke velero outright:
+# it validates that the bucket contains only top-level directories it owns, so
+# a `cnpg/` directory alongside `backups/` and `kopia/` made the
+# BackupStorageLocation Unavailable and every velero schedule stopped. That is
+# not a quirk to work around -- separate buckets is the correct shape, and it
+# is also what lets Object Lock be applied here without breaking kopia's
+# maintenance over there.
+#
+# Two clusters sharing a destinationPath would interleave their WAL and corrupt
+# both, so the path still carries the namespace.
+#
+# serverName is deliberately absent here: the plugin's webhook rejects it on
+# the ObjectStore and requires it as a plugin parameter on the Cluster, which
+# is the right place for it — one store can serve several servers.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: n8n-postgresql-backup
+  namespace: n8n
+spec:
+  # 30 days, matching velero's daily-critical-backup TTL. WAL is archived
+  # continuously, so this is also the PITR window: any point in the last 30
+  # days, not just the nightly marks.
+  retentionPolicy: "30d"
+  configuration:
+    destinationPath: s3://rechenzentrum-cnpg/n8n/n8n-postgresql
+    endpointURL: https://s3.eu-central-003.backblazeb2.com
+    s3Credentials:
+      accessKeyId:
+        name: cnpg-b2-credentials
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: cnpg-b2-credentials
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+      maxParallel: 2
+    data:
+      compression: gzip
+  instanceSidecarConfiguration:
+    # The sidecar runs inside the Postgres pod and does the uploading. Requests
+    # only — same reasoning as the Postgres container it rides along with: a CPU
+    # limit here turns a slow B2 upload into a stalled archiver, and a stalled
+    # archiver makes Postgres retain WAL on the PVC until the disk fills.
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "10m"

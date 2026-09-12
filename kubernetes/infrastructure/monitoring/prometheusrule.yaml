@@ -1,0 +1,147 @@
+---
+# Alerts for the two failure shapes that went unnoticed this week: a saturated
+# resource that aggregate metrics hide, and an exporter that stops reporting.
+#
+# Both incidents were found by hand, days late, and neither was visible to any
+# existing rule.
+#
+# 1. THE OTBR IPTABLES LEAK (fixed in #997). NAT64 appended four rules per
+#    restart without cleanup until the node held 61,162 of them. Netfilter
+#    evaluates rules per packet in softirq, and a single TCP flow hashes to one
+#    RX queue on one core, so one core saturated while the other eleven idled.
+#    Node throughput fell from 230 Mbit/s to roughly 7. Measured over 24-25 Aug:
+#
+#      max(rate(node_cpu_seconds_total{mode="softirq"}[5m]))  ->  0.988
+#      p95 across all twelve cores                            ->  0.003
+#
+#    Aggregate CPU never looked alarming, because 98% of one core out of twelve
+#    is 8% of the machine. Nothing alerts on that. Per-core does.
+#
+# 2. THE SPEEDTEST EXPORTER. It was scraped and healthy the whole time, but its
+#    samples were invisible to instant queries: the target is scraped every 15m
+#    (a real speed test runs per scrape) while PromQL looks back only 5m, so two
+#    thirds of instant queries return nothing. This is a query artifact, not an
+#    outage -- but the same 5m/15m mismatch means a naive `absent(up{...})` rule
+#    would fire against a perfectly healthy exporter roughly two thirds of the
+#    time. Every rule here that asks "is this still reporting?" is written with
+#    a window wider than the slowest scrape interval, for that reason.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: saturation-and-coverage
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: kube-prometheus-stack
+spec:
+  groups:
+    - name: node.saturation
+      rules:
+        # Threshold and duration are both taken from measured data rather than
+        # picked round. 0.5 sits between the 0.003 p95 and the 0.988 incident
+        # peak with two orders of magnitude of headroom on either side.
+        #
+        # `for: 15m` is load-bearing. Backtesting this expression over 24-26 Aug
+        # returns a dozen single-sample excursions above 0.5 alongside the real
+        # episodes (20 min and 140 min). Without the guard this pages on noise;
+        # with it, only the sustained ones survive. Since #997 it has not fired.
+        - alert: NodeSoftirqCorePinned
+          expr: |
+            max by (cpu) (
+              rate(node_cpu_seconds_total{mode="softirq"}[5m])
+            ) > 0.5
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "core {{ $labels.cpu }} is spending over half its time in softirq"
+            description: >-
+              Currently {{ $value | humanizePercentage }} of one core, sustained
+              for 15m. Aggregate CPU will look fine — on a twelve-core node a
+              fully pinned core is 8% of the machine. A single flow lands on a
+              single RX queue, so this caps throughput for everything on that
+              queue regardless of how idle the rest of the node is.
+              Usual cause is per-packet work that grew without anyone noticing:
+              check `iptables-save | grep -c '^-A'` against a known-good count
+              (roughly 2,800 for this cluster), then `mpstat -P ALL 1` to see
+              which core and `perf top` for where it is going.
+
+    - name: monitoring.coverage
+      rules:
+        # A target Prometheus is still trying to scrape, and failing.
+        - alert: ScrapeTargetDown
+          expr: up == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.job }} target {{ $labels.instance }} is down"
+            description: >-
+              Prometheus has failed to scrape this target for 15m. Whatever it
+              measures is now unmonitored, so treat any silence from rules that
+              depend on it as absence of data rather than absence of a problem.
+
+        # A target that stopped being scraped at all — ServiceMonitor deleted,
+        # selector stopped matching, namespace removed. `up == 0` cannot catch
+        # this: when a target is dropped from discovery its `up` series simply
+        # ends, and a rule that never evaluates never fires. Velero was in this
+        # state for weeks (metrics.enabled true, serviceMonitor.enabled false)
+        # and it took a hand audit to notice.
+        #
+        # The 6h/30m windows are deliberate: 30m is wider than the slowest
+        # scrape interval in the cluster (speedtest at 15m) so a healthy slow
+        # target is never mistaken for a dead one, and 6h is long enough that a
+        # job has to have been genuinely present recently to qualify.
+        #
+        # This self-clears 6h after a job is intentionally removed. That is the
+        # intended behaviour, not a bug — a deliberate removal should be visible
+        # for one working session and then go quiet.
+        - alert: ScrapeJobDisappeared
+          expr: |
+            count by (job) (count_over_time(up[6h]))
+              unless
+            count by (job) (last_over_time(up[30m]))
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "job {{ $labels.job }} stopped being scraped entirely"
+            description: >-
+              This job reported within the last 6h and has produced nothing for
+              30m, which means it is no longer in Prometheus's discovery rather
+              than merely failing. Check the ServiceMonitor still exists and its
+              selector still matches: `kubectl get servicemonitor -A`, then the
+              Targets page. If the removal was intentional this clears itself 6h
+              after the last sample.
+
+    - name: network.throughput
+      rules:
+        # The exporter runs a real speed test per scrape, so this is measured
+        # WAN capacity rather than a proxy for it. Normal range over the last
+        # 24h is 180-234 Mbit/s; during the OTBR leak on 26 Aug it read exactly
+        # 0.0 for two consecutive tests. Backtested, this fires 16:11-17:01,
+        # which is the incident window.
+        #
+        # last_over_time is required, not stylistic: with a 15m scrape and a 5m
+        # lookback, a bare `speedtest_download_bits_per_second < x` comparison
+        # evaluates against no data two thirds of the time and the alert would
+        # flap on its own scrape cadence.
+        #
+        # max() collapses stale series from previous exporter pods, which linger
+        # in the TSDB after a rollout and would otherwise read as a dead link.
+        - alert: WanThroughputCollapsed
+          expr: |
+            max(
+              last_over_time(speedtest_download_bits_per_second[45m])
+            ) < 50e6
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "WAN download has collapsed to {{ $value | humanize }}bit/s"
+            description: >-
+              Sustained below 50 Mbit/s for 30m against a normal floor of about
+              180. This measures the node's path to the internet, so it catches
+              causes the ISP is not responsible for — per-packet CPU saturation,
+              a duplex mismatch, a wedged router — as readily as a real outage.
+              Cross-check NodeSoftirqCorePinned first: if both are firing the
+              cause is inside the node, not upstream of it.

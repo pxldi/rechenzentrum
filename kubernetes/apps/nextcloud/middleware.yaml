@@ -1,0 +1,43 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: nextcloud-headers
+  namespace: nextcloud
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+---
+# Apache's mod_deflate appends a "-gzip" suffix to ETags on gzip-compressed
+# responses. DAVx5 caches that mangled ETag and sends it back in If-Match on
+# upload; SabreDAV compares it to the real (unsuffixed) ETag and rejects the
+# write with 412 Precondition Failed. The result is one-way sync: reads work,
+# writes never land. Forcing identity encoding on the DAV path makes Apache
+# skip compression, so the ETag stays clean and If-Match matches. DAV payloads
+# (vCard/iCal) are tiny, so losing compression here costs nothing; the web UI
+# keeps compression via the catch-all route.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: nextcloud-dav-no-compress
+  namespace: nextcloud
+spec:
+  headers:
+    customRequestHeaders:
+      Accept-Encoding: "identity"
+---
+# Nextcloud's Apache emits the .well-known CalDAV/CardDAV discovery redirect
+# using the scheme it sees on the wire (plain http, since Traefik terminates
+# TLS), so DAVx5 refuses the https->http downgrade during account setup. Handle
+# the redirect at Traefik instead, where https is authoritative.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: nextcloud-wellknown-dav
+  namespace: nextcloud
+spec:
+  redirectRegex:
+    regex: "^https?://cloud\\.pxldi\\.de/\\.well-known/(carddav|caldav)/?$"
+    replacement: "https://cloud.pxldi.de/remote.php/dav/"
+    permanent: true

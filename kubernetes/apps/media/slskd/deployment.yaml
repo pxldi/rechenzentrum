@@ -1,0 +1,214 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slskd
+  namespace: media
+  labels:
+    app: slskd
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: slskd
+  template:
+    metadata:
+      labels:
+        app: slskd
+      annotations:
+        backup.velero.io/backup-volumes-excludes: "downloads,music"
+    spec:
+      securityContext:
+        fsGroup: 568
+        fsGroupChangePolicy: OnRootMismatch
+      shareProcessNamespace: true
+      # gluetun is a native sidecar (an initContainer with restartPolicy:
+      # Always), not a regular container. As a plain container there was no
+      # ordering guarantee at all: both started together, and slskd could open
+      # connections before the WireGuard tunnel and gluetun's killswitch rules
+      # existed. They share a network namespace, so that window was a direct
+      # leak to the real WAN address on every pod start.
+      #
+      # Kubernetes only guarantees a sidecar has *started* before the next
+      # container runs, which for gluetun would mean "the process is up", not
+      # "the tunnel carries traffic". The startupProbe below is what actually
+      # closes the window — kubelet will not start slskd until it passes.
+      initContainers:
+        - name: gluetun
+          restartPolicy: Always
+          image: qmcgaw/gluetun:v3.41.3
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          env:
+            - name: VPN_SERVICE_PROVIDER
+              value: "protonvpn"
+            - name: VPN_TYPE
+              value: "wireguard"
+            - name: FIREWALL_INPUT_PORTS
+              value: "5030"
+            - name: FIREWALL_OUTBOUND_SUBNETS
+              value: "192.168.0.0/16,10.0.0.0/8"
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: WIREGUARD_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: protonvpn-secret
+                  key: WIREGUARD_PRIVATE_KEY
+            - name: WIREGUARD_ADDRESSES
+              valueFrom:
+                secretKeyRef:
+                  name: protonvpn-secret
+                  key: WIREGUARD_ADDRESSES
+            # Empty SERVER_HOSTNAMES was no filter at all: gluetun picked at
+            # random from 20957 servers and the exit moved country on every
+            # reconnect. Soulseek reads that as connecting and disconnecting
+            # from changing addresses and bans the account. A country is not a
+            # secret, so it is stated here where it can be read.
+            - name: SERVER_COUNTRIES
+              value: "Germany"
+            # 38 of the 46 German servers are in Frankfurt — narrow enough that
+            # the exit stays put, wide enough that one server going down is not
+            # an outage.
+            - name: SERVER_CITIES
+              value: "Frankfurt"
+            # WireGuard sends nothing when idle, so the NAT mapping expires and
+            # the tunnel dies without either end noticing. ProtonVPN's own
+            # configs carry PersistentKeepalive = 25; gluetun defaults it off.
+            - name: WIREGUARD_PERSISTENT_KEEPALIVE_INTERVAL
+              value: "25s"
+          ports:
+            - containerPort: 8888
+              name: http-proxy
+          # This gates slskd's start, so it has to mean "the tunnel is up" and
+          # nothing weaker. An httpGet would not: /v1/vpn/status answers 200
+          # whether the status is running or stopped, so kubelet would read a
+          # dead tunnel as a pass. Hence grepping the body.
+          #
+          # /v1/openvpn/status is the wrong endpoint here and reports "stopped"
+          # forever — this is a WireGuard tunnel. Verified both directions
+          # against the running pod: passes on {"status":"running"}, fails on
+          # {"status":"stopped"}.
+          #
+          # 36 x 5s gives ProtonVPN about three minutes to connect. If it never
+          # does, kubelet restarts gluetun and the pod sits at Init:0/1 rather
+          # than starting slskd. That is the intended behaviour and the whole
+          # point: a VPN outage now fails closed and visibly, instead of quietly
+          # letting slskd out over the real address.
+          #
+          # NOTE gluetun began tightening control-server auth in v3.40. This
+          # probe works unauthenticated on v3.41.3, but if a Renovate bump ever
+          # enforces auth on /v1/vpn/status the probe fails and slskd stops
+          # starting after the next restart — a delayed break, so check here
+          # first if slskd is ever stuck in Init after a gluetun upgrade.
+          startupProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - wget -qO- http://127.0.0.1:8000/v1/vpn/status | grep -q '"status":"running"'
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 36
+          # No livenessProbe on purpose: gluetun reconnects itself and its
+          # killswitch fails closed on a runtime drop, so liveness would only
+          # restart-loop it through provider outages.
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+
+      containers:
+        - name: slskd
+          image: slskd/slskd:0.26.0
+          securityContext:
+            runAsUser: 568
+            runAsGroup: 568
+          env:
+            - name: SLSKD_HTTP_PORT
+              value: "5030"
+            - name: SLSKD_HTTPS_PORT
+              value: "5031"
+            - name: SLSKD_SLSK_LISTEN_PORT
+              value: "50300"
+            - name: SLSKD_NO_AUTH
+              value: "true"
+            - name: SLSKD_UMASK
+              value: "002"
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: SLSKD_SLSK_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: soulseek-secret
+                  key: SLSKD_SLSK_USERNAME
+            - name: SLSKD_SLSK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: soulseek-secret
+                  key: SLSKD_SLSK_PASSWORD
+            - name: SLSKD_REMOTE_CONFIGURATION
+              value: "true"
+            - name: SLSKD_SLSK_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: soulseek-secret
+                  key: SLSKD_SLSK_API_KEY
+                  optional: true
+          ports:
+            - containerPort: 5030
+              name: http
+              protocol: TCP
+            - containerPort: 50300
+              name: soulseek
+              protocol: TCP
+          # Verified 200 against the running pod. This reports slskd's own web
+          # API, not the Soulseek connection or gluetun's tunnel — a pod that
+          # is Ready here can still be offline to the network. Readiness is
+          # about whether the container serves, and that is what this answers.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+          resources:
+            requests:
+              memory: "896Mi"
+              cpu: "200m"
+          volumeMounts:
+            - name: config
+              mountPath: /app
+            - name: downloads
+              mountPath: /downloads
+            # The share, kept at /music so slskd.yml still names it. Read-only
+            # because Cantus is the only writer of this tree, and a share is
+            # something peers take from rather than put into.
+            - name: music
+              mountPath: /music
+              readOnly: true
+            - name: slskd-configmap
+              mountPath: /app/slskd.yml
+              subPath: slskd.yml
+
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: slskd-config-pvc
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: downloads-pvc
+        - name: music
+          persistentVolumeClaim:
+            claimName: cantus-music-pvc
+        - name: slskd-configmap
+          secret:
+            secretName: slskd-config
+            items:
+              - key: slskd.yml
+                path: slskd.yml

@@ -1,0 +1,70 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: immich-postgresql
+  namespace: immich
+spec:
+  # barman already backs this database up to rechenzentrum-cnpg, base plus WAL
+  # (see objectstore.yaml). Velero's filesystem backup was copying pgdata and
+  # pg-wal into rechenzentrum-backups on top of that -- a crash-consistent
+  # duplicate that is not a reliable restore path, and 4.7 GiB per weekly run
+  # across all clusters. The emptyDirs are pure scratch; they go too.
+  #
+  # The annotation this replaces sat on the Cluster and read "true". Velero
+  # reads backup-volumes on the *pod*, and wants a volume list, so it never did
+  # anything. inheritedMetadata is what actually reaches the pods.
+  inheritedMetadata:
+    annotations:
+      backup.velero.io/backup-volumes-excludes: pgdata,pg-wal,shm,scratch-data,plugins
+  # Backups. Without this the cluster has no archive at all — see
+  # objectstore.yaml for where it writes and how long it keeps it.
+  #
+  # isWALArchiver: exactly one plugin may own archive_command. This is the only
+  # plugin here, so it is the one.
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: immich-postgresql-backup
+        # Pinned rather than defaulted. On a restore you point a new Cluster
+        # at this same store with recovery serverName set to this value, while
+        # the new cluster archives under a different one — leaving them equal
+        # has the recovered cluster overwrite the history it restored from.
+        serverName: immich-postgresql
+
+  instances: 2
+  imageName: ghcr.io/tensorchord/cloudnative-pgvecto.rs:16-v0.3.0
+
+  postgresql:
+    shared_preload_libraries:
+      - vectors.so
+
+  bootstrap:
+    initdb:
+      database: immich
+      owner: immich
+      secret:
+        name: immich-credentials
+      postInitSQL:
+        - CREATE EXTENSION IF NOT EXISTS vectors;
+        - CREATE EXTENSION IF NOT EXISTS earthdistance CASCADE;
+
+  # Every CNPG cluster in this repo was BestEffort — no requests at all — which
+  # put all six databases at the front of the kubelet's eviction queue, ahead of
+  # every stateless web frontend that did declare something. 444Mi peak over 7d, two instances
+  #
+  # Requests only. A memory limit on Postgres converts a spike into an OOM kill
+  # in the middle of a transaction; an honest request instead makes a runaway
+  # the most-over-request pod on the node, which is what eviction ranks on.
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "100m"
+  storage:
+    storageClass: local-ssd
+    size: 200Gi
+
+  walStorage:
+    storageClass: local-ssd
+    size: 50Gi

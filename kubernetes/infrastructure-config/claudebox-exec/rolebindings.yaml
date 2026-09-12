@@ -1,0 +1,103 @@
+---
+# The namespace-scoped exec binding for claudebox.
+#
+# It lives outside kubernetes/apps/claudebox/ because that kustomization pins
+# `namespace: claudebox`, which would rewrite this binding into that namespace
+# and silently collapse it.
+#
+# The ClusterRole it references (agent-exec) is defined in
+# kubernetes/apps/claudebox/rbac.yaml and is deliberately never bound
+# cluster-wide. This file IS the exec boundary for claudebox.
+#
+# ONE namespace. claudebox is a development box, and the only thing it builds
+# and deploys is cantus, so `media` is the only namespace where `kubectl logs
+# -f` and `kubectl exec` are part of the loop it is actually running.
+#
+# Do not widen this list. Sessions on this pod run in bypassPermissions — no
+# human confirms the exec before it happens — so the exclusions that applied to
+# openclaw apply here with more force. home-assistant (otbr: privileged +
+# hostNetwork + SYS_ADMIN) and gethomepage (hostPath) are one-step escapes to
+# root on the node, and authentik, backup, velero, cnpg, networking,
+# flux-system and kube-system hold the credentials a compromised agent would
+# want most.
+---
+# Exec into a pod inherits that pod's mounted secrets and ServiceAccount token.
+#
+# CAVEAT, restated because it has not changed: `media` is not a single-app
+# namespace. It holds cantus, but also jellyfin, sonarr, radarr, prowlarr,
+# sabnzbd, slskd, navidrome and seerr — and jellyfin runs privileged with a
+# hostPath at /dev/dri. This binding therefore grants exec into a privileged
+# pod, which is a route to root on the node.
+#
+# It is accepted here, as it was in #890, because RBAC cannot scope exec to one
+# pod within a namespace: the resource is `pods/exec` and the only boundary
+# Kubernetes offers is the namespace itself. The alternatives are to move cantus
+# to its own namespace (correct, larger, and not this change) or to give
+# claudebox no exec at all and keep debugging cantus from a laptop.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: claudebox-exec
+  namespace: media
+  labels:
+    app.kubernetes.io/name: claudebox
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: agent-exec
+subjects:
+  - kind: ServiceAccount
+    name: claudebox
+    namespace: claudebox
+---
+# The one write grant claudebox has anywhere: restart a cantus rollout.
+#
+# The loop this pod runs is "merge to cantus main, an image lands, restart the
+# deployment so it pulls it" — cantus pins `:main` with imagePullPolicy Always
+# and nothing else triggers the pull. Without this the session watches the
+# merge go green and then has to ask a human to run one command. `kubectl
+# rollout restart` is a patch on the Deployment (it stamps a restartedAt
+# annotation into the pod template), so `patch` on deployments is the whole of
+# what it needs. `delete` on pods is the other spelling of the same intent, for
+# a pod that is wedged rather than stale.
+#
+# Same namespace caveat as the exec binding above, and it bites harder here:
+# `patch` on a Deployment is not limited to the annotation. It can change the
+# image, the command, or the securityContext of any Deployment in `media`,
+# jellyfin's included, which is another route to a privileged pod. It is not a
+# *new* class of escape, since exec into jellyfin already is one, and both are
+# the price of cantus sharing a namespace with it. Moving cantus out is still
+# the right fix and still not this change.
+#
+# A Role, not a ClusterRole: there is no second namespace this should ever be
+# bound in, so there is nothing to share.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: claudebox-operate
+  namespace: media
+  labels:
+    app.kubernetes.io/name: claudebox
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["patch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: claudebox-operate
+  namespace: media
+  labels:
+    app.kubernetes.io/name: claudebox
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: claudebox-operate
+subjects:
+  - kind: ServiceAccount
+    name: claudebox
+    namespace: claudebox

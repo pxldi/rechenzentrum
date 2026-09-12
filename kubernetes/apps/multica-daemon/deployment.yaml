@@ -1,0 +1,254 @@
+---
+# Multica agent daemon — the *runtime* half of code.pxldi.de. The server in
+# the `multica` namespace stores issues and assigns work; this pod is the
+# machine that actually executes it. It detects the agent CLIs on PATH,
+# registers one runtime per CLI with the server, polls for claimed tasks, and
+# spawns the CLI in a per-task workspace. One pod covers every agent — the
+# daemon runs up to MULTICA_DAEMON_MAX_CONCURRENT_TASKS (default 20) at once.
+#
+# Upstream publishes no daemon image (the docker/ dir is server-only and the
+# CLI is expected to run natively on a developer machine), so we build one:
+# images/multica-daemon/ in this repo, a node base plus the toolchain an agent
+# is expected to find — Go, PostgreSQL 17, Playwright's Chromium, the
+# kubernetes and registry CLIs. That used to be half /toolbin and half whatever
+# a previous agent had installed into /data/.local on the PVC, which meant a
+# fresh volume produced a daemon that silently could not build a Go project or
+# run a browser test.
+#
+# /toolbin survives for the three things that change weekly and are pinned here
+# rather than in the image: the multica CLI and the two agent CLIs.
+#
+# There are deliberately NO LLM API keys here. Both agents authenticate with a
+# *subscription* login stored under HOME on the PVC, done once by hand:
+#   kubectl exec -it -n multica-daemon deploy/multica-daemon -- claude    (then /login)
+#   kubectl exec -it -n multica-daemon deploy/multica-daemon -- codex login
+# Do NOT set ANTHROPIC_BASE_URL — a base URL overrides the OAuth token's
+# routing and silently breaks subscription auth.
+#
+# Separate namespace from the server on purpose: this pod runs whatever code
+# an agent decides to write, and the `multica` namespace holds the CNPG
+# cluster and the app's Secret. The only hole punched between them is the
+# allow-from-multica-daemon component on the server side.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: multica-daemon
+  namespace: multica-daemon
+  labels:
+    app.kubernetes.io/name: multica-daemon
+spec:
+  revisionHistoryLimit: 3
+  # Parked at 0 — multica is idle and the daemon is the expensive half (it
+  # holds the toolchain image and runs agent workloads). Set back to 1 to
+  # bring the runtimes online; nothing else needs to change, the PVC below
+  # keeps the workspaces and both agent CLI subscription logins.
+  replicas: 0
+  strategy:
+    # Single RWO PVC, and two daemons sharing a workspace root would fight
+    # over the same git worktrees — never run two pods against it at once.
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: multica-daemon
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: multica-daemon
+    spec:
+      priorityClassName: rechenzentrum-bulk
+      # Still false, and the image now containing kubectl, helm and flux does
+      # not change that. They are binaries, not access: with no token mounted
+      # they have nothing to authenticate with and no API server to reach. Any
+      # decision to give this pod cluster access is a separate change with a
+      # separate argument.
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        # Take ownership of the PVC root as uid 1000. A dynamically
+        # provisioned volume's top-level dir is created root-owned; fsGroup
+        # only sets the group, not the owner, and the runtime drops ALL
+        # capabilities so it cannot chown/chmod it itself. HOME must be
+        # writable — the CLIs enforce 0700 on their own state dirs.
+        - name: fix-perms
+          image: busybox:1.38
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              mkdir -p /data/workspaces
+              chown 1000:1000 /data /data/workspaces
+              echo "chowned PVC roots to 1000:1000"
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+          volumeMounts:
+            - name: data
+              mountPath: /data
+        # Fetch the daemon and the agent CLIs into a shared emptyDir. These
+        # land on the tmpfs-free emptyDir rather than the PVC so an upgrade is
+        # just a pod restart — nothing stale survives a version bump.
+        #
+        # Versions are plain env values, like openclaw's install-tools: the
+        # Kubernetes Renovate manager only reads `image:` fields, so these
+        # three are bumped by hand. Check for updates with:
+        #   npm view @anthropic-ai/claude-code version
+        #   npm view @openai/codex version
+        #   gh release view --repo multica-ai/multica
+        # MULTICA_VERSION should track the chart version in
+        # ../multica/helmrelease.yaml — the daemon and server speak a
+        # versioned protocol and upstream ships them as one release.
+        #
+        # `gh` used to be fetched here and is now in the image. It moved because
+        # it is not on this list's clock: it is a general tool the agent uses,
+        # not half of a versioned protocol, and it belongs with the rest of the
+        # toolchain where a checksum is checked at build time.
+        #
+        # Same image as the runtime container, so the pod pulls one image rather
+        # than two and this step already has the node and curl it needs.
+        - name: install-tools
+          image: ghcr.io/pxldi/multica-daemon:sha-2c614fd0cfeb6af74d9be6a9fcf770f7de899629
+          command:
+            - bash
+            - -c
+            - |
+              set -euo pipefail
+              cd /toolbin
+              echo "downloading multica ${MULTICA_VERSION}..."
+              curl -fsSL -o multica.tar.gz \
+                "https://github.com/multica-ai/multica/releases/download/v${MULTICA_VERSION}/multica-cli-${MULTICA_VERSION}-linux-amd64.tar.gz"
+              tar -xzf multica.tar.gz multica
+              rm -f multica.tar.gz
+              chmod +x multica
+              echo "installing agent CLIs..."
+              npm install -g --prefix /toolbin/npm \
+                "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
+                "@openai/codex@${CODEX_VERSION}"
+              echo "tools ready:" && ls -l /toolbin /toolbin/npm/bin
+          env:
+            - name: MULTICA_VERSION
+              value: "0.4.21"
+            - name: CLAUDE_CODE_VERSION
+              value: "2.1.224"
+            - name: CODEX_VERSION
+              value: "0.147.0"
+            # npm's default cache is $HOME/.npm and HOME is / for uid 0 here.
+            - name: npm_config_cache
+              value: /tmp/npm-cache
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+          volumeMounts:
+            - name: toolbin
+              mountPath: /toolbin
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: multica-daemon
+          image: ghcr.io/pxldi/multica-daemon:sha-2c614fd0cfeb6af74d9be6a9fcf770f7de899629
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "/entrypoint/entrypoint.sh"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: HOME
+              value: /data
+            # /toolbin first for the three CLIs the init container fetches, then
+            # /data/go/bin so anything an agent `go install`s during a task is
+            # reachable in the same task, then the system default.
+            #
+            # Nothing the image bakes depends on this value. Every baked tool is
+            # in /usr/local/bin or /usr/bin, which are on the default PATH of any
+            # process that starts in this image — including a runtime that
+            # ignores what is set here. That is the point of baking them: the
+            # Codex runtime started without /toolbin on PATH and cost two review
+            # runs before anyone found out why.
+            - name: PATH
+              value: /toolbin:/toolbin/npm/bin:/data/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+            # Straight to the backend Service — the public host would mean a
+            # hairpin back through the router to Traefik for every 3s poll.
+            # The frontend URL stays public because it is only used to build
+            # links a human clicks.
+            - name: MULTICA_API_URL
+              value: http://multica-backend.multica.svc.cluster.local:8080
+            - name: MULTICA_APP_URL
+              value: https://code.pxldi.de
+            - name: MULTICA_WORKSPACES_ROOT
+              value: /data/workspaces
+            # How this runtime is labelled in the Multica UI when you pick
+            # where an agent should run.
+            - name: MULTICA_DAEMON_DEVICE_NAME
+              value: rechenzentrum
+            - name: MULTICA_AGENT_RUNTIME_NAME
+              value: rechenzentrum
+            # The pod has one core-count's worth of CPU, not 20 tasks' worth.
+            - name: MULTICA_DAEMON_MAX_CONCURRENT_TASKS
+              value: "3"
+            # The binary is baked into the image layer by the init container,
+            # so there is nothing for the self-updater to replace and a
+            # successful update would be undone by the next restart anyway.
+            - name: MULTICA_DAEMON_AUTO_RELOAD
+              value: "0"
+            - name: npm_config_cache
+              value: /data/.npm
+            - name: MULTICA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: multica-daemon-secrets
+                  key: MULTICA_TOKEN
+            # Read by `gh` (and therefore by git, via the credential helper
+            # the entrypoint installs) so the daemon can clone private repos.
+            # Empty is a supported state: public repos still work.
+            - name: GH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: multica-daemon-secrets
+                  key: GITHUB_TOKEN
+          resources:
+            requests:
+              # Deliberately small: the node is already at ~81% memory
+              # requests, and this pod is idle between tasks.
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              # The agent CLIs plus whatever the agent builds or tests all run
+              # inside this container.
+              memory: 6Gi
+          # No liveness/readiness probe on purpose. The daemon serves no HTTP,
+          # and `multica daemon status` reads the pidfile written by a
+          # *backgrounded* daemon — against `--foreground` it would report
+          # "not running" and restart a perfectly healthy pod every period.
+          # Liveness here is the process: if it exits, the container exits.
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: toolbin
+              mountPath: /toolbin
+              readOnly: true
+            - name: entrypoint
+              mountPath: /entrypoint
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: multica-daemon-data-pvc
+        - name: toolbin
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: entrypoint
+          configMap:
+            name: multica-daemon-entrypoint
+            defaultMode: 0555

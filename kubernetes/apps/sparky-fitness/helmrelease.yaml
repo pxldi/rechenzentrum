@@ -1,0 +1,73 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: sparkyfitness
+  namespace: sparkyfitness
+spec:
+  interval: 15m
+  chartRef:
+    kind: OCIRepository
+    name: sparkyfitness
+    namespace: sparkyfitness
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+      strategy: rollback
+
+  values:
+    # ---------- App configuration ----------
+    config:
+      logLevel: info
+      timezone: Europe/Berlin
+      frontendUrl: https://fit.pxldi.de
+      disableSignup: true
+      adminEmail: ""
+      forceEmailLogin: true
+
+    # ---------- Server (backend) ----------
+    server:
+      replicas: 1
+      secrets:
+        generate: true
+      resources:
+        requests:
+          cpu: 100m
+      appDatabase:
+        username: sparkyapp
+      persistence:
+        backup:
+          size: 5Gi
+          storageClass: local-ssd
+        uploads:
+          size: 10Gi
+          storageClass: local-ssd
+
+    # ---------- Frontend (nginx) ----------
+    frontend:
+      replicas: 1
+      service:
+        type: ClusterIP
+
+    # ---------- Bundled PostgreSQL ----------
+    postgresql:
+      enabled: true
+      auth:
+        database: sparkyfitness
+        username: sparky
+      persistence:
+        enabled: true
+        size: 8Gi
+        storageClass: local-ssd
+
+    # ---------- Networking ----------
+    networkPolicy:
+      enabled: true
+
+    ingress:
+      enabled: false
+    httpRoute:
+      enabled: false

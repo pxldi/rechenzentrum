@@ -1,0 +1,156 @@
+---
+# Build the Multica daemon's toolchain image.
+#
+# It builds on pull requests too, and pushes from them, which is deliberate.
+# Merging to `main` in this repo changes the live cluster, and a Deployment
+# pinned to a tag that only exists after the merge would leave the pod in
+# ImagePullBackOff for however long the build takes. Building from the branch
+# means the tag the manifest names already exists when a human presses merge.
+#
+# Tags are immutable and named for the commit that produced them. `main` moves
+# and is only ever a convenience for a human running `crane`/`skopeo` by hand —
+# manifests pin the `sha-` tag, per AGENTS.md.
+name: Multica Daemon Image
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "images/multica-daemon/**"
+      - ".github/workflows/multica-daemon-image.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "images/multica-daemon/**"
+      - ".github/workflows/multica-daemon-image.yml"
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/multica-daemon
+  # On a pull_request, `github.sha` is the ephemeral merge commit — a sha that
+  # stops existing the moment the PR merges or the base moves. Tagging with it
+  # produces an image nobody can trace back to a commit, which is worse than an
+  # untagged one because it looks fine. The branch head is the commit that
+  # actually produced the Dockerfile.
+  SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  build:
+    if: vars.ENABLE_IMAGE_PUBLISH == 'true'
+    name: Build and push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Lint the Dockerfile
+        uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: images/multica-daemon/Dockerfile
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: images/multica-daemon
+          platforms: linux/amd64
+          push: true
+          # `main` only moves from main. A pull request that repointed it would
+          # be a branch quietly redefining what "main" means in the registry.
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ env.SHA }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:main', env.IMAGE) || '' }}
+          # The registry cache keeps the Playwright layer — two thirds of the
+          # image and all of the download time — out of every rebuild that only
+          # moves a pin.
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max
+          provenance: false
+
+      # Every tool, its version, and where it came from — asserted in the image
+      # that was just built rather than in a README somebody edited once. A tool
+      # that is installed but unreachable from a PATH nobody customised fails
+      # here, which is the failure that cost two review runs.
+      - name: Verify the toolchain
+        run: |
+          docker run --rm --user 1000:1000 \
+            -v "${PWD}/images/multica-daemon/verify.sh:/verify.sh:ro" \
+            "${IMAGE}:sha-${SHA}" \
+            env -i \
+              PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+              HOME=/tmp \
+              PLAYWRIGHT_BROWSERS_PATH=/usr/local/share/playwright \
+              /bin/sh /verify.sh | tee /tmp/verification.txt
+          if grep -q MISSING /tmp/verification.txt; then
+            echo "::error::a tool is missing from the image"
+            exit 1
+          fi
+
+      - name: Smoke-test the things a version string does not prove
+        run: |
+          docker run --rm --user 1000:1000 -e HOME=/tmp -w /tmp \
+            "${IMAGE}:sha-${SHA}" \
+            bash -euo pipefail -c '
+              export PGDATA=/tmp/pgdata
+              initdb -D "$PGDATA" -A trust -U postgres >/dev/null
+              pg_ctl -D "$PGDATA" -o "-k /tmp -p 55432 -c listen_addresses=" \
+                -l /tmp/pg.log start >/dev/null
+              psql -h /tmp -p 55432 -U postgres -tAc "select 1" >/dev/null
+              pg_ctl -D "$PGDATA" stop >/dev/null
+              echo "postgres: a cluster comes up as uid 1000"
+
+              printf "<h1>baked</h1>" > /tmp/p.html
+              playwright screenshot --browser chromium file:///tmp/p.html /tmp/s.png >/dev/null
+              test -s /tmp/s.png
+              echo "chromium: renders as uid 1000"
+
+              mkdir -p /tmp/g && cd /tmp/g
+              printf "package main\nimport \"C\"\nfunc main() { println(\"ok\") }\n" > main.go
+              go mod init smoke >/dev/null 2>&1
+              CGO_ENABLED=1 go build -o smoke . && ./smoke
+              echo "go: cgo builds"
+            '
+
+      # Both numbers, because they answer different questions and disagree by
+      # more than anyone expects. `docker image inspect` sums the uncompressed
+      # layers — what the image costs on the node's disk. The manifest sums the
+      # compressed blobs — what a pull costs over the wire, and what the
+      # registry stores. Reporting only the first once produced a figure 2.7x
+      # the one a local build showed, with nothing to explain the gap.
+      - name: Report the size
+        run: |
+          base=$(grep -oP '^FROM \K\S+' images/multica-daemon/Dockerfile)
+          docker pull -q "$base" >/dev/null
+
+          uncompressed() { docker image inspect "$1" --format '{{ .Size }}'; }
+          compressed() {
+            docker manifest inspect "$1" \
+              | jq '[.layers[].size] | add'
+          }
+
+          {
+            echo "| | on disk (uncompressed) | over the wire (compressed) |"
+            echo "| --- | --- | --- |"
+            printf '| base | %.2f GB | — |\n' \
+              "$(echo "$(uncompressed "$base") / 1000000000" | bc -l)"
+            printf '| multica-daemon | %.2f GB | %.2f GB |\n' \
+              "$(echo "$(uncompressed "${IMAGE}:sha-${SHA}") / 1000000000" | bc -l)" \
+              "$(echo "$(compressed "${IMAGE}:sha-${SHA}") / 1000000000" | bc -l)"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+          echo
+          echo "layers, largest first:"
+          docker history --format '{{.Size}}\t{{.CreatedBy}}' \
+            "${IMAGE}:sha-${SHA}" | head -20

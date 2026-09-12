@@ -1,0 +1,32 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: claudebox
+# Generated, so the name carries a content hash and the Deployment's volume
+# reference changes whenever server.mjs does: nothing in this cluster reloads a
+# pod on a ConfigMap edit, and a session would otherwise keep running the old
+# server until the next unrelated restart. Same reasoning as karakeep-config.
+#
+# These files are a copy of ~/projects/codex-mcp on the workstation, which is
+# not a git repository. Copying is the cost of keeping this deployable from
+# git alone; a change there has to be copied here by hand.
+configMapGenerator:
+  - name: claudebox-codex-mcp
+    files:
+      - codex-mcp/server.mjs
+      - codex-mcp/monitor.mjs
+      - codex-mcp/package.json
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - pvc.yaml
+  - secret.yaml
+  - entrypoint-configmap.yaml
+  - managed-settings-configmap.yaml
+  - deployment.yaml
+components:
+  # No ingress of any kind: the servers dial out to the Anthropic API and serve
+  # nothing. No allow-from-traefik, no Service, no IngressRoute — same shape as
+  # multica-daemon.
+  - ../../infrastructure-config/networkpolicies/default-deny-ingress
+  - ../../infrastructure-config/networkpolicies/allow-from-monitoring

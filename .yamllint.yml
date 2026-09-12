@@ -1,0 +1,10 @@
+---
+extends: default
+
+ignore: |
+  kubernetes/flux-system/gotk-components.yaml
+
+rules:
+  line-length: disable
+  document-start: disable
+  truthy: disable

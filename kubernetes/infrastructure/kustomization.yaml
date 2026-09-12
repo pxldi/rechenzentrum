@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - device-plugins
+  - storage
+  - sources
+  - networking
+  - authentik
+  - backup
+  - velero-ui
+  - cnpg
+  - cnpg-barman-plugin
+  - monitoring
+  - renovate
+  - branding
+  - image-automation

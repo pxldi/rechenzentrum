@@ -1,0 +1,15 @@
+---
+# Modpack install (~5 GiB) + world data. local-ssd for chunk-load latency;
+# the PV is node-local, which is why the pod is pinned to rechenzentrum.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minecraft-data
+  namespace: minecraft
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 30Gi

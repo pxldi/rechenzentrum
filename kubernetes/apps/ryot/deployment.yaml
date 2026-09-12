@@ -1,0 +1,151 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ryot-postgres
+  namespace: ryot
+  labels:
+    app: ryot-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ryot-postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: ryot-postgres
+      annotations:
+        backup.velero.io/backup-volumes: "data"
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:18-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: POSTGRES_DB
+              value: "ryot"
+            - name: POSTGRES_USER
+              value: "ryot"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ryot-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "ryot", "-d", "ryot"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "ryot", "-d", "ryot"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ryot-postgres-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ryot
+  namespace: ryot
+  labels:
+    app: ryot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ryot
+  # No PVC and no host binding on this one — ryot keeps its state in
+  # ryot-postgres, which stays Recreate because it does hold the volume.
+  # Nothing here needs mutual exclusion, and it already has a readinessProbe,
+  # so a rolling update can hand over without a gap.
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: ryot
+    spec:
+      containers:
+        - name: ryot
+          image: ghcr.io/ignisda/ryot:v10
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: FRONTEND_URL
+              value: "https://ryot.pxldi.de"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ryot-secret
+                  key: POSTGRES_PASSWORD
+            - name: DATABASE_URL
+              value: "postgres://ryot:$(POSTGRES_PASSWORD)@ryot-postgres:5432/ryot"
+            - name: SERVER_ADMIN_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ryot-secret
+                  key: SERVER_ADMIN_ACCESS_TOKEN
+            - name: SERVER_OIDC_CLIENT_ID
+              value: "ZrUM4jgfvdhfFGe1mBLgv6Q7NVrgojGTY4xMvt"
+            - name: SERVER_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ryot-secret
+                  key: OIDC_CLIENT_SECRET
+            - name: SERVER_OIDC_ISSUER_URL
+              value: "https://auth.pxldi.de/application/o/ryot/"
+            - name: MOVIES_AND_SHOWS_TMDB_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ryot-secret
+                  key: TMDB_ACCESS_TOKEN
+            - name: BOOKS_GOOGLE_BOOKS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ryot-secret
+                  key: GOOGLE_BOOKS_API_KEY
+            - name: VIDEO_GAMES_TWITCH_CLIENT_ID
+              value: "dgrgysix9oom9smt6t4ajx5yw1wte5"
+            - name: VIDEO_GAMES_TWITCH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ryot-secret
+                  key: TWITCH_CLIENT_SECRET
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"

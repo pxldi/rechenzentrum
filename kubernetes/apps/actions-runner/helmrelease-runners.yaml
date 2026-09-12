@@ -1,0 +1,99 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: homelab-runners
+  namespace: arc-runners
+spec:
+  interval: 30m
+  # The scale set is an AutoscalingRunnerSet — a CRD the controller chart
+  # installs. Without this the first reconcile races and fails on a missing
+  # resource type.
+  dependsOn:
+    - name: arc-controller
+      namespace: arc-systems
+  chart:
+    spec:
+      chart: gha-runner-scale-set
+      version: "0.14.2"
+      sourceRef:
+        kind: HelmRepository
+        name: actions-runner-controller
+        namespace: flux-system
+      interval: 12h
+  install:
+    timeout: 15m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 15m
+    remediation:
+      retries: 3
+
+  values:
+    # Org-scoped, so any repo under the org can target this runner. A personal
+    # account cannot do this — GitHub only allows repo-scoped runners there,
+    # which is why the repos moved to an org.
+    githubConfigUrl: "https://github.com/pxldi-labs"
+    githubConfigSecret: arc-github-app
+
+    # This is the string workflows put in `runs-on:`.
+    runnerScaleSetName: homelab
+    runnerGroup: default
+
+    # Scale from zero: nothing is running while the cluster is idle, which is
+    # the whole point on a box that is also serving Jellyfin and Immich.
+    minRunners: 0
+    maxRunners: 2
+
+    # dind gives the runner a real Docker daemon, which multica-daemon-image.yml
+    # needs — it does `docker build`, `docker run` and `docker manifest inspect`.
+    # containerMode: kubernetes would cover `container:` steps but not those.
+    containerMode:
+      type: dind
+
+    controllerServiceAccount:
+      namespace: arc-systems
+      name: arc-controller-gha-rs-controller
+
+    # Only the runner container is declared; the chart injects the dind sidecar
+    # and its init container. Their resources come from the namespace
+    # LimitRange (limits.yaml), which is the only place a containerMode-managed
+    # container can be bounded without hand-writing the whole pod spec and
+    # owning it across chart upgrades.
+    template:
+      spec:
+        containers:
+          - name: runner
+            image: ghcr.io/actions/actions-runner:2.336.0
+            command: ["/home/runner/run.sh"]
+            resources:
+              requests:
+                cpu: 250m
+                memory: 512Mi
+              limits:
+                memory: 2Gi
+
+  # containerMode: dind hardcodes `docker:dind` — no tag, so `latest`, so the
+  # Docker daemon version changes without a commit. AGENTS.md says pin, and a
+  # daemon that silently moves under a build cache is exactly the kind of
+  # unreproducible CI this repo avoids elsewhere. The chart offers no value for
+  # it, so it is patched after render.
+  #
+  # The `test` op is load-bearing: the path is an array index, and if a chart
+  # upgrade ever reorders the generated init containers the patch fails loudly
+  # instead of quietly stamping the Docker tag onto init-dind-externals.
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: AutoscalingRunnerSet
+              name: homelab
+            patch: |
+              - op: test
+                path: /spec/template/spec/initContainers/1/name
+                value: dind
+              - op: replace
+                path: /spec/template/spec/initContainers/1/image
+                # renovate: datasource=docker depName=docker versioning=docker
+                value: docker:29.7.2-dind

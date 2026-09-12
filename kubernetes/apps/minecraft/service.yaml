@@ -1,0 +1,21 @@
+---
+# LoadBalancer → k3s klipper binds TCP 25565 on the host.
+# Forward 25565/tcp on the router to this box for friends to connect.
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft
+  namespace: minecraft
+  labels:
+    app: minecraft
+spec:
+  type: LoadBalancer
+  # Preserve the real client IP (no SNAT); single-node so no reachability loss.
+  externalTrafficPolicy: Local
+  ports:
+    - name: game
+      port: 25565
+      targetPort: 25565
+      protocol: TCP
+  selector:
+    app: minecraft

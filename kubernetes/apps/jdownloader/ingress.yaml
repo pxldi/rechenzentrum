@@ -1,0 +1,18 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: jdownloader
+  namespace: jdownloader
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`download.pxldi.de`)
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: traefik
+      services:
+        - name: jdownloader
+          port: 5800

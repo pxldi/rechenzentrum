@@ -1,0 +1,65 @@
+---
+# The node has 30 GiB and no swap, and roughly 23 GiB of it is already spoken
+# for by k3s, whisper, Palworld, Prometheus, Immich and the *arr stack. CI is
+# the only workload here that runs code nobody has reviewed yet, so it is also
+# the only one that can decide to allocate 12 GiB, and an OOM on this box takes
+# Jellyfin down with it.
+#
+# The LimitRange exists because containerMode: dind has the chart generate the
+# docker:dind sidecar and its init container — there is nowhere in the
+# HelmRelease values to give them a limit. A namespace default reaches them
+# anyway, and keeps reaching them when the chart's generated pod spec changes.
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: arc-runners-defaults
+  namespace: arc-runners
+spec:
+  limits:
+    - type: Container
+      default:
+        # No default CPU limit: this is a 12-core box, CI is bursty, and a
+        # ceiling here only throttles builds that have the cores free anyway.
+        memory: 2Gi
+        # dind's /var/lib/docker is an emptyDir on the node's root filesystem
+        # (~296 GiB free). A build that fills the disk would evict pods that
+        # have nothing to do with CI; this evicts the runner instead.
+        ephemeral-storage: 40Gi
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+---
+# The LimitRange bounds one container. This bounds the namespace, including the
+# case where a stuck scale-up or a rollover leaves old runner pods behind.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: arc-runners-cap
+  namespace: arc-runners
+spec:
+  hard:
+    # maxRunners: 2 → 2 runner pods, plus the listener, plus headroom for a pod
+    # that is terminating while its replacement starts.
+    pods: "6"
+    requests.cpu: "2"
+    requests.memory: 3Gi
+    # Worst case burst: 2 pods x (runner 2Gi + dind 2Gi). Everything above the
+    # ~1.5 GiB of requests is best-effort, and the quota is what stops two
+    # simultaneous Docker builds from claiming the node's entire headroom.
+    limits.memory: 9Gi
+    # NO limits.cpu, and this is load-bearing rather than a preference.
+    #
+    # A ResourceQuota that names a resource makes declaring it MANDATORY for
+    # every container in the namespace. `limits.cpu: "8"` here was satisfied
+    # invisibly by the LimitRange's `default.cpu: "3"` above; when that default
+    # was dropped in 02535c5, every runner pod started failing admission with
+    #
+    #   forbidden: failed quota: arc-runners-cap: must specify limits.cpu
+    #   for: dind,init-dind-externals,runner
+    #
+    # and CI stopped running entirely — the EphemeralRunners went to Failed
+    # while the listener kept happily scaling to 2. Restoring the default would
+    # also work; dropping the quota entry is the version that matches the rest
+    # of the repo, because CPU is compressible and `requests.cpu: "2"` is what
+    # actually bounds CI's share of the node.

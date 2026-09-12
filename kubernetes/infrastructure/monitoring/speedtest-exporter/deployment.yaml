@@ -1,0 +1,48 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: speedtest-exporter
+  namespace: observability
+  labels:
+    app: speedtest-exporter
+spec:
+  replicas: 1
+  # Stateless, and it already has a readinessProbe. Two overlapping pods
+  # during a rollout means at most one extra speedtest, which is harmless.
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: speedtest-exporter
+  template:
+    metadata:
+      labels:
+        app: speedtest-exporter
+    spec:
+      containers:
+        - name: speedtest-exporter
+          image: ghcr.io/miguelndecarvalho/speedtest-exporter:v3.5.4
+          ports:
+            - containerPort: 9798
+              name: http
+          env:
+            - name: SPEEDTEST_PORT
+              value: "9798"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "25m"
+              # Ookla CLI briefly spikes CPU/mem while a test runs.
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9798
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9798
+            initialDelaySeconds: 10
+            periodSeconds: 15

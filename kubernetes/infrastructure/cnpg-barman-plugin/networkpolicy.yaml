@@ -1,0 +1,27 @@
+---
+# cnpg-system is default-deny-ingress. The operator reaches the plugin over
+# gRPC on 9090 (mTLS, certificates issued by the chart's own cert-manager
+# Issuer), so without this the plugin installs cleanly and then every backup
+# and every WAL push fails to connect.
+#
+# Scoped to the operator pod as source rather than the whole namespace: the
+# only other thing in cnpg-system is the operator itself.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-operator-to-barman-plugin
+  namespace: cnpg-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: plugin-barman-cloud
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: cloudnative-pg
+      ports:
+        - protocol: TCP
+          port: 9090

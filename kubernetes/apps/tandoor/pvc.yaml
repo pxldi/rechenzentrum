@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tandoor-media-pvc
+  namespace: tandoor
+  annotations:
+    backup.velero.io/backup-volumes: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 50Gi

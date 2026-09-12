@@ -1,0 +1,62 @@
+---
+# 202 pods, zero PriorityClasses. Every pod sat at priority 0, which means the
+# kubelet's eviction ranking under memory pressure came down to QoS class and
+# how far over its request a pod had grown — and nothing else. QoS ranks *within*
+# a priority level, so with one level it was the only signal. That is how a
+# transcode or a torrent client can outrank the thermostat on a node with 32Gi.
+#
+# #911 fixed the other half of this by giving every workload an honest request.
+# This is the half that says which ones matter.
+#
+# Deliberately three classes and not fifteen. The only consumer that reads these
+# is the kubelet's eviction ordering and the scheduler's queue, and neither
+# benefits from fine-grained tiers on a single node.
+#
+# preemptionPolicy: Never on all three, on purpose. Eviction ranking under node
+# pressure uses priority regardless of preemption policy, and that ranking is the
+# entire point here. Scheduler preemption is not: on one node it would let a
+# newly scheduled critical pod evict a running lower-priority one at admission
+# time, which turns a routine deploy into a surprise outage somewhere else.
+# Priority for eviction ordering, yes. Priority for kicking pods off at schedule
+# time, no.
+#
+# Values sit far below system-cluster-critical (2000000000) and
+# system-node-critical (2000001000) so nothing here can outrank k3s itself.
+
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: rechenzentrum-critical
+value: 100000
+globalDefault: false
+preemptionPolicy: Never
+description: >-
+  Things whose failure you find out about from someone in the house, or that you
+  need working in order to fix anything else: the ingress path, auth, DNS, certs,
+  and the alerting chain that tells you the rest broke.
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: rechenzentrum-default
+value: 1000
+globalDefault: true
+preemptionPolicy: Never
+description: >-
+  Everything not explicitly classified. globalDefault, so pods pick this up with
+  no spec change — no 65-deployment rollout, and no per-chart guessing about
+  where priorityClassName lives in that chart's dialect.
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: rechenzentrum-bulk
+value: 100
+globalDefault: false
+preemptionPolicy: Never
+description: >-
+  Work that can die without anyone noticing until they go looking: downloaders,
+  game servers, model inference, CI runners. First to be evicted when the node
+  runs out of memory, which is the correct answer.

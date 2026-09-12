@@ -1,0 +1,75 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperless-redis
+  namespace: paperless
+  labels:
+    app: paperless-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paperless-redis
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: paperless-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:8-alpine
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--save"
+            - "60"
+            - "1"
+            - "--loglevel"
+            - "warning"
+          ports:
+            - containerPort: 6379
+              name: redis
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          livenessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: paperless-redis-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paperless-redis
+  namespace: paperless
+  labels:
+    app: paperless-redis
+spec:
+  type: ClusterIP
+  selector:
+    app: paperless-redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+      protocol: TCP

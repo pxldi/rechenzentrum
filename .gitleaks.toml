@@ -1,0 +1,13 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public Karakeep OAuth client identifier, also declared in oidc-apps.tf; not the client secret"
+condition = "AND"
+paths = ['''kubernetes/apps/karakeep/config\.env$''']
+regexTarget = "line"
+regexes = ['''^OAUTH_CLIENT_ID=lwMBkkGObTNW7kYNLOOFYFL9ji7ReujXiCp4bjnQ$''']
+
+[[allowlists]]
+description = "Ignored local build output; CI rejects tracked build artifacts"
+paths = ['''(^|/)\.build/''']

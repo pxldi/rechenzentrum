@@ -1,0 +1,17 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-operator
+  namespace: n8n
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: n8n-postgresql
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+  policyTypes:
+    - Ingress

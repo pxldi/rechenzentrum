@@ -1,0 +1,78 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fredy
+  namespace: fredy
+  labels:
+    app: fredy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fredy
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: fredy
+      annotations:
+        backup.velero.io/backup-volumes: "data"
+    spec:
+      containers:
+        - name: fredy
+          image: ghcr.io/pxldi/fredy:pxldi-27.1.2-1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9998
+              name: http
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: TZ
+              value: Europe/Berlin
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+            - name: data
+              mountPath: /db
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9998
+            initialDelaySeconds: 30
+            periodSeconds: 120
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9998
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          # A memory limit is the only thing that makes the Puppeteer leak
+          # self-correcting. fredy spawns Chrome per scrape and orphans them when
+          # a run hangs -- the shutdown on 2026-08-25 was waiting on ~80 of them.
+          # Idle sits around 466Mi, so 1Gi is roughly two runs' headroom and
+          # anything past it is a leak, not work. The OOM kill restarts the pod,
+          # which is exactly the recovery that was being done by hand.
+          #
+          # No CPU limit on purpose: throttling a scrape mid-run makes hangs more
+          # likely, not less, and CPU is not what runs away here.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: fredy-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: fredy-data

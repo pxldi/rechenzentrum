@@ -1,0 +1,42 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cnpg
+  namespace: cnpg-system
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: cloudnative-pg
+      version: "0.29.0"
+      sourceRef:
+        kind: HelmRepository
+        name: cnpg
+        namespace: flux-system
+      interval: 12h
+  install:
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+  values:
+    # The operator reconciles six Postgres clusters. If it is evicted, nothing
+    # breaks immediately and nothing heals either — failovers stop happening
+    # and the databases silently stop being managed.
+    priorityClassName: rechenzentrum-critical
+
+    crds:
+      create: true
+
+    # Requests only. The operator reconciles six Postgres clusters; evicted, it
+    # does not break anything immediately and does not heal anything either --
+    # failovers simply stop happening. Same reasoning as the priorityClass above,
+    # expressed in the units the kubelet actually ranks on.
+    resources:
+      requests:
+        cpu: 25m
+        memory: 96Mi

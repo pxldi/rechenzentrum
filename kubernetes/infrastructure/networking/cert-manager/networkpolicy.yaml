@@ -1,0 +1,53 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: cert-manager
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# The apiserver calls this webhook on every Certificate, Issuer and
+# CertificateRequest in the cluster, and the ValidatingWebhookConfiguration has
+# `failurePolicy: Fail`. If this rule is wrong, every one of those operations
+# fails cluster-wide — including flux's own reconciles.
+#
+# The obvious rule is "allow the apiserver", and the obvious way to write it is a
+# namespaceSelector. That does not work: on k3s the apiserver is part of the
+# host-network k3s process, so it has no pod and no namespace, and a
+# podSelector- or namespaceSelector-based rule can never match it. Its source
+# address is either the node's InternalIP or the cni0 bridge, depending on how
+# the packet is routed — and getting that guess wrong is a cluster-wide outage
+# with `failurePolicy: Fail`.
+#
+# So this does not guess. Port 10250 is open to any source, and everything else
+# in the namespace is denied. That is a deliberate trade:
+#
+#   - the webhook is designed to be called and authenticates its callers over
+#     mutual TLS; reaching the port buys an attacker a TLS handshake failure.
+#   - the cert-manager controller and cainjector, which hold the ACME account key
+#     and have no business receiving connections at all, are now fully closed.
+#     They are the pods actually worth protecting, and before this they were as
+#     reachable as anything else in the cluster.
+#
+# A tighter ipBlock rule is only worth writing once it can be verified against
+# the running apiserver rather than reasoned about, since the failure mode is
+# silent until the next certificate renewal.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-webhook
+  namespace: cert-manager
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: webhook
+      app.kubernetes.io/instance: cert-manager
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 10250

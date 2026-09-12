@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: velero
+  labels:
+    # privileged: node-agent mounts the kubelet pod directory by hostPath;
+    # that is how the kopia filesystem backup reads volumes
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/audit-version: latest
+    name: velero

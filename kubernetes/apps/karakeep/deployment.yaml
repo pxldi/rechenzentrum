@@ -1,0 +1,213 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: karakeep
+  namespace: karakeep
+  labels:
+    app: karakeep
+spec:
+  replicas: 1
+  # Holds karakeep-data (RWO), and the database in it is SQLite: two writers
+  # would be worse here than for the Postgres app this replaces. Recreate is
+  # what stops a rollout ever running two pods against one file.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: karakeep
+  template:
+    metadata:
+      labels:
+        app: karakeep
+      annotations:
+        backup.velero.io/backup-volumes: data
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1000
+      # s6-overlay refuses to start unless /run belongs to the user it is
+      # running as, and it only fixes that itself when it is real root -- the
+      # check is on the uid, so handing the app container CHOWN does not satisfy
+      # it. Measured: with runAsUser 1000 the container dies on
+      #
+      #   preinit: fatal: /run belongs to uid 0 instead of 1000 ... and we're
+      #   lacking the privileges to fix it
+      #
+      # The alternative is running the whole app as root, which is what the
+      # image expects (it declares no USER). This is the smaller concession:
+      # one init container that owns an in-memory /run to uid 1000 and exits,
+      # so the app and the browser beside it stay non-root.
+      #
+      # chmod before chown, in that order: once /run belongs to 1000 this
+      # container no longer owns it, and chmod without CAP_FOWNER then fails.
+      initContainers:
+        - name: fix-run
+          image: alpine:3.22
+          command: ["sh", "-c", "chmod 0755 /run && chown 1000:1000 /run"]
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - CHOWN
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+          volumeMounts:
+            - name: run
+              mountPath: /run
+      containers:
+        - name: karakeep
+          image: ghcr.io/karakeep-app/karakeep:0.33.2
+          imagePullPolicy: IfNotPresent
+          # The image runs its own migrations at start, so schema changes apply
+          # on rollout with no init container.
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: TZ
+              value: Europe/Berlin
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: karakeep-credentials
+                  key: NEXTAUTH_SECRET
+            - name: MEILI_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: karakeep-credentials
+                  key: MEILI_MASTER_KEY
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: karakeep-credentials
+                  key: OAUTH_CLIENT_SECRET
+          # Pulled wholesale rather than key by key: the auth settings in there
+          # only work as a set. Drop DISABLE_PASSWORD_AUTH and the password form
+          # comes back; drop OAUTH_WELLKNOWN_URL and nobody can log in at all.
+          envFrom:
+            - configMapRef:
+                name: karakeep-config
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /run
+          # Cold start runs the migrations and then next start, which is past
+          # any sane liveness delay on this node. The startup probe holds
+          # liveness off for up to five minutes rather than crash-looping a slow
+          # migration.
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+        # The crawler drives this over the debugging port to screenshot and
+        # archive a page. Same pod rather than its own Deployment, because it is
+        # stateless, it is useless without the worker beside it, and localhost
+        # means no Service and no NetworkPolicy for the debugging port -- which
+        # is an unauthenticated remote-control interface for a browser.
+        - name: chrome
+          # Tagged by the Chromium version it carries, not by the Karakeep
+          # release, so this does not move with the image above.
+          image: ghcr.io/karakeep-app/karakeep-chrome:151.0.7922.47-r1
+          imagePullPolicy: IfNotPresent
+          args:
+            - --disable-gpu
+            - --disable-dev-shm-usage
+            - --hide-scrollbars
+            - --disable-blink-features=AutomationControlled
+            - --window-size=1440,900
+            # No --remote-debugging-* here, deliberately. The image's entrypoint
+            # already passes --remote-debugging-address=0.0.0.0
+            # --remote-debugging-port=9223, and adding a second pair of those
+            # flags does not override them: Chromium bound 0.0.0.0:9222, failed
+            # the second bind with EADDRINUSE, fell back to [::1]:9222, and
+            # served a socket that accepted the crawler's connection and hung
+            # up. Every archive failed with "connectOverCDP: socket hang up"
+            # until the flags came out.
+            #
+            # 0.0.0.0 inside the pod is not the exposure it looks like: the
+            # NetworkPolicy beside this file names port 3000 and nothing else,
+            # so 9223 is reachable only from the container next to it.
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: chrome-tmp
+              mountPath: /tmp
+            - name: dshm
+              mountPath: /dev/shm
+          # A leaked browser is what a memory limit makes self-correcting. The
+          # kill costs one crawl, which the worker retries. No CPU limit:
+          # throttling a page mid-render makes hangs more likely, not less.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1500Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: karakeep-data
+        - name: tmp
+          emptyDir: {}
+        # s6's supervision tree, owned by the init container above.
+        - name: run
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+        - name: chrome-tmp
+          emptyDir: {}
+        # Chromium puts its shared memory here and the 64Mi default makes it
+        # crash on heavy pages. Memory-backed, so it counts against the limit
+        # above, which is why it is capped.
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi

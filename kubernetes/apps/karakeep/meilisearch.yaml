@@ -1,0 +1,111 @@
+---
+# Karakeep's full-text search backend. Optional: MEILI_ADDR unset disables
+# search entirely and the app falls back to nothing but the title filter, which
+# is most of the point of keeping an archive.
+#
+# Headless Service plus a single-replica StatefulSet with a volumeClaimTemplate,
+# the shape apps/sure/redis.yaml uses.
+apiVersion: v1
+kind: Service
+metadata:
+  name: karakeep-meilisearch
+  namespace: karakeep
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: karakeep-meilisearch
+  ports:
+    - name: http
+      port: 7700
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: karakeep-meilisearch
+  namespace: karakeep
+spec:
+  serviceName: karakeep-meilisearch
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: karakeep-meilisearch
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: karakeep-meilisearch
+      annotations:
+        # The index is derived data: every document in it is built from the
+        # SQLite database on karakeep-data, which is backed up. Restoring a
+        # week-old torn copy of an LMDB file is worse than reindexing from the
+        # database, so keep it out of kopia entirely. Karakeep reindexes from
+        # the admin panel.
+        backup.velero.io/backup-volumes-excludes: data
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: meilisearch
+          # The version Karakeep's own compose pins. Newer 1.x servers exist;
+          # let Renovate propose the bump so a human validates the index
+          # migration.
+          image: getmeili/meilisearch:v1.41.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 7700
+          env:
+            - name: TZ
+              value: Europe/Berlin
+            - name: MEILI_ENV
+              value: production
+            - name: MEILI_NO_ANALYTICS
+              value: "true"
+            - name: MEILI_DB_PATH
+              value: /meili_data
+            - name: MEILI_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: karakeep-credentials
+                  key: MEILI_MASTER_KEY
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /meili_data
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-ssd
+        resources:
+          requests:
+            storage: 2Gi

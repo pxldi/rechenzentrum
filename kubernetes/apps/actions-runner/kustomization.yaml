@@ -1,0 +1,15 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# No `namespace:` here — unlike every other app in this repo, this one spans
+# two (arc-systems, arc-runners) and each resource names its own. That also
+# rules out the shared networkpolicy components, which have no namespace of
+# their own and rely on this field to land somewhere; arc-runners needs a
+# stricter egress policy than any of them provide anyway. See networkpolicy.yaml.
+resources:
+  - namespace.yaml
+  - limits.yaml
+  - networkpolicy.yaml
+  - secret.yaml
+  - helmrelease-controller.yaml
+  - helmrelease-runners.yaml

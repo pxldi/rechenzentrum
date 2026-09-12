@@ -1,0 +1,27 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: branding
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# branding is served publicly through traefik and nothing else talks to it. The
+# git-sync sidecar pulls *out* to GitHub, so it needs no ingress of its own.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-traefik
+  namespace: branding
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik

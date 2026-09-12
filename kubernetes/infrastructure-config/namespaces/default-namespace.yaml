@@ -1,0 +1,28 @@
+---
+# The `default` namespace has no Pod Security labels at all, which means PSA
+# enforces nothing there. Every other namespace in this cluster is labelled --
+# 7 privileged, 31 baseline, 4 restricted -- so `default` is the one place a
+# pod can land with no admission policy applied to it whatsoever.
+#
+# Nothing runs there today and nothing should: everything in this repo declares
+# its namespace. But `kubectl run` with no -n, a chart with a missing
+# namespace, or a copy-pasted manifest all land here, and the whole point of
+# labelling 42 namespaces is undermined by one unlabelled hole.
+#
+# baseline rather than restricted, matching the 31: restricted would reject an
+# ordinary debug pod, and the goal here is a floor, not a wall.
+#
+# This does not create the namespace -- k3s does, and NamespaceLifecycle
+# admission refuses to delete it -- it only adds the labels. Flux takes
+# ownership of those labels via server-side apply.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: default
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest

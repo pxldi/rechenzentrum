@@ -1,0 +1,18 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: searxng
+  namespace: searxng
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`search.pxldi.de`)
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: traefik
+      services:
+        - name: searxng
+          port: 8080

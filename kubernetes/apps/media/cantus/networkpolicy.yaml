@@ -1,0 +1,21 @@
+---
+# The media namespace defaults to deny-ingress, which also blocks the CNPG
+# operator in cnpg-system from reaching the instance manager's status endpoint.
+# Without this the cluster reports "Instance Status Extraction Error" even
+# though Postgres itself is serving. Mirrors n8n/networkpolicy.yaml.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-operator-cantus
+  namespace: media
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: cantus-postgresql
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+  policyTypes:
+    - Ingress

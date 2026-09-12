@@ -1,0 +1,12 @@
+---
+# The plugin talks to the kubelet over a unix socket, not the network. Its :8080
+# is a metrics endpoint nothing currently scrapes. Nothing should reach it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: device-plugins
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress

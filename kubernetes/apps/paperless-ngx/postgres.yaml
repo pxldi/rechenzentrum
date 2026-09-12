@@ -1,0 +1,88 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperless-postgres
+  namespace: paperless
+  labels:
+    app: paperless-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paperless-postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: paperless-postgres
+      annotations:
+        backup.velero.io/backup-volumes: "data"
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:18-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+              name: postgres
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: POSTGRES_DB
+              value: "paperless"
+            - name: POSTGRES_USER
+              value: "paperless"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secrets
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: "/var/lib/postgresql/data/pgdata"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - paperless
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - paperless
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: paperless-postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paperless-postgres
+  namespace: paperless
+  labels:
+    app: paperless-postgres
+spec:
+  type: ClusterIP
+  selector:
+    app: paperless-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP

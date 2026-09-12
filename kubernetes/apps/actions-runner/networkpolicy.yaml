@@ -1,0 +1,72 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: arc-runners
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# A runner pod runs whatever a pull request tells it to, with a privileged
+# Docker daemon in the same pod. Treat it as hostile and give it exactly what
+# CI needs: the public internet, and DNS to resolve it.
+#
+# Without this, `runs-on: homelab` would be a way for any PR to reach
+# authentik, the CNPG clusters, Home Assistant and the node's own kubelet —
+# none of which is reachable from a GitHub-hosted runner today. Self-hosting
+# CI is only cheaper than the free tier if it does not also hand out the LAN.
+#
+# The except-list covers RFC1918 (which contains k3s's 10.42.0.0/16 pod CIDR,
+# its 10.43.0.0/16 service CIDR, and the 192.168.8.0/24 house LAN) and
+# link-local, which is where cloud metadata services live.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: runners-egress-internet-only
+  namespace: arc-runners
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+    # Carved back out of the block above, because CoreDNS answers on a
+    # 10.43.0.0/16 service address. Rules are additive, so this re-permits port
+    # 53 to kube-system and nothing else.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# arc-systems had no policy at all. It holds the ARC controller and the
+# listener — the controller's ServiceAccount can create pods, which makes it a
+# more valuable target than the runners it manages. Nothing needs to reach
+# either of them: the controller talks *out* to the GitHub API and the
+# apiserver, and the listener long-polls GitHub. No Service exists in this
+# namespace, and nothing scrapes it.
+#
+# Egress is deliberately not restricted here, unlike arc-runners. The controller
+# has to reach the apiserver to do its job, and it does not run PR-authored code.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: arc-systems
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress

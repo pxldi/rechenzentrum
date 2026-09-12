@@ -1,0 +1,38 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: nextcloud
+  namespace: nextcloud
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    # Redirect CalDAV/CardDAV discovery to the real DAV endpoint over https,
+    # bypassing Apache's http-scheme redirect that DAVx5 rejects.
+    - kind: Rule
+      match: Host(`cloud.pxldi.de`) && (Path(`/.well-known/carddav`) || Path(`/.well-known/caldav`))
+      priority: 3000
+      middlewares:
+        - name: nextcloud-wellknown-dav
+      services:
+        - name: nextcloud
+          port: 8080
+    # DAV traffic: force identity encoding so Apache does not append "-gzip" to
+    # ETags, which otherwise breaks DAVx5 If-Match uploads (412, one-way sync).
+    - kind: Rule
+      match: Host(`cloud.pxldi.de`) && PathPrefix(`/remote.php/dav`)
+      priority: 2000
+      middlewares:
+        - name: nextcloud-headers
+        - name: nextcloud-dav-no-compress
+      services:
+        - name: nextcloud
+          port: 8080
+    - kind: Rule
+      match: Host(`cloud.pxldi.de`)
+      middlewares:
+        - name: nextcloud-headers
+      services:
+        - name: nextcloud
+          port: 8080

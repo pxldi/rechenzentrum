@@ -1,0 +1,58 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gotify
+  namespace: gotify
+  labels:
+    app: gotify
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gotify
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: gotify
+      annotations:
+        backup.velero.io/backup-volumes: "data"
+    spec:
+      # the alert sink itself — if it is evicted you stop hearing that anything else was
+      priorityClassName: rechenzentrum-critical
+      containers:
+        - name: gotify
+          image: ghcr.io/gotify/server:3.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: gotify-data-pvc

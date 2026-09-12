@@ -1,0 +1,137 @@
+---
+# Alerts on Velero, because until now there were none.
+#
+# On 2026-08-23 weekly-full-backup had been PartiallyFailed for two weeks and
+# nothing alerted, because Velero was not even being scraped: metrics.enabled
+# was true but serviceMonitor.enabled was false, so port 8085 was published and
+# nobody read it.
+#
+# This file originally blamed a corrupt kopia index blob in obsidian-sync's B2
+# repository. That was wrong, and is corrected here so the next person does not
+# go looking for corruption. Reviewed on 2026-09-11 across four runs:
+#
+#   08-16  palworld/data        Canceled
+#   08-23  obsidian-sync/data   index blob EOF   -> Completed on 08-30
+#   08-30  overleaf/data        index blob EOF   -> Completed on 09-06
+#   09-06  media/cantus `tmp`   no such file or directory
+#
+# The failing volume moves every week and heals untouched, which corruption
+# does not do. The two "index blob" errors are `unexpected EOF ... despite 10
+# retries` — failed B2 *reads*, i.e. transient network, not a bad blob. The
+# 09-06 failure was the real and recurring one: `tmp` is an emptyDir, kopia
+# listed the directory, the app deleted a file underneath it, the read failed.
+#
+# Fixed in #1084 by skipping emptyDir volumes via a Velero resource policy —
+# they were half of all filesystem-backed volumes (88 emptyDir vs 87 PVC) and
+# hold nothing restorable. If this alert fires again, check whether the failing
+# volume is a real PVC before assuming a repository problem.
+#
+# THE IMPORTANT PART, and the reason these rules do not use the obvious metric:
+# velero_backup_last_status counts PartiallyFailed as SUCCESS. Measured while
+# the weekly had failed twice in a row:
+#
+#   velero_backup_last_status{schedule="weekly-full-backup"}              1
+#   velero_backup_last_successful_timestamp{schedule="weekly-full-backup"}
+#     -> 2026-08-09T04:42:49Z, fourteen days stale
+#   velero_backup_partial_failure_total{schedule="weekly-full-backup"}    3
+#
+# An alert on last_status == 0 would have stayed silent through all of it. So
+# staleness of the last *successful* run is the primary signal, and the partial
+# failure counter is the secondary one.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: velero
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+spec:
+  groups:
+    - name: velero.backups
+      rules:
+        # schedule="" is the ad-hoc series — backups taken by hand, which have
+        # no cadence to be late against. Every rule here excludes it.
+        - alert: VeleroDailyBackupStale
+          expr: |
+            time() - max by (schedule) (
+              velero_backup_last_successful_timestamp{schedule="daily-critical-backup"}
+            ) > 36 * 3600
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "daily-critical-backup has not succeeded in over 36h"
+            description: >-
+              Last fully successful run was {{ $value | humanizeDuration }} ago.
+              This schedule covers authentik, cert-manager, traefik, nextcloud,
+              immich, n8n and gotify. Runs at 02:00 daily, so 36h means it has
+              missed at least one window outright.
+
+        - alert: VeleroWeeklyBackupStale
+          expr: |
+            time() - max by (schedule) (
+              velero_backup_last_successful_timestamp{schedule="weekly-full-backup"}
+            ) > 8.5 * 86400
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "weekly-full-backup has not succeeded in over 8.5 days"
+            description: >-
+              Last fully successful run was {{ $value | humanizeDuration }} ago.
+              Runs Sundays at 03:00; 8.5 days means a window was missed or the
+              run finished PartiallyFailed, which does NOT clear this alert and
+              does NOT show up in velero_backup_last_status.
+
+        # PartiallyFailed means the backup object completed but at least one
+        # volume did not. That is the failure mode that hid for two weeks.
+        - alert: VeleroBackupPartiallyFailed
+          expr: increase(velero_backup_partial_failure_total{schedule!=""}[25h]) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.schedule }} finished with volumes missing"
+            description: >-
+              At least one PodVolumeBackup failed while the backup itself
+              reported success. Check `kubectl get podvolumebackups -n velero`
+              for phase != Completed. Confirm the failing volume is a real PVC
+              before suspecting the kopia repository — historically these were
+              ephemeral volumes racing, and transient B2 read errors that
+              cleared on their own.
+
+        - alert: VeleroBackupFailed
+          expr: increase(velero_backup_failure_total{schedule!=""}[25h]) > 0
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.schedule }} failed outright"
+            description: "The backup did not complete. Check `velero backup describe`."
+
+        - alert: VeleroBackupStorageLocationUnavailable
+          expr: velero_backup_location_status_gauge == 0
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "backup storage location {{ $labels.backup_location_name }} is unavailable"
+            description: >-
+              Velero cannot reach the B2 bucket. Every schedule will fail until
+              this clears; check the b2-credentials secret and Backblaze status.
+
+        # Without this, everything above fails open: if Velero stops running or
+        # stops being scraped, its series go absent, the expressions return no
+        # data, and silence reads as health. That is exactly the state this
+        # cluster was in before this file existed.
+        - alert: VeleroMetricsMissing
+          expr: absent(velero_backup_last_successful_timestamp)
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Velero is not reporting metrics"
+            description: >-
+              No velero_backup_* series for 30m. Velero is down, or the
+              ServiceMonitor stopped matching. Backups are unmonitored and
+              possibly not running at all.

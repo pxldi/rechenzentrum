@@ -1,0 +1,62 @@
+---
+# Startup sequence for the daemon. Kept in a ConfigMap rather than inline in
+# the Deployment so the shell is readable and diffable on its own.
+#
+# `multica config set` is the documented path for a self-hosted server
+# (CLI_AND_DAEMON.md → "Self-Hosted Server"); it persists to ~/.multica on the
+# PVC. The MULTICA_SERVER_URL env var is deliberately NOT set: it is the
+# daemon's WebSocket URL only, and having two sources for "where is the
+# server" is how you end up with the CLI authenticating against one host and
+# the daemon polling another.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: multica-daemon-entrypoint
+  namespace: multica-daemon
+data:
+  entrypoint.sh: |
+    #!/bin/sh
+    set -eu
+
+    if [ -z "${MULTICA_TOKEN:-}" ]; then
+      echo "MULTICA_TOKEN is empty." >&2
+      echo "Create a personal access token at ${MULTICA_APP_URL}/settings?tab=tokens" >&2
+      echo "and put it in the multica-daemon-secrets Secret (sops)." >&2
+      exit 1
+    fi
+
+    echo "==> pointing the CLI at the in-cluster backend"
+    multica config set server_url "$MULTICA_API_URL"
+    multica config set app_url "$MULTICA_APP_URL"
+
+    # Unconditional, because `multica auth status` exits 0 even when it has no
+    # credential — gating on it skipped the login on a fresh PVC and the daemon
+    # then died with "not authenticated: run 'multica login' first".
+    #
+    # Safe to repeat: only the *browser* flow mints a 90-day token. With
+    # --token the CLI just stores the PAT from the Secret, so re-running it
+    # every boot rewrites the same value rather than accumulating tokens.
+    echo "==> authenticating with the token from the Secret"
+    multica login --token "$MULTICA_TOKEN"
+
+    # Private repos. The server only hands the daemon a clone URL — it never
+    # mints a git credential — so authenticating the clone is this machine's
+    # job. Upstream's repocache passes the daemon's whole environment to git
+    # "so credential helpers (e.g. gh) can locate their config", which is
+    # exactly this: gh reads GH_TOKEN from the environment and answers git's
+    # credential requests from it, so the token never lands on the PVC.
+    if [ -n "${GH_TOKEN:-}" ]; then
+      echo "==> wiring gh up as git's credential helper for github.com"
+      gh auth setup-git --hostname github.com
+    else
+      echo "==> GITHUB_TOKEN empty — public repos only, private clones will 403"
+    fi
+
+    echo "==> detected agent CLIs:"
+    claude --version || echo "    claude: MISSING"
+    codex --version || echo "    codex: MISSING"
+
+    # Foreground: the daemon is PID 1's child and its log goes to stdout, so
+    # `kubectl logs` works and a crash restarts the pod instead of leaving a
+    # backgrounded daemon orphaned behind a healthy-looking container.
+    exec multica daemon start --foreground

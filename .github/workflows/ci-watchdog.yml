@@ -1,0 +1,153 @@
+---
+name: CI Watchdog
+
+# The self-hosted `homelab` runners can stop accepting work while every
+# component reports healthy. On 2026-08-23 the ARC listener held a dead
+# session for over two hours: the controller was Running, the listener was
+# 1/1 Ready, and it logged `"assigned job"=0` on every poll while three jobs
+# sat queued on GitHub's side. Nothing alerted, because nothing in the cluster
+# knew anything was wrong — the listener's own view was the thing that broke.
+#
+# That rules out the obvious detector. A PrometheusRule over the ARC listener
+# metrics (`gha_assigned_jobs`) reads zero in exactly this failure, because it
+# is derived from the same empty session. Detection has to come from a vantage
+# point outside that session, and GitHub's job queue is the ground truth that
+# diverged from it.
+#
+# So this runs on GitHub-hosted infrastructure, deliberately: a watchdog that
+# depends on the thing it watches cannot report its death. The same property
+# means this still fires when the cluster is down entirely, which the in-cluster
+# Flux -> Alertmanager -> Gotify path cannot.
+
+on:
+  schedule:
+    # Hourly, off the hour. GitHub delays scheduled runs that cluster at :00
+    # under load, and this is a private repo on the Free plan — 2000
+    # GitHub-hosted minutes a month, of which an hourly job bills about 730
+    # (each run takes seconds, but Actions rounds every job up to one minute).
+    # Halving the interval would consume three quarters of the budget and the
+    # image builds in multica-daemon-image.yml need room. With a 15 minute
+    # queue threshold, worst-case notice is a little over an hour — against an
+    # outage that previously ran unnoticed for two.
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      test_notification:
+        description: >-
+          Send a test alert regardless of queue state. The Gotify hop is
+          otherwise only exercised during a real outage, which is when you
+          least want to discover it was misconfigured.
+        type: boolean
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  queued-jobs:
+    if: vars.ENABLE_NOTIFICATIONS == 'true'
+    name: Check for jobs stuck waiting on homelab
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Find jobs queued longer than the threshold
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          THRESHOLD_MINUTES: "15"
+          TEST_NOTIFICATION: ${{ inputs.test_notification }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' | tee -a "$GITHUB_OUTPUT"
+          import json, os, subprocess
+          from datetime import datetime, timezone
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          threshold = int(os.environ["THRESHOLD_MINUTES"]) * 60
+
+          def api(path):
+              out = subprocess.run(
+                  ["gh", "api", path], capture_output=True, text=True, check=True
+              ).stdout
+              return json.loads(out)
+
+          # A job can be queued inside a run that is already in_progress —
+          # its siblings may have started on runners that were still alive.
+          # Querying only status=queued would miss exactly that case.
+          runs = []
+          for status in ("queued", "in_progress"):
+              runs += api(
+                  f"repos/{repo}/actions/runs?status={status}&per_page=50"
+              )["workflow_runs"]
+
+          now = datetime.now(timezone.utc)
+          stuck = []
+          for run in runs:
+              for job in api(f"repos/{repo}/actions/runs/{run['id']}/jobs")["jobs"]:
+                  if job["status"] != "queued":
+                      continue
+                  if "homelab" not in job.get("labels", []):
+                      continue
+                  created = datetime.fromisoformat(
+                      job["created_at"].replace("Z", "+00:00")
+                  )
+                  age = int((now - created).total_seconds())
+                  if age >= threshold:
+                      stuck.append(
+                          f"{run['name']} / {job['name']} "
+                          f"({age // 60}m) {run['html_url']}"
+                      )
+
+          if os.environ.get("TEST_NOTIFICATION") == "true":
+              title = "CI watchdog test (no real stall)"
+              stuck = ["Verifying the Gotify delivery path end to end."]
+          else:
+              title = f"CI stalled: {len(stuck)} job(s) waiting on homelab"
+
+          print(f"count={len(stuck)}")
+          print(f"title={title}")
+          # Multi-line step outputs need a delimiter; a fixed one is safe here
+          # because every line is built from GitHub-controlled run and job
+          # names, never from repository content.
+          print("detail<<STUCK_EOF")
+          for line in stuck:
+              print(line)
+          print("STUCK_EOF")
+          PY
+
+      - name: Notify Gotify
+        if: steps.check.outputs.count != '0'
+        env:
+          # The hostname is already in the repository (the Traefik IngressRoute
+          # in kubernetes/apps/gotify/ingress.yaml), so pinning it here leaks
+          # nothing that a reader does not already have. Only the application
+          # token is a secret.
+          GOTIFY_TOKEN: ${{ secrets.GOTIFY_TOKEN }}
+          DETAIL: ${{ steps.check.outputs.detail }}
+          TITLE: ${{ steps.check.outputs.title }}
+        run: |
+          set -euo pipefail
+          # The token goes in the X-Gotify-Key header rather than the ?token=
+          # query parameter Gotify also accepts, so it stays out of any proxy
+          # or access log along the way.
+          curl -sS --fail-with-body -X POST \
+            "https://gotify.pxldi.de/message" \
+            -H "X-Gotify-Key: ${GOTIFY_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "$(jq -n \
+              --arg title "${TITLE}" \
+              --arg message "${DETAIL}
+
+          The ARC listener is likely holding a dead session. Cancel and rerun
+          the affected runs to reissue the jobs; restarting the listener alone
+          does not help, because GitHub has already marked them delivered." \
+              '{title: $title, message: $message, priority: 8}')"
+
+      # A test dispatch should not leave a red run behind, so this is gated on
+      # the queue check rather than on whether a notification was sent.
+      - name: Fail the run so it is also visible in the Actions UI
+        if: steps.check.outputs.count != '0' && !inputs.test_notification
+        run: |
+          echo "::error::${{ steps.check.outputs.count }} job(s) stuck queued on homelab"
+          exit 1

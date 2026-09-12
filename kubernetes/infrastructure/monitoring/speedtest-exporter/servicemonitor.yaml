@@ -1,0 +1,20 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: speedtest-exporter
+  namespace: observability
+  labels:
+    app: speedtest-exporter
+spec:
+  selector:
+    matchLabels:
+      app: speedtest-exporter
+  endpoints:
+    # A real speed test runs on every scrape, so the scrape interval *is* the
+    # test frequency. 15m keeps graphs tight without hammering the WAN link.
+    # scrapeTimeout must comfortably exceed a full up/down test (~30s).
+    - port: http
+      path: /metrics
+      interval: 15m
+      scrapeTimeout: 60s

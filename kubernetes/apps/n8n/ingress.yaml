@@ -1,0 +1,26 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: n8n
+  namespace: n8n
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: "Host(`automation.pxldi.de`)"
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: traefik
+      priority: 10
+      services:
+        - name: n8n
+          port: 5678
+    - kind: Rule
+      match: "Host(`automation.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`)"
+      priority: 15
+      services:
+        - name: authentik-server
+          namespace: authentik
+          port: 9000

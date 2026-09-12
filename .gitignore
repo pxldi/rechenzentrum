@@ -1,0 +1,34 @@
+# Ignore build outputs from performing a nix-build or `nix build` command
+result
+result-*
+
+# Ignore automatically generated direnv output
+.direnv
+
+# Ignore private age keys
+age.key
+
+# Personal Claude Code overrides (not team config)
+.claude/settings.local.json
+
+# Session handoff notes, not repo content
+HANDOFF-*.md
+
+# Playwright MCP session artifacts (snapshots, console logs)
+.playwright-mcp/
+
+# Local validation artifacts and credentials
+.build/
+.tools/
+.venv/
+__pycache__/
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+!*.tfvars.example
+*.pem
+*.key
+.env
+kubeconfig*
+secrets.dec.*

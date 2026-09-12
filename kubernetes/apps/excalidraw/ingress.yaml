@@ -1,0 +1,18 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: excalidraw
+  namespace: excalidraw
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`draw.pxldi.de`)
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: traefik
+      services:
+        - name: excalidraw
+          port: 80

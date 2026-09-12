@@ -1,0 +1,42 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: barman-cloud
+  namespace: cnpg-system
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: plugin-barman-cloud
+      version: "0.7.1"
+      sourceRef:
+        kind: HelmRepository
+        name: cnpg
+        namespace: flux-system
+      interval: 12h
+  install:
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+  values:
+    # The plugin is what turns a Postgres cluster's WAL stream into an object
+    # store upload. If it is down, WAL archiving fails and Postgres keeps the
+    # unarchived segments on the PVC — a stalled archiver is a disk-filling
+    # event, not a quiet one. Same tier as the operator it extends.
+    priorityClassName: rechenzentrum-critical
+
+    crds:
+      create: true
+
+    # Idle it does almost nothing; it wakes up per backup and per WAL push.
+    # Requests only, for the same reason the Postgres clusters use requests
+    # only — a limit here converts a slow B2 upload into a throttled one.
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "10m"

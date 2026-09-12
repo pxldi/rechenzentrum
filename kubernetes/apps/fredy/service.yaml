@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fredy
+  namespace: fredy
+spec:
+  selector:
+    app: fredy
+  ports:
+    - port: 9998
+      targetPort: 9998
+      name: http

@@ -1,0 +1,19 @@
+---
+# default-deny-ingress (below) drops everything by default. The game is a public
+# TCP endpoint, so explicitly allow 25565/tcp from any source. externalTrafficPolicy:
+# Local preserves the real client IP, so this rule sees genuine remote peers.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-game-tcp
+  namespace: minecraft
+spec:
+  podSelector:
+    matchLabels:
+      app: minecraft
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 25565
+          protocol: TCP

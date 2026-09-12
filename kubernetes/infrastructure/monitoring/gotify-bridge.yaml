@@ -1,0 +1,204 @@
+---
+# Three bridge instances: Alertmanager routes critical -> priority 8,
+# warning/info -> priority 4, flux -> priority 6 (the bridge sets Gotify
+# priority per instance via DEFAULT_PRIORITY). Translates Alertmanager
+# webhooks into Gotify messages (summary -> title, description -> message).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gotify-bridge-critical
+  namespace: observability
+  labels:
+    app: gotify-bridge-critical
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gotify-bridge-critical
+  template:
+    metadata:
+      labels:
+        app: gotify-bridge-critical
+    spec:
+      # alertmanager's only path to Gotify
+      priorityClassName: rechenzentrum-critical
+      containers:
+        - name: bridge
+          image: druggeri/alertmanager_gotify_bridge:2.3.2
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: GOTIFY_ENDPOINT
+              value: "http://gotify.gotify.svc.cluster.local/message"
+            - name: GOTIFY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gotify-bridge
+                  key: GOTIFY_TOKEN
+            - name: DEFAULT_PRIORITY
+              value: "8"
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gotify-bridge-critical
+  namespace: observability
+spec:
+  selector:
+    app: gotify-bridge-critical
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gotify-bridge-warning
+  namespace: observability
+  labels:
+    app: gotify-bridge-warning
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gotify-bridge-warning
+  template:
+    metadata:
+      labels:
+        app: gotify-bridge-warning
+    spec:
+      containers:
+        - name: bridge
+          image: druggeri/alertmanager_gotify_bridge:2.3.2
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: GOTIFY_ENDPOINT
+              value: "http://gotify.gotify.svc.cluster.local/message"
+            - name: GOTIFY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gotify-bridge
+                  key: GOTIFY_TOKEN
+            - name: DEFAULT_PRIORITY
+              value: "4"
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gotify-bridge-warning
+  namespace: observability
+spec:
+  selector:
+    app: gotify-bridge-warning
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+# A third instance purely because flux and this bridge disagree about
+# annotation names, and neither end is configurable from the other side.
+#
+# The bridge requires *both* of its annotations and 400s otherwise -- verified
+# by posting synthetic payloads at gotify-bridge-warning:
+#
+#   {"description": ...}  -> 400 Missing annotation: summary
+#   {"message": ...}      -> 400 Missing annotation: description
+#
+# Flux's alertmanager provider emits exactly one annotation, `message`. So
+# every flux alert was rejected at the last hop, which is how #928 shipped
+# looking healthy: the alert reached Alertmanager and could be read back off
+# /api/v2/alerts, and died one step later. The AlertmanagerClusterFailedToSend
+# alert is what actually surfaced it.
+#
+# Both annotations point at `message` because it is the only one flux
+# guarantees. That makes the Gotify title and body the same text, which is
+# mildly redundant but cannot break; a title annotation flux does not send
+# would put this straight back to 400.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gotify-bridge-flux
+  namespace: observability
+  labels:
+    app: gotify-bridge-flux
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gotify-bridge-flux
+  template:
+    metadata:
+      labels:
+        app: gotify-bridge-flux
+    spec:
+      containers:
+        - name: bridge
+          image: druggeri/alertmanager_gotify_bridge:2.3.2
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: GOTIFY_ENDPOINT
+              value: "http://gotify.gotify.svc.cluster.local/message"
+            - name: GOTIFY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gotify-bridge
+                  key: GOTIFY_TOKEN
+            # Between warning (4) and critical (8). GitOps not applying is worse
+            # than a warning and less urgent than something being down.
+            - name: DEFAULT_PRIORITY
+              value: "6"
+            - name: TITLE_ANNOTATION
+              value: "message"
+            - name: MESSAGE_ANNOTATION
+              value: "message"
+            # Renders the body as Markdown with firing/resolved state and the
+            # start time. Worth it here: flux's message alone does not say which
+            # reconcile attempt it belongs to.
+            - name: EXTENDED_DETAILS
+              value: "true"
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gotify-bridge-flux
+  namespace: observability
+spec:
+  selector:
+    app: gotify-bridge-flux
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

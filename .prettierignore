@@ -1,0 +1,3 @@
+# Ignore SOPS encrypted files
+*secret*.yaml# SOPS-encrypted Middleware; sops writes it with its own indentation
+kubernetes/apps/media/cantus/middleware-proxy-key.yaml

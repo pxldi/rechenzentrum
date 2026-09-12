@@ -1,0 +1,301 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: observability
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      version: "88.5.4"
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus
+        namespace: flux-system
+      interval: 12h
+  install:
+    timeout: 15m
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 15m
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  values:
+    # --- k3s: control-plane components are bundled and not scrapable ---
+    # Disable their ServiceMonitors so they don't show as permanently down.
+    kubeControllerManager:
+      enabled: false
+    kubeScheduler:
+      enabled: false
+    kubeProxy:
+      enabled: false
+    kubeEtcd:
+      enabled: false
+
+    # Silence the matching alert rules for the disabled components above.
+    defaultRules:
+      create: true
+      rules:
+        kubeControllerManager: false
+        kubeSchedulerAlerting: false
+        kubeProxy: false
+        etcd: false
+      # Both of these key on kubelet_volume_stats_*, which cannot mean anything
+      # here. Every StorageClass in this cluster is openebs.io/local or
+      # rancher.io/local-path -- both hostpath -- so there is no volume for
+      # kubelet to measure: it statfs()es the directory and gets the enclosing
+      # filesystem back. Numerator and denominator are both the filesystem's:
+      #
+      #   capacity_bytes: 132 PVCs all report 982G (the root fs)
+      #                    22 PVCs all report 11904G (hdd1)
+      #
+      # Not one series reports its PVC's actual request. That makes
+      # available/capacity the *disk's* fill level, replicated 154 times with
+      # unrelated PVC labels attached.
+      #
+      # Left enabled it is an alert storm waiting on a threshold. All 154 series
+      # cross 0.15 at the same instant, and Alertmanager groups by
+      # (alertname, namespace) across the 24 namespaces holding PVCs -- so the
+      # moment the disk gets tight you get ~24 pages naming 24 unrelated apps,
+      # none of which is the one that grew. Exactly when clear signal matters.
+      #
+      # Nothing is lost by dropping them: NodeFilesystemSpaceFillingUp,
+      # NodeFilesystemAlmostOutOfSpace and the two inode equivalents are all
+      # loaded, cover warning and critical, and say the same true thing once
+      # instead of 154 times.
+      #
+      # Re-enable if a CSI driver with real per-volume accounting ever replaces
+      # hostpath. KubePersistentVolumeErrors stays on -- it watches PV phase,
+      # not capacity, and is unaffected by any of this.
+      disabled:
+        KubePersistentVolumeFillingUp: true
+        KubePersistentVolumeInodesFillingUp: true
+
+    # --- Prometheus ---
+    prometheus:
+      prometheusSpec:
+        retention: 30d
+        retentionSize: "20GB"
+        # Scrape every ServiceMonitor/PodMonitor/Rule in the cluster, not just
+        # ones carrying this chart's release label.
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        ruleSelectorNilUsesHelmValues: false
+        probeSelectorNilUsesHelmValues: false
+        scrapeConfigSelectorNilUsesHelmValues: false
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: local-ssd
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 25Gi
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+
+    # --- Alertmanager ---
+    alertmanager:
+      # Route alerts to Gotify via the gotify-bridge instances.
+      # Watchdog (always-firing dead-man's switch) is dropped to null.
+      config:
+        route:
+          group_by: ["alertname", "namespace"]
+          group_wait: 30s
+          group_interval: 5m
+          repeat_interval: 4h
+          receiver: gotify-warning
+          routes:
+            - receiver: "null"
+              matchers:
+                - alertname = "Watchdog"
+            # InfoInhibitor is a meta-alert whose only job is to inhibit other
+            # severity="info" alerts; it must never notify. Drop it to null.
+            - receiver: "null"
+              matchers:
+                - alertname = "InfoInhibitor"
+            # Velero Kopia repo-maintenance jobs fail noisily; mute them but
+            # keep alerting on real backup/restore job failures.
+            - receiver: "null"
+              matchers:
+                - alertname = "KubeJobFailed"
+                - namespace = "velero"
+                - job_name =~ ".*maintain-job.*"
+            # flux's alertmanager provider labels its events severity=error,
+            # which matches neither of the matchers below. It would fall through
+            # to the top-level default receiver and work by accident; state it
+            # so a future change to that default cannot silently reroute every
+            # flux failure.
+            #
+            # Its own group_interval because flux events are point-in-time, not
+            # stateful. The provider sends no endsAt, so Alertmanager expires
+            # each one after resolve_timeout (5m) and the next failed reconcile
+            # re-fires it. At the default 5m group_interval a stuck HelmRelease
+            # would ping roughly every ten minutes forever, and a channel that
+            # noisy gets muted -- which puts flux right back to being silent,
+            # the exact thing this is meant to fix.
+            - receiver: gotify-flux
+              group_interval: 30m
+              repeat_interval: 12h
+              matchers:
+                - severity = "error"
+            - receiver: gotify-critical
+              matchers:
+                - severity = "critical"
+            - receiver: gotify-warning
+              matchers:
+                - severity =~ "warning|info"
+        receivers:
+          - name: "null"
+          - name: gotify-critical
+            webhook_configs:
+              - url: http://gotify-bridge-critical.observability.svc.cluster.local:8080/gotify_webhook
+                send_resolved: true
+          - name: gotify-warning
+            webhook_configs:
+              - url: http://gotify-bridge-warning.observability.svc.cluster.local:8080/gotify_webhook
+                send_resolved: true
+          # Its own bridge instance, not gotify-warning's. The bridge demands
+          # `summary` and `description` annotations and 400s without them; flux
+          # sends only `message`, so every flux alert was rejected at the last
+          # hop. gotify-bridge-flux is the same image configured for flux's
+          # annotation names.
+          #
+          # send_resolved is off. A "resolved" here only means five minutes
+          # passed without flux repeating itself -- it does not mean the
+          # HelmRelease recovered, so sending it would say the opposite of the
+          # truth. Recovery shows up as the failure alert ceasing to re-fire.
+          - name: gotify-flux
+            webhook_configs:
+              - url: http://gotify-bridge-flux.observability.svc.cluster.local:8080/gotify_webhook
+                send_resolved: false
+        # Suppress lower-severity noise when a higher-severity alert is already
+        # firing for the same alertname/namespace. The InfoInhibitor rule mutes
+        # all info alerts in a namespace whenever any warning/critical fires
+        # there (InfoInhibitor is the meta-alert that tracks that condition).
+        inhibit_rules:
+          - source_matchers:
+              - severity = "critical"
+            target_matchers:
+              - severity =~ "warning|info"
+            equal: ["namespace", "alertname"]
+          - source_matchers:
+              - severity = "warning"
+            target_matchers:
+              - severity = "info"
+            equal: ["namespace", "alertname"]
+          - source_matchers:
+              - alertname = "InfoInhibitor"
+            target_matchers:
+              - severity = "info"
+            equal: ["namespace"]
+      alertmanagerSpec:
+        storage:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: local-ssd
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 1Gi
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+
+    # --- Grafana ---
+    grafana:
+      enabled: true
+      # Render dashboards in the viewer's local timezone (chart defaults to utc).
+      defaultDashboardsTimezone: browser
+      # We front Grafana with our own Traefik IngressRoute + Authentik.
+      ingress:
+        enabled: false
+      persistence:
+        enabled: true
+        storageClassName: local-ssd
+        accessModes: ["ReadWriteOnce"]
+        size: 5Gi
+      # Grafana keeps its state in a SQLite file on that volume, and the chart
+      # defaults to RollingUpdate with maxSurge 25% — which rounds up to 1 on a
+      # single replica. A rollout therefore starts a second Grafana that opens
+      # the same grafana.db while the first still holds it.
+      #
+      # ReadWriteOnce does not prevent this. RWO constrains a volume to one
+      # *node*, not one *pod*, and this is a single-node cluster, so both pods
+      # land on the node and both mount the directory. Recreate is the only
+      # thing enforcing a single writer here.
+      deploymentStrategy:
+        type: Recreate
+      admin:
+        existingSecret: grafana-admin
+        userKey: admin-user
+        passwordKey: admin-password
+      grafana.ini:
+        server:
+          root_url: https://grafana.pxldi.de
+        users:
+          # Trusted users have already passed Authentik forward-auth.
+          auto_assign_org_role: Editor
+          # Default new users to their browser-local timezone, not UTC.
+          default_timezone: browser
+        # Seamless SSO: Traefik's authentik-forward-auth middleware injects
+        # X-authentik-username, so auth.proxy logs the user straight in.
+        "auth.proxy":
+          enabled: true
+          header_name: X-authentik-username
+          header_property: username
+          auto_sign_up: true
+          headers: "Email:X-authentik-email, Name:X-authentik-name"
+          enable_login_token: false
+        auth:
+          # Keep the native login form as a break-glass admin path.
+          disable_login_form: false
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+      # The two sidecars that watch ConfigMaps for dashboards and datasources.
+      # Tiny, but BestEffort put them ahead of everything that declared
+      # something in the eviction queue -- and evicting them takes grafana's
+      # pod with them.
+      sidecar:
+        resources:
+          requests:
+            cpu: 10m
+            memory: 48Mi
+
+    # --- Operator and the reloaders it injects ---
+    #
+    # prometheusConfigReloader is the sidecar the operator adds to *both* the
+    # prometheus and alertmanager StatefulSets, so one setting covers the two
+    # containers the audit counted separately.
+    prometheusOperator:
+      resources:
+        requests:
+          cpu: 25m
+          memory: 64Mi
+      prometheusConfigReloader:
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+
+    # --- Exporters (small, keep defaults) ---
+    kube-state-metrics:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+    prometheus-node-exporter:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 24Mi

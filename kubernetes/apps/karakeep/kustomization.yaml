@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: karakeep
+# Generated, not a plain manifest, so the name carries a content hash and the
+# Deployment's envFrom reference changes whenever config.env does. Without that
+# an edit to an auth switch in there would update the ConfigMap and leave the
+# running pod on the old value: nothing in this cluster reloads a pod on a
+# ConfigMap change. See the header of config.env.
+configMapGenerator:
+  - name: karakeep-config
+    envs:
+      - config.env
+
+resources:
+  - namespace.yaml
+  - secret.yaml
+  - meilisearch.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - backup.yaml
+  - service.yaml
+  - ingress.yaml
+  - networkpolicy.yaml
+# Only default-deny is shared. The allow-from-* components open every port on
+# the pod to a namespace, and this pod carries a browser devtools port; see the
+# header of networkpolicy.yaml.
+components:
+  - ../../infrastructure-config/networkpolicies/default-deny-ingress

@@ -1,0 +1,23 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: multica
+resources:
+  - namespace.yaml
+  - secret-db.yaml
+  - secret.yaml
+  - postgres-cluster.yaml
+  - objectstore.yaml
+  - scheduledbackup.yaml
+  - cnpg-b2-credentials-secret.yaml
+  - networkpolicy.yaml
+  - helmrelease.yaml
+  - ingress.yaml
+components:
+  - ../../infrastructure-config/networkpolicies/default-deny-ingress
+  - ../../infrastructure-config/networkpolicies/allow-intra-namespace
+  - ../../infrastructure-config/networkpolicies/allow-from-traefik
+  - ../../infrastructure-config/networkpolicies/allow-from-monitoring
+  # The agent daemon runs in its own namespace and polls multica-backend
+  # directly over the Service, bypassing the public host.
+  - ../../infrastructure-config/networkpolicies/allow-from-multica-daemon

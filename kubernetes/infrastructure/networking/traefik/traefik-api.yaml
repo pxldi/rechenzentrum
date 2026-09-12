@@ -1,0 +1,26 @@
+---
+# homepage's traefik widget reads the API over the cluster network, and the
+# LoadBalancer Service no longer carries port 8080 (see the comment in
+# helmrelease.yaml — it was reachable unauthenticated from the LAN).
+#
+# A ClusterIP Service keeps that one consumer working without publishing the
+# API off-node. The selector matches what the chart puts on its pods; it is
+# spelled out here rather than reusing the chart's Service because the whole
+# point is to expose a different port set.
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-api
+  namespace: traefik
+  labels:
+    app.kubernetes.io/name: traefik-api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: traefik-traefik
+    app.kubernetes.io/name: traefik
+  ports:
+    - name: traefik
+      port: 8080
+      targetPort: 8080
+      protocol: TCP

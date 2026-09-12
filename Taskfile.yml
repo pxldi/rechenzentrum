@@ -1,0 +1,38 @@
+version: '3'
+
+tasks:
+  validate:
+    desc: Offline builds, schema validation, policies and secret checks
+    cmds:
+      - task: secrets:check
+      - task: build
+      - task: schema
+      - task: policy:test
+  build:
+    cmds:
+      - python3 scripts/build.py
+  secrets:check:
+    cmds:
+      - python3 scripts/check-secrets.py
+  secrets:scan:
+    cmds:
+      - gitleaks dir . --redact=100 --no-banner
+  schema:
+    cmds:
+      - python3 scripts/schema-check.py
+  policy:test:
+    cmds:
+      - python3 scripts/check-policies.py
+  flux:status:
+    cmds:
+      - flux get all -A
+  backup:status:
+    cmds:
+      - kubectl get backups.postgresql.cnpg.io -A
+      - kubectl get backups.velero.io -A
+  reconcile:
+    desc: Operator action; requires Kubernetes write permissions
+    requires:
+      vars: [RESOURCE]
+    cmds:
+      - flux reconcile kustomization {{.RESOURCE | shellQuote}} --with-source

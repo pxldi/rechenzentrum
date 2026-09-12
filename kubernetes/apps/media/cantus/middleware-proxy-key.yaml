@@ -1,0 +1,29 @@
+# Chained after authentik-forward-auth on the browser route. Sets the header
+# Cantus needs before it believes the X-authentik-* identity headers, which
+# any pod that can reach the service could otherwise write itself. The value
+# is the one in auth-secret.yaml; a Traefik headers middleware cannot read a
+# Secret, so it is encrypted here with its own regex (customRequestHeaders).
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+    name: cantus-proxy-key
+    namespace: media
+spec:
+    headers:
+        customRequestHeaders:
+            X-Schall-Proxy-Key: ENC[AES256_GCM,data:r/c4s/ajgl0ymZE5QsCutvG0YOds84502Jeqr5GjjsAVO8V/tz1jtzBzc4sDdr/ZVuaBm1UluugnfS7pURp+5g==,iv:k75kgKNw3rGCAZn444UsZ82k1Co9/PAmgCVRi4q339I=,tag:5HE7Usp24NtvgZHP7O/0wQ==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAxWkk3S1BibTdZK0xTbmtD
+            ZnFYOG9mZUplYUhyZzFDZG1nYXdwY1Z3eFFBCmFBWUpiclFCa3kyR3VuZ2c4bjVk
+            NXVFaEt6REJsd2k0MStaaHExeXBpUVEKLS0tIHVqZzJicnBSdVdzd2ZYSG9jdWFh
+            ZU96Nnc0d0xmRGo1NHpZNmlsYmpkWWsKKAA0ZWj4GY7B4dJsr7/lzeZZOkwUU3Uo
+            m0OVy3JLTVXRo7Wnuii9Jd6TKtQGmz9usO8dQG1Us1C0V1QMhnS/6w==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age14xuuf3xthzqf679mncw0xqwj9thc99yh5e5r34t0cvmkhjx8kakqv0njl0
+    encrypted_regex: ^(customRequestHeaders)$
+    lastmodified: "2026-09-06T21:50:43Z"
+    mac: ENC[AES256_GCM,data:TUOUcDNwEd7Op4W3L0m35G8FYpBxGk3Njru62zXF5MLhjmh4wzAxzT3Z6tDJfgcV/fro74xzw4is7JTIXsCGiTxkYGjdsbN/T7kloH/jCvc7dEv/sjP8umA+GEJN+xDTffGiNDigkSH71hWRPuW01qB1RgRbIHJiN/JICV/t8Eo=,iv:z9OwLz+N+BZ8OBDDsOW+GJZXzhgwYXjZjCDHj4irekU=,tag:/CW3pXd+gQ4ke8+3XZkMwg==,type:str]
+    version: 3.13.3

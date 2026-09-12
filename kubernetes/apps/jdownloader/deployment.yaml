@@ -1,0 +1,53 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jdownloader
+  namespace: jdownloader
+  labels:
+    app: jdownloader
+spec:
+  # Scaled to 0 to free node memory; scale back to 1 when downloads are needed.
+  replicas: 0
+  selector:
+    matchLabels:
+      app: jdownloader
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: jdownloader
+      annotations:
+        backup.velero.io/backup-volumes-excludes: "downloads"
+    spec:
+      priorityClassName: rechenzentrum-bulk
+      containers:
+        - name: jdownloader
+          image: jlesage/jdownloader-2:v26.08.2
+          imagePullPolicy: IfNotPresent
+          # Parked at 0 replicas, so there is no 7d history to size from.
+          # These are a floor, not a measurement — revisit if it is unparked.
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "50m"
+          ports:
+            - containerPort: 5800
+              name: webui
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: downloads
+              mountPath: /output
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: jdownloader-config
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: jdownloader-downloads

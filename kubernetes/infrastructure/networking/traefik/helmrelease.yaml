@@ -1,0 +1,125 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: traefik
+  namespace: traefik
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: traefik
+      version: 41.3.0
+      sourceRef:
+        kind: HelmRepository
+        name: traefik
+        namespace: flux-system
+      interval: 12h
+
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+
+  values:
+    # If traefik is evicted nothing is reachable — including Authentik, and
+    # including the dashboards you would use to work out why. Verified against
+    # chart 41.3.0 with `helm template` that this key actually renders into the
+    # Deployment's pod spec, rather than being one more silently ignored value.
+    priorityClassName: rechenzentrum-critical
+
+    deployment:
+      replicas: 1
+
+    additionalArguments:
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+
+    ports:
+      web:
+        port: 8000
+        expose:
+          default: true
+        exposedPort: 80
+        protocol: TCP
+
+      websecure:
+        port: 8443
+        expose:
+          default: true
+        exposedPort: 443
+        protocol: TCP
+        http3:
+          enabled: true
+
+      metrics:
+        port: 9100
+        expose:
+          default: false
+        protocol: TCP
+
+      # The `traefik` entrypoint carries the API and dashboard, and
+      # --api.insecure=true above means it is served with no authentication at
+      # all. Exposing it on a type: LoadBalancer Service published every router,
+      # service and middleware in the cluster to anyone on the LAN — verified:
+      # http://192.168.8.226:8080/api/overview and /dashboard/ both answered 200
+      # unauthenticated, listing 50 routers and 9 middlewares.
+      #
+      # It was also redundant. The dashboard already has a protected route: the
+      # `dashboard` IngressRoute serves api@internal on websecure behind the
+      # authentik-forward-auth middleware, at traefik.pxldi.de.
+      #
+      # Unexposing it removes 8080 from the LoadBalancer only. The entrypoint
+      # still listens on the pod, which matters more than it looks: Traefik's
+      # own readiness and liveness probes both GET /ping on 8080, so anything
+      # that stopped it listening — or a NetworkPolicy filtering it — would fail
+      # both probes and take every ingress in the cluster down with it. That is
+      # also why this is a Service change and not a NetworkPolicy.
+      #
+      # traefik-api.yaml re-publishes 8080 as a ClusterIP Service for
+      # homepage's widget, which is the only in-cluster consumer.
+      traefik:
+        expose:
+          default: false
+
+    service:
+      type: LoadBalancer
+
+    log:
+      level: INFO
+
+    accessLog:
+      enabled: true
+
+    ingressRoute:
+      dashboard:
+        enabled: false
+
+    providers:
+      kubernetesCRD:
+        enabled: true
+        allowCrossNamespace: true
+      kubernetesIngress:
+        enabled: true
+        publishedService:
+          enabled: true
+
+    persistence:
+      enabled: true
+      storageClass: local-ssd
+      size: 1Gi
+      path: /data
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+    tlsStore:
+      default:
+        defaultCertificate:
+          secretName: pxldi-de-tls

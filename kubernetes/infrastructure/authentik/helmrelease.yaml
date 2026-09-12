@@ -1,0 +1,99 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: authentik
+  namespace: authentik
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: authentik
+      version: "2026.8.0"
+      sourceRef:
+        kind: HelmRepository
+        name: authentik
+        namespace: flux-system
+      interval: 12h
+  install:
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+  values:
+    global:
+      # Auth is named in rechenzentrum-critical's description, and everything
+      # behind Traefik's forward-auth middleware goes down with it. This covers
+      # server and worker; the bundled Postgres and Redis are separate
+      # subcharts and are set below.
+      priorityClassName: rechenzentrum-critical
+      envFrom:
+        - configMapRef:
+            name: authentik-config
+      env:
+        - name: TZ
+          value: "Europe/Berlin"
+
+    authentik:
+      log_level: info
+      secret_key: ""
+      postgresql:
+        host: authentik-postgresql
+        port: 5432
+        name: authentik
+        user: authentik
+        password: ""
+
+    server:
+      startupProbe:
+        failureThreshold: 120
+        periodSeconds: 10
+      enabled: true
+      replicas: 1
+      envFrom:
+        - secretRef:
+            name: authentik-credentials
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+
+    worker:
+      startupProbe:
+        failureThreshold: 120
+        periodSeconds: 10
+      enabled: true
+      replicas: 1
+      envFrom:
+        - secretRef:
+            name: authentik-credentials
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+
+    redis:
+      enabled: true
+
+    postgresql:
+      enabled: true
+      # 564Mi is the largest steady consumer in this namespace and it was
+      # BestEffort: the SSO database was first in line to be evicted, and
+      # everything behind forward-auth goes down with it.
+      primary:
+        # A database must not be evictable before the thing that needs it.
+        # The comment below is the same argument one class up: this was the
+        # first pod out under pressure, and authentik is useless without it.
+        priorityClassName: rechenzentrum-critical
+        resources:
+          requests:
+            memory: "768Mi"
+            cpu: "100m"
+      auth:
+        enablePostgresUser: false
+        existingSecret: authentik-credentials
+        secretKeys:
+          userPasswordKey: password

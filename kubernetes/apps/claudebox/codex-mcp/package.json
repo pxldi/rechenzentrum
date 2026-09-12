@@ -1,0 +1,19 @@
+{
+  "name": "codex-luna-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An MCP server that lets clients run isolated Codex agents on GPT-5.6 Luna.",
+  "type": "module",
+  "bin": {
+    "codex-luna-mcp": "./server.mjs"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "monitor": "node monitor.mjs",
+    "test": "node test/server.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

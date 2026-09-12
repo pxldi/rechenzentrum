@@ -1,0 +1,20 @@
+---
+# Baseline enforced, restricted audited. The runtime container already meets
+# restricted (non-root, ALL capabilities dropped, RuntimeDefault seccomp, no
+# privilege escalation); the two init containers do not, because both run as
+# uid 0 on purpose — one to chown the PVC root, one to npm-install into an
+# emptyDir. That is a baseline-legal thing to do and nothing here is privileged,
+# hostNetwork or hostPath.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: claudebox
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+    kubernetes.io/metadata.name: claudebox
+    name: claudebox

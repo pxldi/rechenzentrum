@@ -1,0 +1,188 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-hdd1
+  resources:
+    requests:
+      storage: 4Ti
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: soundcloud-music-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-hdd1
+  resources:
+    requests:
+      storage: 200Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: downloads-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-hdd2
+  resources:
+    requests:
+      storage: 500Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jellyfin-data-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jellyfin-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sonarr-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: radarr-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sabnzbd-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prowlarr-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: slskd-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: navidrome-data-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: seerr-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cantus-music-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-hdd1
+  resources:
+    requests:
+      storage: 500Gi
+---
+# Where a browser upload waits while Cantus checks it arrived whole, before it
+# is filed into the music volume. Deliberately its own claim rather than a
+# subdirectory of cantus-music-pvc: a scan of /music would walk into one of
+# those and index a half-written upload as music the library holds, and Cantus
+# refuses to start if its staging path is inside a music folder. Sized for a few
+# lossless releases in flight at once, not for keeping them.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cantus-uploads-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-hdd1
+  resources:
+    requests:
+      storage: 50Gi

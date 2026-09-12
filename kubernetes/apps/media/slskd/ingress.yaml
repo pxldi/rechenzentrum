@@ -1,0 +1,18 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: slskd
+  namespace: media
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`slskd.pxldi.de`)
+      kind: Rule
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: traefik
+      services:
+        - name: slskd
+          port: 5030

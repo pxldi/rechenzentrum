@@ -1,0 +1,68 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: adventurelog-headers
+  namespace: adventurelog
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+      X-Forwarded-Host: "travel.pxldi.de"
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: add-trailing-slash
+  namespace: adventurelog
+spec:
+  redirectRegex:
+    regex: ^(https?://[^/]+/api/[^?]*)([^/])(\?.*)?$
+    replacement: ${1}${2}/${3}
+    permanent: false
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: adventurelog
+  namespace: adventurelog
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`travel.pxldi.de`) && (PathPrefix(`/media`) || PathPrefix(`/static`) || PathPrefix(`/accounts`) || PathPrefix(`/csrf`) || PathPrefix(`/admin`))
+      priority: 20
+      middlewares:
+        - name: add-trailing-slash
+          namespace: adventurelog
+        - name: adventurelog-headers
+          namespace: adventurelog
+      services:
+        - name: adventurelog-backend
+          port: 80
+    - kind: Rule
+      match: Host(`travel.pxldi.de`)
+      priority: 10
+      services:
+        - name: adventurelog-frontend
+          port: 3000
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: adventurelog-django-admin
+  namespace: adventurelog
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`travel-admin.pxldi.de`)
+      priority: 10
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: traefik
+      services:
+        - name: adventurelog-backend
+          port: 80

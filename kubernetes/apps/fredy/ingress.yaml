@@ -1,0 +1,16 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: fredy
+  namespace: fredy
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: "Host(`immo.pxldi.de`)"
+      priority: 10
+      services:
+        - name: fredy
+          port: 9998

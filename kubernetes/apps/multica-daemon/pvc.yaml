@@ -1,0 +1,22 @@
+---
+# One volume, mounted as the daemon user's HOME. It holds three things that
+# must survive a pod restart:
+#   ~/.multica    daemon config + the personal access token from `multica login`
+#   ~/.claude, ~/.codex   subscription logins (see deployment.yaml)
+#   /data/workspaces      per-task working dirs and the shared `.repos` bare
+#                         clones the daemon worktrees every task from
+# The workspace root is the size driver: every task is a git worktree plus
+# whatever the agent builds in it. The daemon garbage-collects it on its own
+# schedule (MULTICA_GC_* — 24h after an issue is done, 30d for the repo cache).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: multica-daemon-data-pvc
+  namespace: multica-daemon
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 50Gi

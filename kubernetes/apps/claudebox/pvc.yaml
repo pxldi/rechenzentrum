@@ -1,0 +1,26 @@
+---
+# One volume, mounted as the session user's HOME. It holds the three things
+# that must survive a pod restart:
+#   ~/.claude, ~/.claude.json   the claude.ai subscription login done by hand
+#                               (see deployment.yaml), the per-directory
+#                               workspace-trust record, and the transcripts the
+#                               project sessions are resumed from
+#   ~/projects                  the working copies the sessions run in
+#   ~/.npm, ~/go                caches, so a restart is not a cold rebuild
+#
+# 30Gi, down from the 50Gi this claim had before #908 deleted it. That number
+# was sized for foscal: an Android SDK on the volume, a Gradle cache measured at
+# 1.7Gi, and the build output of three repos. Only rechenzentrum and cantus live
+# here now, both of which are a git checkout plus a Go module cache.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: claudebox-data-pvc
+  namespace: claudebox
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 30Gi

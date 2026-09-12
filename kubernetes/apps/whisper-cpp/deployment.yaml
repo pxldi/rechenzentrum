@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whisper-cpp
+  namespace: whisper-cpp
+  labels:
+    app: whisper-cpp
+spec:
+  # Parked to reclaim memory. READ THE NEXT PARAGRAPH BEFORE ASSUMING THIS IS
+  # SAFE — it re-introduces a bug that was already fixed once.
+  #
+  # The previous note here read: "Held at 0 since the namespace was created: the
+  # transcription path was configured but never had anything answering on 8080.
+  # Voice notes to clanky died on a refused connection. One replica is the whole
+  # feature." That is still true. Parking this means the next voice note fails
+  # on a refused connection exactly as it did before, with no error anywhere
+  # except at the caller.
+  #
+  # Parked anyway because the cost is concrete and the use is not: ggml-medium
+  # is resident at ~1.9Gi, the largest single consumer on a 32Gi node that reads
+  # 81% allocated, and at 1-minute resolution over 7 days there is not one
+  # sample above 0.05 cores or one receive burst above 2KB/s. Nothing has been
+  # transcribed. For a standby service that is ambiguous — it is also what
+  # "waiting, correctly" looks like — so this is a deliberate trade of an
+  # unused-but-ready feature for 1.9Gi, not a cleanup of something dead.
+  #
+  # If voice notes start failing again, this line is the first thing to check:
+  #   kubectl -n whisper-cpp scale deploy/whisper-cpp --replicas=1   (until Flux reverts)
+  # and set this back to 1 to make it stick. Halving the footprint instead of
+  # parking it — ggml-small in place of ggml-medium in the args below, ~1Gi
+  # saved, some accuracy lost on German — keeps the feature answering and is the
+  # better change if this turns out to be used after all.
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: whisper-cpp
+  template:
+    metadata:
+      labels:
+        app: whisper-cpp
+    spec:
+      priorityClassName: rechenzentrum-bulk
+      initContainers:
+        - name: download-model
+          image: ghcr.io/ggml-org/whisper.cpp:main-e6234cd435eb1299ac405916f4083a62ac044b81
+          args:
+            - |
+              test -f /models/ggml-medium.bin || ./models/download-ggml-model.sh medium /models
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      containers:
+        - name: whisper-cpp
+          image: ghcr.io/ggml-org/whisper.cpp:main-e6234cd435eb1299ac405916f4083a62ac044b81
+          args:
+            - |
+              ./build/bin/whisper-server \
+                --host 0.0.0.0 \
+                --port 8080 \
+                --model /models/ggml-medium.bin \
+                --language de \
+                --threads 6 \
+                --processors 1 \
+                --convert \
+                --max-context 0
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            requests:
+              cpu: 250m
+              memory: 2Gi
+            limits:
+              memory: 6Gi
+          volumeMounts:
+            - name: models
+              mountPath: /models
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: whisper-cpp-models

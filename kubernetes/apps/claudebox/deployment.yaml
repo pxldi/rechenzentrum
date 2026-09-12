@@ -1,0 +1,337 @@
+---
+# A Claude Code session that lives on the node instead of on a laptop.
+#
+# It runs `claude remote-control` in server mode. That process registers with
+# the Anthropic API over outbound HTTPS and waits: the sessions it serves show
+# up at https://claude.ai/code and in the Claude mobile app, and the phone or
+# browser is only a screen. Execution, the filesystem and the toolchain are all
+# here. Nothing is exposed — there is no Service, no IngressRoute, no hostname
+# and no inbound port, which is why this app needs none of the ingress and
+# forward-auth wiring every other app in this repo has.
+#
+# This is the workload #908 deleted, brought back smaller. What was removed
+# there was not this idea but foscal: the Android emulator in a second
+# container (7Gi limit, ~4.8Gi resident) and the Gradle and Kotlin daemons
+# beside it, which between them caused both OOM incidents and the memory.max
+# grind that took the apiserver down on 2026-08-19. Neither is here. What is
+# left is two Go repositories and the sessions that work on them, and the pod's
+# whole footprint is 512Mi requested against a 6Gi ceiling rather than 15Gi of
+# limits across two containers.
+#
+# The image is the one built for the Multica daemon, unchanged. That was
+# already the reviewed answer to "what does an agent expect to find on PATH" —
+# Go 1.24.13, Node 24, kubectl/helm/flux/kustomize/stern/k9s, sops and age, gh,
+# sqlc and goose, the PostgreSQL 17 client, Playwright's Chromium. It also
+# carries a JDK 17 and an Android SDK that nothing here uses, which is roughly
+# 1GiB of the 1.76GiB compressed pull and is being paid rather than argued
+# about: stripping them means a second Dockerfile or a conditional stage, and
+# the node has 740GB free. Splitting the image is its own reviewed change.
+#
+# Sessions run in auto permission mode — see the entrypoint. The rules that
+# still bind them are in managed-settings-configmap.yaml, mounted read-only at
+# /etc/claude-code so that a session running without prompts cannot rewrite its
+# own restrictions.
+#
+# There are deliberately NO API keys. Claude Code authenticates with a
+# subscription login stored under HOME on the PVC, done once by hand:
+#   kubectl exec -it -n claudebox deploy/claudebox -- claude auth login
+# then open the URL it prints and paste the code back. The entrypoint waits for
+# the login, polling, and says so. Workspace trust for the roots below is
+# recorded by the entrypoint itself. The Codex CLI (for the luna MCP server)
+# signs in with `codex login --device-auth`, its own login, never a copy of
+# the workstation's auth.json (see the entrypoint for why). Both logins
+# persist on the volume.
+# Do NOT set ANTHROPIC_BASE_URL — Remote Control refuses to start when the API
+# endpoint is anything other than api.anthropic.com, gateway or not.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claudebox
+  namespace: claudebox
+  labels:
+    app.kubernetes.io/name: claudebox
+spec:
+  revisionHistoryLimit: 3
+  replicas: 1
+  strategy:
+    # Single RWO PVC, and two servers sharing a projects root would edit the
+    # same working copies — never run two pods against it at once.
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: claudebox
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: claudebox
+      annotations:
+        # The one volume here is git checkouts, node_modules, Go and npm caches
+        # and build output — all of it either a `git clone` or a rebuild away,
+        # and all of it churning enough to make a weekly Kopia pass to B2
+        # expensive for nothing. weekly-full-backup includes every namespace
+        # ("*"), so without this it would be swept up by default.
+        #
+        # The two things on the volume that are NOT reconstructible are the
+        # claude.ai login and the transcripts the project sessions resume from.
+        # The login is a five-minute manual redo (see the header of this file).
+        # The transcripts are not, which is why the last copy of them was taken
+        # by hand before #908 deleted the volume, and why the same `tar czf -`
+        # out of ~/.claude is worth repeating before anything destructive here.
+        backup.velero.io/backup-volumes-excludes: "data"
+    spec:
+      # A token, deliberately.
+      #
+      # Mounting a ServiceAccount hands this code the API server, which is true
+      # and remains true. What makes it defensible is the scope: the token below
+      # is bound to agent-read (read verbs only, no secrets, no nodes/proxy)
+      # plus exec in `media` alone. A session cannot mutate the cluster with it,
+      # because every change here flows git -> PR -> Flux and RBAC grants no
+      # write verb to match.
+      #
+      # See rbac.yaml for the read grant and infrastructure-config/
+      # claudebox-exec/ for the exec boundary — including why `media` is a
+      # coarser grant than it looks.
+      serviceAccountName: claudebox
+      automountServiceAccountToken: true
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        # Take ownership of the PVC root as uid 1000. A dynamically provisioned
+        # volume's top-level dir is created root-owned; fsGroup only sets the
+        # group, not the owner, and the runtime drops ALL capabilities so it
+        # cannot chown it itself. HOME must be writable — Claude Code enforces
+        # 0700 on ~/.claude.
+        - name: fix-perms
+          image: busybox:1.38
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              mkdir -p /home/pxldi/projects
+              chown 1000:1000 /home/pxldi /home/pxldi/projects
+              echo "chowned PVC roots to 1000:1000"
+              # The kubelet creates the /tmp emptyDir as 0:1000 mode 2777 (the
+              # pod's fsGroup, no sticky bit). Claude Code refuses to put its
+              # cross-session socket in a world-writable /tmp without the
+              # sticky bit and warns on every start; uid 1000 cannot fix a
+              # root-owned directory's mode, so it is done here.
+              chmod 1777 /tmp
+              echo "set /tmp to 1777"
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+          volumeMounts:
+            - name: data
+              mountPath: /home/pxldi
+            - name: tmp
+              mountPath: /tmp
+        # Claude Code and the Codex CLI, onto an emptyDir rather than the PVC,
+        # so a version bump is a pod restart and nothing stale survives it.
+        #
+        # Codex is here because of the luna MCP server (see codex-mcp/ and the
+        # entrypoint): it shells out to `codex exec`, and the tool it registers
+        # with Claude Code is only as present as that binary. It signs in with
+        # the operator's ChatGPT subscription, stored under ~/.codex on the PVC
+        # — no API key, same shape as the Claude login.
+        #
+        # Pinned as plain env values: the Kubernetes Renovate manager only
+        # reads `image:` fields, so these are bumped by hand. Check with
+        #   npm view @anthropic-ai/claude-code version
+        #   npm view @openai/codex version
+        # Do not go below 2.1.224 — Remote Control's resume flags need 2.1.200
+        # and a stale-token bug that made startup fail intermittently was fixed
+        # in 2.1.224.
+        #
+        # Same image as the runtime container, so the pod pulls one image rather
+        # than two and this step already has the node and npm it needs.
+        - name: install-tools
+          image: ghcr.io/pxldi-labs/multica-daemon:sha-ec91dd10fbc6f6ac11f3adc38d7002330ead8b8c
+          command:
+            - bash
+            - -c
+            - |
+              set -euo pipefail
+              npm install -g --prefix /toolbin/npm \
+                "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
+                "@openai/codex@${CODEX_VERSION}"
+              echo "installed:" && ls -l /toolbin/npm/bin
+          env:
+            - name: CLAUDE_CODE_VERSION
+              value: "2.1.259"
+            - name: CODEX_VERSION
+              value: "0.153.4"
+            # npm's default cache is $HOME/.npm and HOME is / for uid 0 here.
+            - name: npm_config_cache
+              value: /tmp/npm-cache
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+          volumeMounts:
+            - name: toolbin
+              mountPath: /toolbin
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        # Note the owner: pxldi-labs, not pxldi. The image workflow tags
+        # ghcr.io/${github.repository_owner}/multica-daemon and this repo moved
+        # to the pxldi-labs org, so builds land there. multica-daemon's own
+        # Deployment still points at the pxldi package and is a version behind;
+        # that workload sits at 0 replicas and bumping it is not this change.
+        - name: claudebox
+          image: ghcr.io/pxldi-labs/multica-daemon:sha-ec91dd10fbc6f6ac11f3adc38d7002330ead8b8c
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "/entrypoint/entrypoint.sh"]
+          # So that an interactive `kubectl exec ... -- claude` starts in the
+          # directory whose trust dialog needs accepting, rather than in one
+          # that will still be untrusted afterwards.
+          workingDir: /home/pxldi/projects
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            # /home/pxldi rather than /data, and the reason is portability of
+            # conversation history. Claude Code files transcripts under
+            # ~/.claude/projects/<absolute-cwd-with-dashes>/, so a repo checked
+            # out at /data/projects/cantus records under -data-projects-cantus
+            # while the same repo on the operator's workstation records under
+            # -home-pxldi-projects-cantus. Same conversations, two filing
+            # systems, and `claude --resume` on either machine finds nothing the
+            # other wrote. Mounting the volume where the workstation keeps its
+            # home makes the two identical, so history moves with an rsync in
+            # either direction and nothing has to be renamed on the way. That is
+            # also what makes the 2026-08-23 archive of the old volume usable
+            # here: its transcripts are already filed under the paths below.
+            - name: HOME
+              value: /home/pxldi
+            - name: CLAUDEBOX_PROJECTS_ROOT
+              value: /home/pxldi/projects
+            # Repos that get one long-lived Claude Code session each, resumed on
+            # every restart rather than recreated. Space-separated; empty or
+            # unset means "just the ad-hoc server".
+            #
+            # foscal is gone from this list on purpose. It is the Android
+            # project, and building it here is what needed the JDK, the Gradle
+            # daemons and the emulator container that made this pod the largest
+            # consumer on a 32Gi node. It builds on the workstation.
+            #
+            # These directories are NOT created by this manifest. They are
+            # clones on the PVC, made by hand or by a session; a root that does
+            # not exist is logged and skipped at startup rather than being
+            # treated as a failure.
+            - name: CLAUDEBOX_REPO_ROOTS
+              value: >-
+                /home/pxldi/projects/rechenzentrum
+                /home/pxldi/projects/cantus
+            # Concurrent sessions the ad-hoc server will hand out. It does not
+            # apply to the two repos above — those are one session each by
+            # definition. 2 rather than the old 3 because two long-lived
+            # sessions now always exist beside it. See entrypoint.sh for the
+            # measured memory numbers, and for why four cores rather than 6Gi is
+            # the limit that actually bites.
+            - name: CLAUDEBOX_SESSION_CAPACITY
+              value: "2"
+            # /toolbin/npm/bin for the CLI the init container fetches, then
+            # /home/pxldi/go/bin so anything `go install`ed during a session is
+            # reachable in the same session, then the system default. Every
+            # baked tool lives in /usr/local/bin or /usr/bin and does not
+            # depend on this value.
+            - name: PATH
+              value: /toolbin/npm/bin:/home/pxldi/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+            # Names the generated sessions after the machine rather than after
+            # the pod's random hostname: rechenzentrum-graceful-unicorn.
+            - name: CLAUDE_REMOTE_CONTROL_SESSION_NAME_PREFIX
+              value: rechenzentrum
+            - name: npm_config_cache
+              value: /home/pxldi/.npm
+            # Where the luna MCP server keeps its per-run status and event
+            # files. Its default is .luna-runs next to server.mjs, which is a
+            # read-only ConfigMap mount here; the PVC is the writable place,
+            # and keeping them there also means `node /opt/codex-mcp/monitor.mjs`
+            # from an exec'd shell sees the runs of every session.
+            - name: CODEX_MCP_RUNS_DIR
+              value: /home/pxldi/.luna-runs
+            - name: GIT_AUTHOR_NAME
+              value: "pxldi"
+            - name: GIT_AUTHOR_EMAIL
+              value: "leopold.sappler@gmail.com"
+            # Read by `gh`, and therefore by git via the credential helper the
+            # entrypoint installs, so sessions can clone and push private
+            # repos. Empty is a supported state: public repos still work.
+            - name: GH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: claudebox-secrets
+                  key: GITHUB_TOKEN
+          resources:
+            requests:
+              # Deliberately small. This pod is idle whenever nobody is typing
+              # at it, and the node's request budget is the scarce thing here:
+              # 25184Mi of 28820Mi allocatable was already committed when this
+              # was written.
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "4"
+              # 6Gi, down from 8. The 8 was sized so that a Gradle daemon, a
+              # Kotlin daemon and three sessions could coexist; with no JVM in
+              # the picture the worst case is three servers, two resumed
+              # sessions and two ad-hoc ones, measured at roughly 2Gi. The
+              # remaining headroom is for whatever a session builds or tests,
+              # and a Go build that overruns it now kills this pod alone.
+              memory: 6Gi
+          # No probes. The server exposes no HTTP and its health is the process:
+          # if it exits, the container exits and the pod restarts, which is also
+          # how it recovers its sessions after a long network outage.
+          volumeMounts:
+            - name: data
+              mountPath: /home/pxldi
+            - name: toolbin
+              mountPath: /toolbin
+              readOnly: true
+            - name: entrypoint
+              mountPath: /entrypoint
+              readOnly: true
+            # Claude Code reads managed settings from this path on Linux. The
+            # directory holds nothing else in this image, so mounting over it is
+            # safe, and read-only is the point: sessions run without permission
+            # prompts and must not be able to edit the rules that constrain them.
+            - name: managed-settings
+              mountPath: /etc/claude-code
+              readOnly: true
+            # The luna MCP server. Read-only for the same reason as the managed
+            # settings: a session running without prompts should not be able to
+            # rewrite the code that its own subagents run through.
+            - name: codex-mcp
+              mountPath: /opt/codex-mcp
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: claudebox-data-pvc
+        - name: toolbin
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: entrypoint
+          configMap:
+            name: claudebox-entrypoint
+            defaultMode: 0555
+        - name: managed-settings
+          configMap:
+            name: claudebox-managed-settings
+            defaultMode: 0444
+        - name: codex-mcp
+          configMap:
+            name: claudebox-codex-mcp
+            defaultMode: 0444

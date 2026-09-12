@@ -1,0 +1,20 @@
+# Everything Karakeep owns: the SQLite database and every asset it keeps for a
+# bookmark -- screenshot, PDF, full-page archive, uploaded file. The assets are
+# what grow, so this sits on hdd1 rather than the NVMe.
+#
+# Unlike the app it replaces, the database is in here too. Nothing streams it
+# off-site the way barman streamed Postgres WAL to B2, so this claim is the
+# whole backup story: the nightly CronJob in backup.yaml writes a consistent
+# copy of the database into /data/backups, and Velero picks up the volume.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: karakeep-data
+  namespace: karakeep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-hdd1
+  resources:
+    requests:
+      storage: 20Gi

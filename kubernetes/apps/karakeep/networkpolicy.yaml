@@ -1,0 +1,62 @@
+# Hand-written rather than the shared allow-from-* components, and the reason is
+# the second container in this pod.
+#
+# karakeep-chrome binds its devtools port to 0.0.0.0. Passing
+# --remote-debugging-address=127.0.0.1 does not change that: the image's
+# entrypoint already sets the address, and Chromium keeps the first occurrence
+# of that switch while taking the last --remote-debugging-port. Measured on the
+# running image -- /proc/net/tcp shows 0.0.0.0:9222.
+#
+# The devtools port is unauthenticated remote control of a browser: whoever
+# reaches it can open any URL, read any page and fetch any file the pod can. The
+# shared components each open every port on the pod to a whole namespace, which
+# would hand that port to traefik, homepage and monitoring. These two policies
+# name the port instead, so the only thing that can reach 9222 is the container
+# next to it over the loopback interface.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-ingress
+  namespace: karakeep
+spec:
+  podSelector:
+    matchLabels:
+      app: karakeep
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: homepage
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 3000
+---
+# Search is the app's alone. Nothing outside this namespace has any business on
+# 7700, and the master key is not a substitute for that.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-meilisearch-from-app
+  namespace: karakeep
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: karakeep-meilisearch
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: karakeep
+      ports:
+        - protocol: TCP
+          port: 7700

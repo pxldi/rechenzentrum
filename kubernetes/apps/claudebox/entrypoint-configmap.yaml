@@ -1,0 +1,306 @@
+---
+# Startup sequence for the Remote Control servers. Kept in a ConfigMap rather
+# than inline in the Deployment so the shell is readable and diffable on its
+# own — the same split multica-daemon uses.
+#
+# Two things have to be true before `claude remote-control` will start, and
+# neither can be expressed in a manifest because both are per-account state on
+# the PVC rather than configuration:
+#
+#   1. an eligible claude.ai login  — without it the command exits with an
+#      error rather than starting (it is not a warning; there is no degraded
+#      mode)
+#   2. workspace trust for each root — Claude Code refuses to operate in a
+#      directory nobody has accepted the trust dialog for, and the dialog is
+#      interactive by design
+#
+# The login is done by one `kubectl exec` documented in deployment.yaml, and
+# this script waits for it, polling and saying what it is waiting for, rather
+# than exiting. It used to exit after 60 seconds, and that window was exactly
+# the problem on 2026-09-03: the OAuth flow prints a URL, a human opens it and
+# pastes a code back, and the container was gone before the code arrived,
+# taking the half-finished login with it. A pod that stays Running can be
+# exec'd into at leisure. Workspace trust is recorded by this script itself,
+# for the directories the Deployment names; see below.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: claudebox-entrypoint
+  namespace: claudebox
+data:
+  entrypoint.sh: |
+    #!/bin/sh
+    set -eu
+
+    hint() {
+      echo "    kubectl exec -it -n claudebox deploy/claudebox -- claude auth login" >&2
+      echo "  open the URL it prints, paste the code back. The login persists on the PVC" >&2
+      echo "  and this script picks it up on its next poll." >&2
+    }
+
+    mkdir -p "$CLAUDEBOX_PROJECTS_ROOT"
+    cd "$CLAUDEBOX_PROJECTS_ROOT"
+
+    echo "==> git identity"
+    git config --global user.name "$GIT_AUTHOR_NAME"
+    git config --global user.email "$GIT_AUTHOR_EMAIL"
+    # Every repo under the projects root is checked out by a different process
+    # than the one reading it (a session, an exec'd shell, this script), and
+    # git's ownership check fires on the ones it did not create itself.
+    git config --global --add safe.directory '*'
+
+    # Private clones. Same arrangement as multica-daemon: gh answers git's
+    # credential requests from GH_TOKEN in the environment, so the token is
+    # never written to the PVC.
+    #
+    # REPLACE_ME is the value the Secret ships with, because the repo's CI
+    # rejects a Secret whose payload is not SOPS-encrypted and an empty string
+    # encrypts to nothing. Treating it as absent is the difference between "no
+    # token, public repos only" in this log and a 401 from gh on every clone.
+    case "${GH_TOKEN:-}" in
+      "" | REPLACE_ME)
+        echo "==> no GITHUB_TOKEN — public repos only, private clones will 403"
+        echo "    fill it in with: sops kubernetes/apps/claudebox/secret.yaml"
+        unset GH_TOKEN
+        ;;
+      *)
+        echo "==> wiring gh up as git's credential helper for github.com"
+        gh auth setup-git --hostname github.com
+        ;;
+    esac
+
+    echo "==> claude $(claude --version)"
+
+    # `claude remote-control --help` checks Remote Control eligibility before it
+    # prints anything, which makes it the documented way to ask "is this machine
+    # signed in and allowed" without starting a server or guessing at the name
+    # of a credentials file.
+    until claude remote-control --help >/dev/null 2>&1; do
+      echo "==> not signed in, or Remote Control is not available for this account." >&2
+      echo "  Sign in once:" >&2
+      hint
+      sleep 30
+    done
+
+    # Two answers Claude Code otherwise asks for interactively, recorded where
+    # it would record them itself so that it does not ask. Neither is a
+    # permission; both are one-time UI dialogs.
+    #
+    #   remoteDialogSeen   `claude remote-control` asks "Enable Remote Control?
+    #                      (y/n)" on first use. Its stdin here is /dev/null, so
+    #                      that read returns EOF, the server exits 0 and this
+    #                      script restarts the pod — every thirty seconds, until
+    #                      someone answers a question nobody can see.
+    #   hasTrustDialogAccepted  per directory. `claude` refuses to run in a
+    #                      directory without it, and the dialog is interactive.
+    #                      Granting it here is the same grant for the
+    #                      directories this pod is defined by: the roots are
+    #                      listed in deployment.yaml, which is reviewed, so
+    #                      their trust is reviewed with it.
+    #
+    # jq writes a temp file and moves it over the original, because
+    # ~/.claude.json is tens of kilobytes of state Claude Code writes itself
+    # and a truncated write there costs the login.
+    echo "==> recording remote-control consent and workspace trust"
+    trust_filter='.remoteDialogSeen = true | .hasUsedRemoteControl = true'
+    for root in "$CLAUDEBOX_PROJECTS_ROOT" ${CLAUDEBOX_REPO_ROOTS:-}; do
+      trust_filter="$trust_filter | .projects[\"$root\"].hasTrustDialogAccepted = true"
+    done
+    jq "$trust_filter" "$HOME/.claude.json" > "$HOME/.claude.json.tmp" \
+      && mv "$HOME/.claude.json.tmp" "$HOME/.claude.json" \
+      && chmod 600 "$HOME/.claude.json"
+
+    # The luna MCP server: a session here can hand a task to a Codex agent on
+    # gpt-5.6-luna, the same way the workstation's sessions can. The server is
+    # /opt/codex-mcp (a ConfigMap, see kustomization.yaml); it shells out to
+    # the `codex` binary the init container installed.
+    #
+    # Registered at user scope, which lands in ~/.claude.json on the PVC and so
+    # applies to every session in every root. Idempotent: `claude mcp add`
+    # refuses a name that exists, so ask first.
+    #
+    # Codex's own config is seeded only if absent. It is user state that codex
+    # rewrites (model-availability counters and the like), so overwriting it
+    # every boot would be wrong; but a fresh PVC needs approvals_reviewer set,
+    # because server.mjs runs workspace-write tasks with --approve-for-me and
+    # that flag routes approvals through whatever reviewer is configured. The
+    # trust entries are what let `codex exec` run in those directories without
+    # asking.
+    #
+    # The Codex *login* is not seeded. Like the Claude one, it is per-account
+    # state done by hand: `codex login --device-auth` from an exec'd shell,
+    # which prints a URL and a code and needs no browser callback into the pod.
+    #
+    # Do NOT copy the workstation's ~/.codex/auth.json here instead. That file
+    # holds one refresh token and OpenAI accepts each refresh token once. Two
+    # machines holding the same one race: the first to refresh wins, the other
+    # gets 401 refresh_token_reused on its next run and stays broken until it
+    # logs in again. That is how every luna run failed on 2026-09-07.
+    if ! claude mcp get luna >/dev/null 2>&1; then
+      echo "==> registering the luna MCP server"
+      claude mcp add --transport stdio --scope user luna -- node /opt/codex-mcp/server.mjs
+    fi
+    mkdir -p "$CODEX_MCP_RUNS_DIR" "$HOME/.codex"
+    if [ ! -f "$HOME/.codex/config.toml" ]; then
+      echo "==> seeding ~/.codex/config.toml"
+      {
+        echo 'approvals_reviewer = "auto_review"'
+        echo 'model_reasoning_effort = "medium"'
+        for root in "$CLAUDEBOX_PROJECTS_ROOT" ${CLAUDEBOX_REPO_ROOTS:-}; do
+          printf '\n[projects."%s"]\ntrust_level = "trusted"\n' "$root"
+        done
+      } > "$HOME/.codex/config.toml"
+    fi
+    if [ -f "$HOME/.codex/auth.json" ]; then
+      echo "==> codex $(codex --version 2>/dev/null || echo '(version unknown)'), signed in"
+    else
+      echo "==> codex is not signed in; the luna tools will fail until it is:" >&2
+      echo "    kubectl exec -it -n claudebox deploy/claudebox -- codex login --device-auth" >&2
+    fi
+
+    # One long-lived session per repo root, resumed rather than recreated.
+    #
+    # The work in a repo is one continuing conversation that gets /compact'ed
+    # when it fills, not a series of new ones, so a fresh session on every pod
+    # restart would throw away the thing being continued. Restarts are not rare
+    # here: an image bump or a Flux reconcile is enough.
+    #
+    # `claude --continue` reattaches to the most recent conversation in the
+    # current directory, with no time limit. `--remote-control` publishes it, so
+    # it is the same session on the phone as in a terminal. The two flags
+    # together are what makes a project session survive the pod.
+    #
+    # Not `claude remote-control -c`: that reattaches to a *Remote Control*
+    # session by its own id, and only within roughly four hours. This has to
+    # work across a restart at any distance, which is the local transcript's
+    # job, not the server's.
+    #
+    # A missing root is skipped rather than fatal. The roots live on the PVC and
+    # are cloned by hand, so a fresh volume has none of them, and that should
+    # not stop the pod from coming up.
+    session_pids=""
+    for root in ${CLAUDEBOX_REPO_ROOTS:-}; do
+      name=$(basename "$root")
+      if [ ! -d "$root" ]; then
+        echo "==> no session for $name: $root does not exist yet" >&2
+        echo "    clone it there and restart, or start one by hand" >&2
+        continue
+      fi
+      # Claude Code stores transcripts under a directory named after the cwd
+      # with the separators flattened, so this is how to ask "has this repo a
+      # conversation to continue yet" without starting one to find out. First
+      # boot on a fresh PVC has none and must not pass --continue, which fails
+      # rather than falling back when there is nothing to continue.
+      encoded=$(printf '%s' "$root" | tr '/.' '--')
+      if ls "$HOME/.claude/projects/$encoded"/*.jsonl >/dev/null 2>&1; then
+        resume="--continue"
+      else
+        resume=""
+      fi
+      # Its own file rather than stdout: several sessions interleaving status
+      # redraws make the pod log unreadable, and the projects-root server is the
+      # one whose output is worth having there. -a appends, so a restart loop
+      # leaves a history instead of truncating the evidence of why it restarted.
+      log="/tmp/remote-control-$name.log"
+      echo "==> ${resume:+continuing }session for $name in $root (log $log)"
+      (
+        cd "$root" || exit 1
+        # A session is a TUI and exits immediately without a terminal, so script
+        # supplies a pty. Its stdin comes from a fifo opened read-write and then
+        # unlinked: that never delivers EOF and never ends, where the obvious
+        # `sleep infinity |` orphans one sleep per restart.
+        fifo=$(mktemp -u); mkfifo "$fifo"; exec 3<>"$fifo"; rm -f "$fifo"
+        # --permission-mode bypassPermissions, the same as the ad-hoc server
+        # below and for the same reason: nobody is at this terminal to answer a
+        # prompt, and a session that waits on one from a phone is unusable.
+        # Its absence here is what produced the permission dialogs of
+        # 2026-09-03. The managed deny/ask rules still apply.
+        #
+        # `script` copies the pty to its own stdout as well as to the log, and
+        # its stdout is the pod's, so without >/dev/null both sessions' redraws
+        # land in `kubectl logs` on top of the ad-hoc server's output.
+        while :; do
+          # shellcheck disable=SC2086
+          script -qafc "claude $resume --remote-control $name --permission-mode bypassPermissions" "$log" <&3 >/dev/null || true
+          # Whatever it was on entry, there is a conversation to continue now.
+          resume="--continue"
+          # Slow enough that a session failing for a permanent reason (an
+          # untrusted workspace, an expired login) cannot spin the log.
+          sleep 10
+        done
+      ) &
+      session_pids="$session_pids $!"
+    done
+
+    # The ad-hoc server, for work that belongs to no repo. Sessions here are
+    # disposable; the two above are not.
+    #
+    # --spawn same-dir because the projects root is a plain directory holding
+    # several unrelated repositories, and `worktree` needs the server to be
+    # rooted in one git repository. Sessions therefore share this directory:
+    # they work in whichever subdirectory you point them at, and a session that
+    # wanders into rechenzentrum or cantus can conflict with the long-lived one
+    # already there.
+    #
+    # --capacity is a per-server cap on concurrent sessions, not a reservation.
+    # Measured on this image:
+    #   ~165Mi   a server process, whether or not it has sessions
+    #   ~230Mi   an ordinary session
+    #   ~520Mi   a session resumed from a very large transcript
+    # Three servers plus two resumed project sessions plus two ad-hoc ones is
+    # roughly 2Gi at the pessimistic end, inside the 6Gi limit.
+    #
+    # Memory is not the constraint that bites first. Four cores are: one session
+    # running a build wants all of them, and --capacity cannot prevent two
+    # sessions from doing that at once no matter what it is set to.
+    #
+    # No --name: with several concurrent sessions one shared title is worse than
+    # the generated ones, which CLAUDE_REMOTE_CONTROL_SESSION_NAME_PREFIX makes
+    # legible (rechenzentrum-graceful-unicorn) instead of naming them after the
+    # pod's random hostname.
+    #
+    # --permission-mode auto: approving individual tool calls from a phone is
+    # unusable enough that the alternative is not using this at all. This ran
+    # in bypassPermissions until 2026-09-08. That mode still asks before a
+    # Bash command that reads paths outside the session's working directories,
+    # with no "always allow" answer, and a builder subagent in a linked
+    # worktree under .claude/worktrees trips it on every recursive grep. Auto
+    # mode reads outside the working directories without asking (the dialog's
+    # own help text says so) and approves the rest through its classifier, and
+    # it is the mode the owner's own machine runs without prompts. Neither
+    # mode is unrestricted: the deny and ask rules in
+    # /etc/claude-code/managed-settings.json still apply, and are mounted
+    # read-only precisely so a session running without prompts cannot edit them.
+    echo "==> starting the ad-hoc Remote Control server in $(pwd)"
+    claude remote-control \
+      --spawn same-dir \
+      --capacity "${CLAUDEBOX_SESSION_CAPACITY:-2}" \
+      --permission-mode auto &
+    pid=$!
+
+    # Forward pod shutdown to the servers rather than letting the shell take the
+    # signal and leave them orphaned for the grace period. The project sessions
+    # are supervisor subshells; killing one stops it restarting the session it
+    # supervises, and the pty and claude beneath it go with the pod. Without
+    # this a rollout would leave them running through the grace period and be
+    # killed by SIGKILL instead.
+    trap 'kill -TERM "$pid" $session_pids 2>/dev/null || true' TERM INT
+
+    rc=0
+    wait "$pid" || rc=$?
+
+    # Reached on one ordinary path: the ~10 minute network outage after which
+    # server mode gives up. That is why this pod restarts rather than stays
+    # down — starting the server again in the same directory brings its
+    # sessions back, for about four hours.
+    echo "==> Remote Control server exited ($rc)." >&2
+
+    # A shell that took a signal reports 128+signum, which here means the pod is
+    # being stopped rather than the server having failed. Pausing on that path
+    # would burn the whole termination grace period on every rollout and end in
+    # a SIGKILL; pausing on a real failure is the point, so that a permanently
+    # failing start does not fill the log faster than anyone can read it.
+    if [ "$rc" -lt 128 ]; then
+      sleep 30
+    fi
+    exit "$rc"

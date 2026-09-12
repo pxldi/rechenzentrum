@@ -1,0 +1,15 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: seerr
+  namespace: media
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`request.pxldi.de`)
+      kind: Rule
+      services:
+        - name: seerr-seerr-chart
+          port: 80

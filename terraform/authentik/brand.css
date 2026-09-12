@@ -1,0 +1,927 @@
+/* =============================================================================
+   Rechenzentrum - authentik brand CSS
+   Loaded by brand.tf. Do not edit the copy in the authentik UI; tofu apply
+   overwrites it from this file.
+
+   The world is Schall's, from /home/pxldi/projects/cantus: a warm near-black
+   ground with plum surfaces, one lilac accent spent like a coloured tab on a
+   drawer, hairlines instead of shadows, and a field drawn as a well rather than
+   a raise. Nothing here casts a shadow, glows, or fades one colour into
+   another. Depth is tonal: ground, surface, inset, and a hairline between.
+
+   The sheet covers three pages: the login flow, which is drawn by hand, and
+   the user portal and the admin interface, which are painted by their
+   variables. All three follow the browser's light or dark preference. It is
+   one room in two lights: same geometry, same wallpaper, same wordmark, and
+   two palettes.
+
+   Three rules about where a selector lands, each learned the hard way:
+
+   1. authentik injects this sheet into the document AND into every component
+      shadow root, so a bare rule reaches the portal and the admin as well as
+      the flow. Bare is therefore how the app is styled, on purpose, and how
+      the flow must never be: anything meant for the login card alone is either
+      a pf-c-login* class, which exists nowhere else, or scoped with :host().
+
+   2. Scope with :host(), never a descendant selector, when the target is in
+      another root. The flow is split across roots: the card is in
+      ak-flow-executor, the title in ak-flow-card, the form in the ak-stage-*
+      element. `.pf-c-login__main .pf-c-form__label` crosses a boundary and
+      matches nothing. Within one root a descendant selector is fine, which is
+      what the mark and its card rely on.
+
+   3. Nothing inside a shadow root can see html[data-theme]. Anything that has
+      to change with the mode goes through an inherited custom property, which
+      does cross the boundary: that is what the --rz-ui-* tokens are.
+
+   4. No child combinator. Somewhere between this file and the sheet the
+      browser parses, a `>` is turned into the literal text `u003e`, so
+      `body:has(> ak-drawer)` reaches the page as `body:has(u003e ak-drawer)`
+      and matches nothing. Hyphens and quotes survive; only `>` does not. Name
+      the children, or exclude what the selector must not match.
+   ============================================================================= */
+
+/* Self-hosted so no login page makes a request to a font CDN. Registered from
+   the document-level copy of this sheet; @font-face inside a shadow root is
+   ignored, but the faces it registers are visible to every root. */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: fallback;
+  src: url('https://branding.pxldi.de/fonts/schibsted-grotesk-latin-var.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Azeret Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: fallback;
+  src: url('https://branding.pxldi.de/fonts/azeret-mono-latin-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Azeret Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: fallback;
+  src: url('https://branding.pxldi.de/fonts/azeret-mono-latin-500.woff2') format('woff2');
+}
+
+:root {
+  --rz-ground: #0e0b10;
+  --rz-inset: #08060a;
+  --rz-surface: #241a27;
+  --rz-surface-thick: #2d212f;
+  --rz-line: #3d2f42;
+  --rz-line-strong: #4a3a50;
+  --rz-accent: #bfa3e8;
+  --rz-accent-soft: #d9c8f0;
+  --rz-accent-ink: #2a1c3d;
+  --rz-ink: #ece5ea;
+  --rz-ink-2: #bcb2b8;
+  --rz-ink-3: #aaa0aa;
+  --rz-ink-4: #8b7f92;
+  --rz-mute: #6b5f72;
+  --rz-fail: #cd5f4c;
+  --rz-fail-line: #5c3733;
+  --rz-ok: #7fb387;
+  --rz-warn: #d9a441;
+
+  --rz-sans: 'Schibsted Grotesk', 'Avenir Next', 'Segoe UI', sans-serif;
+  --rz-mono: 'Azeret Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --rz-radius: 0.5rem;
+  --rz-radius-lg: 0.75rem;
+
+  --rz-motion-state: 150ms;
+  --rz-motion-surface: 200ms;
+  --rz-motion-enter: 280ms;
+  --rz-motion-stagger: 60ms;
+  --rz-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --rz-ease-arrive: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* --- authentik's own tokens -------------------------------------------------
+   Above this line is the login page's palette, which never changes. Here it is
+   handed to authentik, and here the user portal and the admin interface get a
+   light mode.
+
+   The flow is the only page this sheet draws by hand. The portal and the admin
+   are dense PatternFly apps with hundreds of components, and the only
+   practical way to put them in the same room is to repoint the variables they
+   are all built on.
+
+   Three things about how these land, each checked against 2026.8.0:
+
+   1. authentik's dark theme lives on html[data-theme=dark] inside a @layer,
+      and an unlayered rule beats a layered one whatever the specificity. So
+      these values hold in both themes. The html[data-theme] half of the
+      selector is insurance for the day authentik moves those rules out of the
+      layer.
+
+   2. PatternFly components repoint the global tokens at the light-* and
+      dark-* families. .pf-c-table sets --pf-global--BackgroundColor--100 to
+      --BackgroundColor--light-100 and --Color--100 to --Color--dark-100, which
+      in the light theme are white and near-black: that is where the white
+      tables of unreadable text came from, on a page this sheet had already
+      painted dark. Both families have to be mapped, not only the --100s.
+
+   3. Those families carry meaning. light-* is a light surface and the dark ink
+      that goes on it; dark-* is a dark surface and the light ink that goes on
+      it. Both are pointed at the same surfaces here, so a mode is a mode
+      throughout.
+*/
+
+/* The world, dark: the palette above under the names the rest of this sheet
+   uses. Everything that turns over with the mode goes through one of these. */
+:root,
+html[data-theme] {
+  --rz-ui-ground: var(--rz-ground);
+  --rz-ui-surface: var(--rz-surface);
+  --rz-ui-surface-thick: var(--rz-surface-thick);
+  --rz-ui-inset: var(--rz-inset);
+  --rz-ui-line: var(--rz-line);
+  --rz-ui-line-strong: var(--rz-line-strong);
+  --rz-ui-ink: var(--rz-ink);
+  --rz-ui-ink-2: var(--rz-ink-2);
+  --rz-ui-ink-3: var(--rz-ink-3);
+  --rz-ui-ink-4: var(--rz-ink-4);
+  --rz-ui-mute: var(--rz-mute);
+  --rz-ui-accent: var(--rz-accent);
+  --rz-ui-accent-soft: var(--rz-accent-soft);
+  --rz-ui-accent-ink: var(--rz-accent-ink);
+  --rz-ui-fail: var(--rz-fail);
+  --rz-ui-fail-line: var(--rz-fail-line);
+  --rz-ui-ok: var(--rz-ok);
+  --rz-ui-warn: var(--rz-warn);
+  --rz-ui-fail-wash: rgba(205, 95, 76, 0.14);
+  --rz-ui-accent-wash: rgba(191, 163, 232, 0.28);
+  --rz-ui-wordmark: url("https://branding.pxldi.de/icons/wordmark.svg");
+  --rz-ui-wallpaper: url("https://branding.pxldi.de/wallpapers/login-bg.avif");
+  --rz-ui-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)' opacity='0.04'/%3E%3C/svg%3E");
+
+  /* PatternFly's grey ramp, inverted the way authentik's own dark theme
+     inverts it: black-50 is the brightest ink, black-900 the ground. */
+  --pf-global--palette--black-50: var(--rz-ink);
+  --pf-global--palette--black-100: var(--rz-ink-2);
+  --pf-global--palette--black-200: var(--rz-ink-3);
+  --pf-global--palette--black-300: var(--rz-ink-4);
+  --pf-global--palette--black-400: var(--rz-mute);
+  --pf-global--palette--black-500: var(--rz-line-strong);
+  --pf-global--palette--black-600: var(--rz-line);
+  --pf-global--palette--black-700: var(--rz-surface-thick);
+  --pf-global--palette--black-800: var(--rz-surface);
+  --pf-global--palette--black-900: var(--rz-ground);
+}
+
+/* The world, light: the same plum, thinned out. The accent has to carry text
+   on a near-white surface, so it is the lilac taken down to 6.3:1 rather than
+   the lilac itself, which reads at 1.9:1 and would be decoration pretending to
+   be a link. */
+html[data-theme="light"] {
+  --rz-ui-ground: #f3eef5;
+  --rz-ui-surface: #fbf8fc;
+  --rz-ui-surface-thick: #efe8f1;
+  --rz-ui-inset: #ebe3ee;
+  --rz-ui-line: #ded2e2;
+  --rz-ui-line-strong: #c9b9cf;
+  --rz-ui-ink: #221a26;
+  --rz-ui-ink-2: #4c4152;
+  --rz-ui-ink-3: #6b5f72;
+  --rz-ui-ink-4: #8b7f92;
+  --rz-ui-mute: #a396a9;
+  --rz-ui-accent: #6d4aa8;
+  --rz-ui-accent-soft: #57318f;
+  --rz-ui-accent-ink: #ffffff;
+  --rz-ui-fail: #a8372a;
+  --rz-ui-ok: #3f7048;
+  --rz-ui-warn: #8a6414;
+  --rz-ui-fail-line: #e0b8b0;
+  --rz-ui-fail-wash: rgba(168, 55, 42, 0.10);
+  --rz-ui-accent-wash: rgba(109, 74, 168, 0.18);
+  --rz-ui-wordmark: url("https://branding.pxldi.de/icons/wordmark-ink.svg");
+  --rz-ui-wallpaper: url("https://branding.pxldi.de/wallpapers/login-bg-light.webp");
+  --rz-ui-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)' opacity='0.06'/%3E%3C/svg%3E");
+
+  /* The ramp the right way up. */
+  --pf-global--palette--black-50: #faf7fb;
+  --pf-global--palette--black-100: #f3eef5;
+  --pf-global--palette--black-200: #e9e1ec;
+  --pf-global--palette--black-300: #ded2e2;
+  --pf-global--palette--black-400: #c9b9cf;
+  --pf-global--palette--black-500: #a396a9;
+  --pf-global--palette--black-600: #6b5f72;
+  --pf-global--palette--black-700: #4c4152;
+  --pf-global--palette--black-800: #332a38;
+  --pf-global--palette--black-900: #221a26;
+}
+
+/* The map itself, theme-independent: the --rz-ui-* tokens above are what turn
+   over. */
+:root,
+html[data-theme] {
+  /* Surfaces. --100 is a panel, --200 the page behind it. */
+  --pf-global--BackgroundColor--100: var(--rz-ui-surface);
+  --pf-global--BackgroundColor--150: var(--rz-ui-surface-thick);
+  --pf-global--BackgroundColor--200: var(--rz-ui-ground);
+  --pf-global--BackgroundColor--300: var(--rz-ui-surface-thick);
+  --pf-global--BackgroundColor--400: var(--rz-ui-line);
+  --pf-global--BackgroundColor--light-100: var(--rz-ui-surface);
+  --pf-global--BackgroundColor--light-200: var(--rz-ui-ground);
+  --pf-global--BackgroundColor--light-300: var(--rz-ui-surface-thick);
+
+  /* The dark-* family is the surface PatternFly reaches for when it wants a
+     dark panel in a light theme: the masthead, the sidebar. Both families are
+     pointed at the same surfaces here, so light mode is light throughout.
+     Splitting them the other way, with a dark frame around a light page, puts
+     pale ink on a light sidebar the first time a component pairs the two
+     families the way its author intended, and there is no selector that can
+     tell the two apart from inside a shadow root. */
+  --pf-global--BackgroundColor--dark-100: var(--rz-ui-surface);
+  --pf-global--BackgroundColor--dark-200: var(--rz-ui-ground);
+  --pf-global--BackgroundColor--dark-300: var(--rz-ui-surface-thick);
+  --pf-global--BackgroundColor--dark-400: var(--rz-ui-line);
+
+  /* Ink, both families, for the same reason. */
+  --pf-global--Color--100: var(--rz-ui-ink);
+  --pf-global--Color--200: var(--rz-ui-ink-2);
+  --pf-global--Color--dark-100: var(--rz-ui-ink);
+  --pf-global--Color--dark-200: var(--rz-ui-ink-2);
+  --pf-global--Color--light-100: var(--rz-ui-ink);
+  --pf-global--Color--light-200: var(--rz-ui-ink-2);
+  --pf-global--Color--light-300: var(--rz-ui-ink-3);
+
+  /* Hairlines. --400 is the one PatternFly uses where a border has to read as
+     a control edge rather than a division. */
+  --pf-global--BorderColor--100: var(--rz-ui-line);
+  --pf-global--BorderColor--200: var(--rz-ui-line-strong);
+  --pf-global--BorderColor--300: var(--rz-ui-line);
+  --pf-global--BorderColor--400: var(--rz-ui-ink-3);
+  --pf-global--BorderColor--light-100: var(--rz-ui-line);
+  --pf-global--BorderColor--dark-100: var(--rz-ui-line);
+
+  /* The one accent, in every name authentik reaches for it by. The blue-300
+     aliases are authentik's own: its links and active states resolve through
+     them. --ak-accent is authentik's orange, which draws the current item in
+     the sidebar. */
+  --pf-global--primary-color--100: var(--rz-ui-accent);
+  --pf-global--primary-color--200: var(--rz-ui-accent-soft);
+  --pf-global--primary-color--300: var(--rz-ui-accent);
+  --pf-global--primary-color--light-100: var(--rz-ui-accent);
+  --pf-global--primary-color--dark-100: var(--rz-ui-accent);
+  --pf-global--active-color--100: var(--rz-ui-accent);
+  --pf-global--link--Color: var(--rz-ui-accent);
+  --pf-global--link--Color--hover: var(--rz-ui-accent-soft);
+  --pf-global--link--Color--visited: var(--rz-ui-accent);
+  --pf-global--link--Color--light: var(--rz-ui-accent);
+  --pf-global--link--Color--light--hover: var(--rz-ui-accent-soft);
+  --pf-global--link--Color--dark: var(--rz-ui-accent);
+  --pf-global--link--Color--dark--hover: var(--rz-ui-accent-soft);
+  --pf-global--palette--blue-300: var(--rz-ui-accent);
+  --pf-v4-global--palette--blue-300: var(--rz-ui-accent);
+  --ak-global--palette--blue-300: var(--rz-ui-accent);
+  --ak-accent: var(--rz-ui-accent);
+
+  --pf-global--disabled-color--100: var(--rz-ui-mute);
+  --pf-global--disabled-color--200: var(--rz-ui-line);
+  --pf-global--disabled-color--300: var(--rz-ui-ink-3);
+  --pf-global--icon--Color--light: var(--rz-ui-ink-3);
+  --pf-global--icon--Color--dark: var(--rz-ui-ink-3);
+
+  /* State. Red and green are the two the flow already uses; amber is new here
+     because the admin interface has warnings and the login page does not. */
+  --pf-global--danger-color--100: var(--rz-ui-fail);
+  --pf-global--danger-color--200: var(--rz-ui-fail);
+  --pf-global--success-color--100: var(--rz-ui-ok);
+  --pf-global--success-color--200: var(--rz-ui-ok);
+  --pf-global--warning-color--100: var(--rz-ui-warn);
+  --pf-global--warning-color--200: var(--rz-ui-warn);
+  --pf-global--info-color--100: var(--rz-ui-accent);
+  --pf-global--info-color--200: var(--rz-ui-accent-soft);
+  --pf-global--default-color--100: var(--rz-ui-ink-3);
+  --pf-global--default-color--300: var(--rz-ui-ink-2);
+
+  /* Depth is tonal on the flow, where this sheet draws every surface itself.
+     The app cannot work that way: a dropdown opens over a panel the same
+     colour as itself and PatternFly gives it no border, so the shadow is the
+     only thing separating them. They are kept, as plain black. */
+  --pf-global--BoxShadow--sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --pf-global--BoxShadow--md: 0 4px 8px 0 rgba(0, 0, 0, 0.5);
+  --pf-global--BoxShadow--lg: 0 8px 16px 0 rgba(0, 0, 0, 0.55);
+  --pf-global--BoxShadow--xl: 0 16px 32px 0 rgba(0, 0, 0, 0.6);
+  --pf-global--BoxShadow--inset: inset 0 0 10px 0 rgba(0, 0, 0, 0.6);
+
+  /* authentik's own names for the frame and the scrollbars. "dark" here is
+     the name of a slot, not a colour: it is the sidebar and the masthead, and
+     in light mode they are light. */
+  --ak-dark-background: var(--rz-ui-ground);
+  --ak-dark-background-light: var(--rz-ui-surface);
+  --ak-dark-background-lighter: var(--rz-ui-surface-thick);
+  --ak-dark-foreground: var(--rz-ui-ink);
+  --ak-v2-global--BackgroundColor--100: var(--rz-ui-surface);
+  --ak-v2-global--BackgroundColor--200: var(--rz-ui-ground);
+  --ak-v2-global--Color--100: var(--rz-ui-ink);
+  --ak-v2-global--BorderColor--100: var(--rz-ui-line);
+  --ak-v2-global--BorderColor--200: var(--rz-ui-line-strong);
+  --ak-scrollbar-background-color: var(--rz-ui-inset);
+  --ak-scrollbar-thumb-background-color: var(--rz-ui-line-strong);
+
+  /* Every PatternFly font token in authentik resolves through these four, so
+     the portal and the admin interface read in the same two faces as the
+     login page. */
+  --ak-font-family-sans-serif: var(--rz-sans);
+  --ak-font-family-heading: var(--rz-sans);
+  --ak-generic-sans-serif: var(--rz-sans);
+  --ak-generic-display: var(--rz-sans);
+  --ak-font-family-monospace: var(--rz-mono);
+  --ak-generic-monospace: var(--rz-mono);
+}
+
+/* --- The app -----------------------------------------------------------------
+   The three places a component hard-codes something no token reaches. They are
+   written bare because they have to land inside every component's shadow root;
+   the flow's own rules are scoped tighter and win where the two meet. */
+
+/* PatternFly puts pale ink on a primary button. On authentik's blue that was
+   white at 3.2:1, and on either lilac it would be worse. */
+.pf-c-button.pf-m-primary {
+  color: var(--rz-ui-accent-ink) !important;
+}
+
+/* <progress> keeps the browser's own bar, which is a light grey the tokens
+   never see. The most-used-apps list on the dashboard is a column of them. */
+progress {
+  accent-color: var(--rz-ui-accent);
+  background-color: var(--rz-ui-inset);
+}
+
+progress::-webkit-progress-bar {
+  background-color: var(--rz-ui-inset);
+}
+
+progress::-webkit-progress-value {
+  background-color: var(--rz-ui-accent);
+}
+
+progress::-moz-progress-bar {
+  background-color: var(--rz-ui-accent);
+}
+
+/* The keyboard hint in the search field. */
+.ak-c-kbd,
+kbd {
+  background-color: var(--rz-ui-surface-thick);
+  border-color: var(--rz-ui-line);
+  color: var(--rz-ui-ink-2);
+}
+
+/* The ground, and the room behind the card.
+
+   This sheet paints the wallpaper itself rather than going through authentik's
+   --ak-global--background-image. That variable is fed from the flow's own
+   background field, which still holds the old blue PNG and can only be changed
+   in the UI, and no rule in flow-2026.8.0.css consumes it any more, so the
+   image had stopped being painted at all. Owning it here means the login,
+   logout and user-settings pages are one room without a per-flow edit. */
+/* The three interfaces are told apart by what <body> contains: an
+   ak-flow-executor on a flow, ak-interface-user in the portal,
+   ak-interface-admin in the admin. The portal matters here because it runs the
+   user-settings flow inside itself, so a plain body:has(ak-flow-executor)
+   matched it too and hung the login wallpaper behind the whole app, where it
+   cut a diagonal across the tables. Hence the two exclusions rather than the
+   obvious child combinator, which this sheet cannot use at all. */
+body:has(ak-flow-executor):not(:has(ak-interface-user)):not(:has(ak-interface-admin)) {
+  background-color: var(--rz-ui-ground) !important;
+  font-family: var(--rz-sans) !important;
+  color: var(--rz-ui-ink) !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The app's ground, which turns over with the mode. */
+body:has(ak-interface-user),
+body:has(ak-interface-admin) {
+  background-color: var(--rz-ui-ground) !important;
+  font-family: var(--rz-sans) !important;
+  color: var(--rz-ui-ink) !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The wallpaper is the room the login card stands in, in whichever light the
+   browser asked for. The app pages get the flat ground instead: they are
+   surfaces to work on.
+
+   --rz-ui-grain sits on top of it and is what stops the room banding. The
+   wallpaper is a shallow gradient, WebP codes shallow gradients as flat plates,
+   and the grain baked into the render is quantised away before it reaches the
+   screen; the plates are the banding you can see across the dark corners. A
+   tiled noise field composited here is dithered per pixel by the browser, and
+   nothing can compress it, so it works at any viewport size. Measured over a
+   1920x1080 screenshot it takes the median flat band from 4px to 1px and the
+   worst plate from 67px to 36px.
+
+   The light room needs half a stop more of it because its gradient is shallower
+   still. Both amplitudes are paid for in build-login-bg.sh: the tile composites
+   over the wallpaper rather than through it, so it lifts a near-black ground and
+   darkens a near-white one, and the renders are pulled the other way to match.
+   Moving an opacity here means re-running that script. */
+body:has(ak-flow-executor):not(:has(ak-interface-user)):not(:has(ak-interface-admin))::before {
+  content: "" !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  background-color: var(--rz-ui-ground) !important;
+  background-image: var(--rz-ui-grain), var(--rz-ui-wallpaper) !important;
+  background-size: 140px 140px, cover !important;
+  background-position: center, center !important;
+  background-repeat: repeat, no-repeat !important;
+  pointer-events: none;
+}
+
+/* .pf-c-login is a grid and PatternFly uses its ::before and ::after as grid
+   items to band the page. Their background resolves to oklab(1 0 0) -- pure
+   white -- from a variable this sheet does not set, and at narrow widths the
+   ::before takes the whole main column: a white sheet 358x796 behind the card.
+   They are spacers, so they are painted out rather than coloured in. */
+.pf-c-login::before,
+.pf-c-login::after {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Browser surfaces. These ship with defaults that belong to no design system. */
+::selection {
+  background: var(--rz-ui-accent-wash);
+  color: var(--rz-ui-ink);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--rz-ui-inset);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--rz-ui-line-strong);
+  border: 2px solid var(--rz-ui-inset);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--rz-ui-ink-4);
+}
+
+/* --- The card ------------------------------------------------------------- */
+
+/* The page is a grid whose [main] column PatternFly leaves where it lands, so
+   the card sat about 80px left of centre on a wide screen. */
+.pf-c-login {
+  font-family: var(--rz-sans) !important;
+  justify-content: center !important;
+}
+
+/* PatternFly pads the page by 3rem, which on a 390px screen is 96px of the
+   width gone before the card starts. */
+@media (max-width: 480px) {
+  .pf-c-login {
+    padding: 1.5rem 1rem !important;
+  }
+}
+
+.pf-c-login__main {
+  /* On a phone the card ran edge to edge with no gutter, so the hairline sat
+     against the screen edge and the room behind it disappeared. */
+  width: 100% !important;
+  max-width: min(26rem, calc(100vw - 2rem)) !important;
+  margin-inline: auto !important;
+  background: var(--rz-ui-surface) !important;
+  border: 1px solid var(--rz-ui-line) !important;
+  border-radius: var(--rz-radius-lg) !important;
+  box-shadow: none !important;
+  padding: 1.75rem 1.5rem 1.5rem !important;
+}
+
+/* The card is empty for the moment between the page painting and the flow's
+   first challenge arriving. Left alone it stretches to the grid's main row --
+   645px on a laptop -- and then snaps down to its content once the form lands,
+   which reads as the page loading twice. A floor the height of a one-field
+   stage, and children that size to their content rather than growing, make the
+   two states the same box. */
+.pf-c-login__main {
+  min-height: 16.5rem !important;
+  justify-content: flex-start !important;
+}
+
+.pf-c-login__main .pf-c-brand,
+.pf-c-login__main slot,
+.pf-c-login__main :is(
+  ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email, ak-stage-flow-error, ak-stage-access-denied) {
+  flex: 0 0 auto !important;
+}
+
+/* --- Arriving ---------------------------------------------------------------
+   While the flow's first challenge is in flight, authentik slots
+   <slot name="placeholder"> into the card, which is what makes the loading
+   state selectable in CSS rather than guessable from a timer.
+
+   In that state the card is not drawn at all: the mark stands on the room on
+   its own, breathing, and the plum, the hairline and the form fade in around it
+   once the challenge lands. The box does not move, because the min-height above
+   holds it at the size the loaded card will be.
+
+   The order is the point. The mark arrives, and only once it has landed does it
+   start to breathe, so the two movements are read one after the other rather
+   than as one muddled fade. When the challenge lands the surface comes up
+   first and the form follows a stagger behind it, which is the room before the
+   furniture. */
+
+.pf-c-login__main {
+  transition:
+    background-color var(--rz-motion-surface) var(--rz-ease),
+    border-color var(--rz-motion-surface) var(--rz-ease);
+}
+
+.pf-c-login__main:has(slot[name="placeholder"]) {
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
+/* The mark is the loader, so authentik's spinner would be a second one saying
+   the same thing. It is slotted from the light DOM, hence no :host() scope.
+   The body scope is load-bearing: the portal and the admin interface use the
+   same placeholder markup, and they have no mark of their own to breathe, so
+   hiding their spinner left them blank while they booted. */
+body:has(ak-flow-executor):not(:has(ak-interface-user)):not(:has(ak-interface-admin)) .ak-c-placeholder .pf-c-spinner {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* One authored moment: the card arrives, everything else is already still. */
+  .pf-c-login__main {
+    animation: rz-arrive var(--rz-motion-enter) var(--rz-ease-arrive) both;
+  }
+
+  /* Everything the card holds except the mark: the form arrives, the mark was
+     already there and stays put. */
+  .pf-c-login__main :is(
+  ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email, ak-stage-flow-error, ak-stage-access-denied) {
+    animation: rz-arrive var(--rz-motion-enter) var(--rz-ease-arrive)
+      var(--rz-motion-stagger) both;
+  }
+
+  /* The delay is the card's own entrance: the mark lands, then it breathes. */
+  .pf-c-login__main:has(slot[name="placeholder"]) img.branding-logo {
+    animation: rz-breathe 2.4s var(--rz-ease) var(--rz-motion-enter) infinite;
+  }
+}
+
+@keyframes rz-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* The cycle begins and ends where the mark rests, so however far through a
+   breath the challenge lands, the mark is on its way back to full rather than
+   snapping up from the bottom of a dip. */
+@keyframes rz-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+
+/* PatternFly insets the header and the body by 48px inside a card this sheet
+   already pads, which left a 270px field in a 416px card. The card owns the
+   inset; these own none of it. */
+.pf-c-login__main-header {
+  padding: 0 0 1.25rem !important;
+  text-align: center !important;
+}
+
+.pf-c-login__main-body,
+.pf-c-login__main-footer {
+  padding: 0 !important;
+}
+
+/* Two elements, not one: .pf-c-brand is a wrapper div that also carries
+   .pf-c-login__main-header, and the picture inside it is img.branding-logo.
+   Sizing the wrapper does nothing to the image, which is what made the old
+   120px cap look like it worked while the image sized itself. Both classes
+   exist only in the flow, so neither needs a :host() scope. */
+.pf-c-login__main-header.pf-c-brand {
+  display: block !important;
+  margin: 0 0 1.5rem !important;
+  padding: 0 !important;
+  text-align: center !important;
+}
+
+img.branding-logo {
+  /* Catches the mark when the breathing stops part-way through a dip. */
+  transition: opacity var(--rz-motion-surface) var(--rz-ease);
+  display: block !important;
+  margin: 0 auto !important;
+  width: 232px !important;
+  max-width: 68% !important;
+  height: auto !important;
+  max-height: none !important;
+}
+
+/* The brand carries one logo URL, drawn in the login page's inks, so on a
+   light ground it disappears. authentik draws the mark in three places besides
+   the login card -- the admin sidebar, the portal header, the about box -- and
+   in none of them does the image carry a class of its own, so the selector is
+   the wrapper authentik puts around it. The swap goes through an inherited
+   custom property because all of this sits inside shadow roots, where no
+   selector can reach up to html[data-theme]. */
+img.branding-logo,
+aside.brand .logo img,
+.pf-c-about-modal-box__brand img {
+  content: var(--rz-ui-wordmark);
+}
+
+.pf-c-login__footer,
+.ak-locale-controller,
+ak-locale-controller {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+ak-flow-executor::part(locale-select) {
+  display: none;
+}
+
+/* --- The flow title ------------------------------------------------------- */
+
+/* "Welcome to authentik!" is the flow's title field, not something this sheet
+   can rewrite, and the mark already says whose login page this is. It is hidden
+   from sight and kept for assistive technology, because it is the page's only
+   h1. Rename the flow's title and delete this rule if you want a line of text
+   back; note it is one string for every stage in the flow, not just the first. */
+:host(ak-flow-card) .pf-c-title {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+:host(ak-flow-card) .pf-c-login__main-header {
+  padding-bottom: 0 !important;
+}
+
+:host(ak-flow-card) .pf-c-login__main-header {
+  padding-bottom: 1.25rem !important;
+}
+
+/* --- Form ----------------------------------------------------------------
+   Every rule below is scoped to a flow stage. The admin interface renders the
+   same PatternFly classes and must keep its own layout: hiding a label there
+   removes a grid item and collapses the form into the label column. */
+
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email, ak-stage-flow-error, ak-stage-access-denied))
+  .pf-c-form__label-text {
+  font-family: var(--rz-sans) !important;
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: var(--rz-ui-ink-3) !important;
+}
+
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email, ak-stage-flow-error, ak-stage-access-denied))
+  .pf-c-form__label {
+  margin-bottom: 0.4375rem !important;
+  display: block !important;
+}
+
+/* Every field in a flow stage is required, so PatternFly's red asterisk marks
+   nothing and is the only red on a page that has not failed yet. */
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email, ak-stage-flow-error, ak-stage-access-denied))
+  .pf-c-form__label-text::after {
+  content: none !important;
+}
+
+/* The label above the field says the same words the placeholder does. The
+   label wins: it is still there once someone starts typing. */
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-prompt, ak-stage-user-login, ak-stage-email))
+  .pf-c-form-control::placeholder {
+  color: transparent !important;
+}
+
+/* A field is a well, not a raise: one step below the card, never above it. */
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email))
+  .pf-c-form-control {
+  width: 100% !important;
+  height: 2.375rem !important;
+  padding: 0 0.6875rem !important;
+  background: var(--rz-ui-inset) !important;
+  border: 1px solid var(--rz-ui-line) !important;
+  border-radius: var(--rz-radius) !important;
+  color: var(--rz-ui-ink) !important;
+  caret-color: var(--rz-ui-accent) !important;
+  font-family: var(--rz-mono) !important;
+  font-size: 0.875rem !important;
+  font-weight: 400 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  transition: border-color var(--rz-motion-state) var(--rz-ease);
+}
+
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email))
+  .pf-c-form-control:focus {
+  border-color: var(--rz-ui-line-strong) !important;
+  outline: 2px solid var(--rz-ui-accent) !important;
+  outline-offset: 1px !important;
+}
+
+/* The form is a grid, so its gap is the space between fields and a margin on a
+   group would stack on top of it. The stage host carries 48px of PatternFly
+   padding at its bottom, which is a second card's worth of air inside this one. */
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email))
+  .pf-c-form {
+  gap: 0.875rem !important;
+}
+
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email))
+  .pf-c-form__group.pf-m-action {
+  margin-top: 0.375rem !important;
+}
+
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email)) {
+  display: block;
+  padding-bottom: 0 !important;
+}
+
+/* --- Buttons -------------------------------------------------------------- */
+
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email, ak-stage-flow-error, ak-stage-access-denied))
+  .pf-c-button.pf-m-primary {
+  height: 2.375rem !important;
+  padding: 0 0.875rem !important;
+  background: var(--rz-ui-accent) !important;
+  border: none !important;
+  border-radius: var(--rz-radius) !important;
+  color: var(--rz-ui-accent-ink) !important;
+  font-family: var(--rz-sans) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  transition: background-color var(--rz-motion-state) var(--rz-ease);
+}
+
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email, ak-stage-flow-error, ak-stage-access-denied))
+  .pf-c-button.pf-m-primary:hover {
+  background: var(--rz-ui-accent-soft) !important;
+}
+
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email, ak-stage-flow-error, ak-stage-access-denied))
+  .pf-c-button.pf-m-primary:disabled {
+  background: var(--rz-ui-surface-thick) !important;
+  color: var(--rz-ui-ink-3) !important;
+  cursor: not-allowed !important;
+}
+
+/* The secondary route out of a stage: recovery, "use another method", cancel. */
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email, ak-stage-flow-error, ak-stage-access-denied))
+  :is(.pf-c-button.pf-m-secondary, .pf-c-button.pf-m-link, a) {
+  background: transparent !important;
+  border: none !important;
+  color: var(--rz-ui-ink-3) !important;
+  font-family: var(--rz-sans) !important;
+  font-size: 0.8125rem !important;
+  font-weight: 400 !important;
+  text-decoration: none !important;
+  text-underline-offset: 3px;
+  transition: color var(--rz-motion-state) var(--rz-ease);
+}
+
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email, ak-stage-flow-error, ak-stage-access-denied))
+  :is(.pf-c-button.pf-m-secondary, .pf-c-button.pf-m-link, a):hover {
+  color: var(--rz-ui-accent) !important;
+  text-decoration: underline !important;
+}
+
+/* Focus is the accent's other job, and it has to be visible on every root. */
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-authenticator-validate,
+  ak-stage-authenticator-totp, ak-stage-authenticator-webauthn, ak-stage-authenticator-duo,
+  ak-stage-authenticator-static, ak-stage-consent, ak-stage-prompt, ak-stage-user-login,
+  ak-stage-captcha, ak-stage-email, ak-stage-flow-error, ak-stage-access-denied))
+  :is(button, a, input, select):focus-visible {
+  outline: 2px solid var(--rz-ui-accent) !important;
+  outline-offset: 2px !important;
+}
+
+/* --- What went wrong -------------------------------------------------------
+   A failed login is the one message the flow has to deliver well: the fail hue
+   with a border a shade darker, the same pattern the evidence tables use, and
+   never a red box shouting across the card.
+
+   The bare rules are the same component in the app, where it follows the mode.
+   The flow's are scoped to a stage and win inside the card. */
+
+.pf-c-alert {
+  background: var(--rz-ui-surface-thick) !important;
+  border: 1px solid var(--rz-ui-line) !important;
+  border-radius: var(--rz-radius) !important;
+  box-shadow: none !important;
+  font-family: var(--rz-sans) !important;
+  font-size: 0.8125rem !important;
+  color: var(--rz-ui-ink-2) !important;
+}
+
+.pf-c-alert.pf-m-danger {
+  border-color: var(--rz-ui-fail) !important;
+}
+
+.pf-c-alert.pf-m-danger .pf-c-alert__title {
+  color: var(--rz-ui-fail) !important;
+  font-weight: 500 !important;
+}
+
+.pf-c-alert.pf-m-success .pf-c-alert__title {
+  color: var(--rz-ui-ok) !important;
+}
+
+.pf-c-alert.pf-m-warning .pf-c-alert__title {
+  color: var(--rz-ui-warn) !important;
+}
+
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-flow-error,
+  ak-stage-access-denied, ak-stage-authenticator-validate)) .pf-c-alert {
+  background: var(--rz-ui-surface-thick) !important;
+  border: 1px solid var(--rz-ui-line) !important;
+  color: var(--rz-ui-ink-2) !important;
+}
+
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-flow-error,
+  ak-stage-access-denied, ak-stage-authenticator-validate)) .pf-c-alert.pf-m-danger {
+  background: var(--rz-ui-fail-wash) !important;
+  border-color: var(--rz-ui-fail-line) !important;
+}
+
+:host(:is(ak-stage-identification, ak-stage-password, ak-stage-flow-error,
+  ak-stage-access-denied, ak-stage-authenticator-validate)) .pf-c-alert__title {
+  color: var(--rz-ui-fail) !important;
+  font-weight: 500 !important;
+}

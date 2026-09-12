@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage
+  namespace: homepage
+  labels:
+    app.kubernetes.io/name: homepage
+spec:
+  revisionHistoryLimit: 3
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: homepage
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: homepage
+    spec:
+      serviceAccountName: homepage
+      automountServiceAccountToken: true
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: true
+      containers:
+        - name: homepage
+          image: ghcr.io/gethomepage/homepage:v2.1.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: "pxldi.de"
+          envFrom:
+            - secretRef:
+                name: homepage-widgets
+          # The Host header is load-bearing, not decoration. kubelet sends the
+          # pod IP as Host unless told otherwise, and homepage rejects anything
+          # outside HOMEPAGE_ALLOWED_HOSTS (set to pxldi.de a few lines up) with
+          # a 400 — which kubelet reads as a failed probe. Without this header
+          # the pod would never become Ready and Traefik would drop it entirely.
+          # Verified: 400 without the header, 200 with it.
+          readinessProbe:
+            httpGet:
+              path: /api/healthcheck
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: pxldi.de
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/kubernetes.yaml
+              subPath: kubernetes.yaml
+            - name: config
+              mountPath: /app/config/settings.yaml
+              subPath: settings.yaml
+            - name: config
+              mountPath: /app/config/bookmarks.yaml
+              subPath: bookmarks.yaml
+            - name: config
+              mountPath: /app/config/services.yaml
+              subPath: services.yaml
+            - name: config
+              mountPath: /app/config/widgets.yaml
+              subPath: widgets.yaml
+            - name: config
+              mountPath: /app/config/docker.yaml
+              subPath: docker.yaml
+            - name: config
+              mountPath: /app/config/custom.css
+              subPath: custom.css
+            - name: config
+              mountPath: /app/config/custom.js
+              subPath: custom.js
+            - name: config
+              mountPath: /app/config/proxmox.yaml
+              subPath: proxmox.yaml
+            - name: logs
+              mountPath: /app/config/logs
+            - name: hdd1
+              mountPath: /host/hdd1
+              readOnly: true
+            - name: hdd2
+              mountPath: /host/hdd2
+              readOnly: true
+            - name: nvme
+              mountPath: /host/nvme
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: homepage
+        - name: logs
+          emptyDir: {}
+        - name: hdd1
+          hostPath:
+            path: /mnt/hdd1
+            type: Directory
+        - name: hdd2
+          hostPath:
+            path: /mnt/hdd2
+            type: Directory
+        # Empty dir on the nvme filesystem, created by systemd.tmpfiles (see
+        # nix/configuration.nix). statfs on it reports the whole filesystem, so the
+        # disk gauge is unchanged — but the k3s server token is no longer reachable
+        # from this pod. Do NOT point this back at /var.
+        - name: nvme
+          hostPath:
+            path: /var/lib/homepage-df
+            type: Directory

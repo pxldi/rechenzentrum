@@ -1,0 +1,109 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: velero
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# velero holds the B2 application key and the kopia repository password — the
+# two things that, together, are every backup this cluster has. It had no policy
+# at all.
+#
+# Three things legitimately reach in:
+#   - prometheus scrapes velero and node-agent on 8085. That ServiceMonitor is
+#     new as of #910 and is what the backup alerting is built on, so denying it
+#     would silently switch the alerting off.
+#   - traefik serves velero-ui.
+#   - the pods here talk among themselves.
+# Nothing else, and in particular nothing from an app namespace.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-intra-namespace
+  namespace: velero
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-observability
+  namespace: velero
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+---
+# Two health checks reach into this namespace from outside it, and #924 missed
+# both — velero went red on Telegram within the hour.
+#
+#   uptime-kuma (monitoring) -> velero.velero:8085          TCP port check
+#   homepage    (homepage)   -> velero-ui.velero:3000       service tile
+#
+# Neither is prometheus, so `allow-from-observability` does not cover them, and
+# neither goes through traefik, so `allow-from-traefik` does not either. They
+# connect pod-to-pod across namespaces, which is exactly what default-deny
+# stops.
+#
+# Worth noting why cert-manager did NOT break the same way, since it has the
+# same shape: uptime-kuma checks it on service port 443, and NetworkPolicy
+# matches the *pod* port — 10250 — which `allow-webhook` opens to any source.
+# It survived by accident of that rule being source-agnostic, not by design.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-monitoring
+  namespace: velero
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-homepage
+  namespace: velero
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: homepage
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-traefik
+  namespace: velero
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik

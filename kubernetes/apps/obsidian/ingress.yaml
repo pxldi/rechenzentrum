@@ -1,0 +1,16 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: obsidian-sync
+  namespace: obsidian-sync
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`obsidian.pxldi.de`)
+      priority: 10
+      services:
+        - name: obsidian-sync
+          port: 5984

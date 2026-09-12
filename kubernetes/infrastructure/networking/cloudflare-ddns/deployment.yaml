@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflare-ddns
+  namespace: cloudflare-ddns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflare-ddns
+  template:
+    metadata:
+      labels:
+        app: cloudflare-ddns
+    spec:
+      # if the public A record goes stale nothing is reachable from outside
+      priorityClassName: rechenzentrum-critical
+      containers:
+        - name: cloudflare-ddns
+          image: favonia/cloudflare-ddns:1.15.1
+          env:
+            - name: CLOUDFLARE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-credentials
+                  key: CLOUDFLARE_API_TOKEN
+            - name: DOMAINS
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-credentials
+                  key: CLOUDFLARE_SUBDOMAIN
+            - name: PROXIED
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-credentials
+                  key: CLOUDFLARE_PROXIED
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi

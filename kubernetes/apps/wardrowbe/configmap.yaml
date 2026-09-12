@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wardrowbe-config
+  namespace: wardrowbe
+data:
+  APP_URL: "https://wear.pxldi.de"
+  NEXTAUTH_URL: "https://wear.pxldi.de"
+  AI_INTERNAL_ENABLED: "false"
+  LOG_LEVEL: "INFO"

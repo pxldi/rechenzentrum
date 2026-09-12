@@ -1,0 +1,50 @@
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-critical-backup
+  namespace: velero
+spec:
+  # Run at 2 AM every night
+  schedule: "0 2 * * *"
+
+  template:
+    includedNamespaces:
+      - authentik
+      - cert-manager
+      - traefik
+      - nextcloud
+      - immich
+      - n8n
+      - gotify
+
+    # Backup all resources in these namespaces
+    includedResources:
+      - "*"
+
+    # Use kopia to backup PVCs
+    defaultVolumesToFsBackup: true
+
+    # Skip ephemeral volumes (emptyDir). See volume-policy-configmap.yaml —
+    # half of all fs-backed volumes were scratch, and the races on them were
+    # what kept this schedule PartiallyFailed.
+    resourcePolicy:
+      kind: configmap
+      name: velero-volume-policy
+
+    # Local (OpenEBS) volumes have no CSI/cloud snapshotter, so skip native
+    # volume snapshots. Avoids "No volume ID returned by volume snapshotter"
+    # warnings; data is still captured via the Kopia filesystem backup above.
+    snapshotVolumes: false
+
+    # Snapshot timeout
+    csiSnapshotTimeout: 10m
+
+    # Item operation timeout
+    itemOperationTimeout: 1h
+
+    # TTL for backups (30 days)
+    ttl: 720h
+
+    # Storage location
+    storageLocation: default

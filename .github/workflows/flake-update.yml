@@ -1,0 +1,124 @@
+---
+name: Flake Update
+
+# Answers the audit's "who bumps the flake input", where the answer had been
+# nobody: nixpkgs sat pinned at 2026-04-21 until 2026-08-25, four months of
+# unpatched kernel, openssh, systemd and containerd on a node with 443 and
+# 48222 open to the internet.
+#
+# Renovate cannot do this one. Its `nix` manager shells out to the `nix` binary
+# to update a flake.lock, and the renovate/renovate image does not ship it — so
+# enabling that manager would produce something that silently does nothing,
+# which is the failure mode this whole audit kept finding.
+#
+# A PR rather than a push, deliberately. Merging to main is deploying in this
+# repo, and a kernel series jump is not something to discover after the fact.
+# The PR body carries what actually changed, so the decision is informed:
+# k3s moving is a different conversation from a kernel patch bump.
+#
+# Nothing here reaches the node. flake.lock only takes effect on nixos-rebuild.
+
+on:
+  schedule:
+    # Sundays 05:23 UTC. Off the hour because GitHub delays scheduled runs that
+    # cluster at :00, and clear of ci-watchdog's :17.
+    - cron: "23 5 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    if: vars.ENABLE_FLAKE_UPDATES == 'true'
+    name: Update flake.lock and open a PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Install nix
+        uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24  # v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Update the lock
+        id: update
+        run: |
+          set -euo pipefail
+          before=$(jq -r '.nodes.nixpkgs.locked.rev' nix/flake.lock)
+          nix flake update --flake ./nix
+          after=$(jq -r '.nodes.nixpkgs.locked.rev' nix/flake.lock)
+          if [ "$before" = "$after" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "nixpkgs unchanged at ${before:0:10}; nothing to do"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "before=${before:0:10}" >> "$GITHUB_OUTPUT"
+          echo "after=${after:0:10}" >> "$GITHUB_OUTPUT"
+
+      # The useful part. "The lock moved" is not interesting; what it moves is.
+      # A k3s change is a Kubernetes upgrade and needs planning; a kernel series
+      # jump touches the Thread dongle, /dev/dri and ntfs. Surfacing both in the
+      # PR body is the difference between a reviewable bump and a leap of faith.
+      - name: Work out what actually changes
+        id: eval
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          ev() {
+            nix eval --raw --impure --expr "
+              let np = builtins.getFlake \"$PWD/nix\";
+                  pkgs = import np.inputs.nixpkgs { system = \"x86_64-linux\"; };
+              in $1" 2>/dev/null || echo "unknown"
+          }
+          {
+            echo "detail<<FLAKE_EOF"
+            echo "k3s_1_33 = $(ev 'pkgs.k3s_1_33.version')"
+            echo "kernel   = $(ev 'pkgs.linuxPackages.kernel.version')"
+            echo "FLAKE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open the PR
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ steps.update.outputs.before }}
+          AFTER: ${{ steps.update.outputs.after }}
+          DETAIL: ${{ steps.eval.outputs.detail }}
+        run: |
+          set -euo pipefail
+          branch="chore/flake-update-$(date -u +%Y%m%d)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add nix/flake.lock
+          git commit -m "chore(nix): bump flake.lock (nixpkgs ${BEFORE} -> ${AFTER})"
+          git push -u origin "$branch"
+          # Built with printf rather than a heredoc: markdown code fences must
+          # start at column 0, and a heredoc inside this block scalar cannot
+          # produce that without escaping out of the YAML.
+          printf '%s\n' \
+            "Scheduled weekly flake update. \`nixpkgs ${BEFORE} -> ${AFTER}\`" \
+            "" \
+            "What this moves, evaluated against the new inputs:" \
+            "" \
+            '```' \
+            "${DETAIL}" \
+            '```' \
+            "" \
+            "Compare with what the node runs now: \`k3s --version\`, \`uname -r\`." \
+            "" \
+            "**If k3s changed** this is a Kubernetes upgrade - check CRDs, admission policies and storage before merging." \
+            "" \
+            "**If the kernel series changed** (6.6 -> 6.12 and the like), three things here are driver-adjacent: otbr's Thread dongle, the device plugin's \`/dev/dri\`, and \`boot.supportedFilesystems\`." \
+            "" \
+            "Nothing reaches the node on merge - flake.lock only takes effect on \`nixos-rebuild\`, and that should be \`boot\` plus a reboot when the kernel moves." \
+            > /tmp/pr-body.md
+          gh pr create \
+            --title "chore(nix): bump flake.lock (nixpkgs ${BEFORE} -> ${AFTER})" \
+            --body-file /tmp/pr-body.md

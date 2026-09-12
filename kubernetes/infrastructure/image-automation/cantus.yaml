@@ -1,0 +1,27 @@
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: cantus
+  namespace: flux-system
+spec:
+  image: ghcr.io/pxldi-labs/cantus
+  interval: 5m
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: cantus
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: cantus
+  # Cantus CI publishes main-<commit timestamp>-<short sha>. Ordering on the
+  # extracted timestamp makes "newest build" unambiguous, and the pattern
+  # ignores anything that is not a main build.
+  filterTags:
+    pattern: "^main-(?P<timestamp>[0-9]+)-[a-f0-9]+$"
+    extract: "$timestamp"
+  policy:
+    numerical:
+      order: asc

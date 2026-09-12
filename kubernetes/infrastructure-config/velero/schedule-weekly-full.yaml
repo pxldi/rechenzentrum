@@ -1,0 +1,55 @@
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: weekly-full-backup
+  namespace: velero
+spec:
+  # Run every Sunday at 3 AM
+  schedule: "0 3 * * 0"
+
+  template:
+    # Backup entire cluster
+    includedNamespaces:
+      - "*"
+
+    # Exclude system namespaces that don't need backup
+    excludedNamespaces:
+      - kube-system
+      - kube-public
+      - kube-node-lease
+      - openebs
+      - velero
+      # Ephemeral, git-reconstructable metrics stack (25Gi+ Prometheus TSDB).
+      - observability
+
+    # Backup all resources
+    includedResources:
+      - "*"
+
+    # Use kopia to backup PVCs
+    defaultVolumesToFsBackup: true
+
+    # Skip ephemeral volumes (emptyDir). See volume-policy-configmap.yaml —
+    # half of all fs-backed volumes were scratch, and the races on them were
+    # what kept this schedule PartiallyFailed.
+    resourcePolicy:
+      kind: configmap
+      name: velero-volume-policy
+
+    # Local (OpenEBS) volumes have no CSI/cloud snapshotter, so skip native
+    # volume snapshots. Avoids "No volume ID returned by volume snapshotter"
+    # warnings; data is still captured via the Kopia filesystem backup above.
+    snapshotVolumes: false
+
+    # Snapshot timeout
+    csiSnapshotTimeout: 10m
+
+    # Item operation timeout
+    itemOperationTimeout: 2h
+
+    # TTL for backups (90 days for weekly backups)
+    ttl: 2160h
+
+    # Storage location
+    storageLocation: default

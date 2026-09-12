@@ -1,0 +1,31 @@
+---
+# The controller and the runners live apart on purpose. The controller holds a
+# cluster-wide ServiceAccount that can create pods; the runners execute code
+# from pull requests. Keeping them in separate namespaces means the runner
+# namespace can carry a quota and a deny-by-default network policy without
+# those also applying to the thing that manages it.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arc-systems
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arc-runners
+  labels:
+    # privileged: containerMode: dind. The chart injects a privileged Docker
+    # daemon sidecar. There are no runner pods between jobs, so a live-pod
+    # scan reports this namespace as clean and then CI dies at the next
+    # workflow run
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/audit-version: latest

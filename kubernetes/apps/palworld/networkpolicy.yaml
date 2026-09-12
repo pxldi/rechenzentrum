@@ -1,0 +1,19 @@
+---
+# default-deny-ingress (below) drops everything by default. The game is a public
+# UDP endpoint, so explicitly allow 8211/udp from any source. externalTrafficPolicy:
+# Local preserves the real client IP, so this rule sees genuine remote peers.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-game-udp
+  namespace: palworld
+spec:
+  podSelector:
+    matchLabels:
+      app: palworld
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 8211
+          protocol: UDP

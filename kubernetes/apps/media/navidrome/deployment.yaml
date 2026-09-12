@@ -1,0 +1,130 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: navidrome
+  namespace: media
+  labels:
+    app: navidrome
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: navidrome
+  template:
+    metadata:
+      labels:
+        app: navidrome
+      annotations:
+        backup.velero.io/backup-volumes-excludes: "music,aurral-downloads"
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: navidrome
+          image: deluan/navidrome:0.63.2
+          ports:
+            - containerPort: 4533
+              name: http
+              protocol: TCP
+          env:
+            # /music is the library Navidrome's own config owns, which is why
+            # the UI offers no way to delete it. So it stays, and what is behind
+            # it becomes the Cantus tree: the library that cannot be removed is
+            # the one that should survive.
+            - name: ND_MUSICFOLDER
+              value: /music
+            - name: ND_DATAFOLDER
+              value: /data
+            - name: ND_LOGLEVEL
+              value: info
+            - name: ND_SESSIONTIMEOUT
+              value: 24h
+            - name: ND_BASEURL
+              value: ""
+            - name: ND_ENABLEPLUGINS
+              value: "true"
+            - name: ND_ENABLESHARING
+              value: "true"
+            - name: ND_ENABLESTARRATING
+              value: "true"
+            - name: ND_ENABLEUSEREDITING
+              value: "true"
+            # The two contracts Cantus playlist sync rests on, both written
+            # down in cantus/docs/decisions/0010. Set here rather than left to
+            # their defaults because a default is not a promise, and what
+            # breaks when either changes is the user's playlists.
+            #
+            # A missing file's row is what lets a broken identity heal. Purging
+            # it deletes the playlist entries that pointed at it in the same
+            # scan, before any sync gets to look, and no later scan brings them
+            # back. This is already the default; it is here so that flipping it
+            # has to be a decision somebody makes on purpose.
+            - name: ND_SCANNER_PURGEMISSING
+              value: "never"
+            # Subsonic otherwise answers with a display path composed from the
+            # album's first folder and the track's own tags, which equals the
+            # real path right up until a file is laid out differently — the
+            # shape of a wrong answer that looks right in testing. Sync joins a
+            # library file to a song by comparing this path, so it has to be
+            # read off the disc.
+            #
+            # Navidrome copies this onto a player row the first time a client
+            # calls under a given name and never re-reads it for that row, so
+            # it has to be true before "cantus-sync" first introduces itself.
+            # The existing "cantus" row, created by the rescan trigger, keeps
+            # whatever it was created with — which is why sync uses a name of
+            # its own.
+            - name: ND_SUBSONIC_DEFAULTREPORTREALPATH
+              value: "true"
+            - name: ND_LASTFM_APIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: navidrome-secret
+                  key: LASTFM_APIKEY
+                  optional: true
+            - name: ND_LASTFM_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: navidrome-secret
+                  key: LASTFM_SECRET
+                  optional: true
+          volumeMounts:
+            - name: music-soundcloud
+              mountPath: /music-soundcloud
+            # Cantus owns this tree and is its only writer; Navidrome reads it
+            # and is told when it changes. Read-only so that stays true however
+            # the player is configured.
+            - name: music
+              mountPath: /music
+              readOnly: true
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: music-soundcloud
+          persistentVolumeClaim:
+            claimName: soundcloud-music-pvc
+        - name: music
+          persistentVolumeClaim:
+            claimName: cantus-music-pvc
+        - name: data
+          persistentVolumeClaim:
+            claimName: navidrome-data-pvc

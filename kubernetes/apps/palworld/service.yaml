@@ -1,0 +1,21 @@
+---
+# LoadBalancer → k3s klipper binds UDP 8211 on the host.
+# Forward 8211/udp on the router to this box for friends to connect.
+apiVersion: v1
+kind: Service
+metadata:
+  name: palworld
+  namespace: palworld
+  labels:
+    app: palworld
+spec:
+  type: LoadBalancer
+  # Preserve the real client IP (no SNAT); single-node so no reachability loss.
+  externalTrafficPolicy: Local
+  ports:
+    - name: game
+      port: 8211
+      targetPort: 8211
+      protocol: UDP
+  selector:
+    app: palworld

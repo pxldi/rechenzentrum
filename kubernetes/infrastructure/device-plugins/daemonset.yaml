@@ -1,0 +1,97 @@
+---
+# Why this exists.
+#
+# jellyfin ran `privileged: true` purely to reach /dev/dri for hardware
+# transcoding. #922 tried to remove it on the grounds that
+# /dev/dri/renderD128 is mode crw-rw-rw-, so any uid can open it on file
+# permissions alone. That was wrong, and it broke transcoding:
+#
+#   >>> os.open('/dev/dri/renderD128', os.O_RDONLY)
+#   OSError: [Errno 1] Operation not permitted
+#
+# EPERM, not EACCES. The file mode was never the gate. containerd gives a
+# non-privileged container only the default device set — null, zero, full,
+# random, urandom, tty — and a device node arriving through a hostPath mount is
+# not added to that cgroup allowlist. Permission to open the inode is not
+# permission to use the device.
+#
+# A device plugin is the mechanism that does add it. The kubelet asks the plugin
+# for the device, the plugin returns it as a container device spec, and the
+# runtime writes the cgroup entry. The privilege moves from an
+# internet-facing media server into one static DaemonSet that runs no user
+# content and has no ingress.
+#
+# The GPU here is AMD (0x1002:0x1638, Renoir, amdgpu), not Intel, so Intel's
+# device plugin does not apply. The generic plugin advertises any path.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: generic-device-plugin
+  namespace: device-plugins
+  labels:
+    app.kubernetes.io/name: generic-device-plugin
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: generic-device-plugin
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: generic-device-plugin
+    spec:
+      # Without this, any pod requesting devic.es/dri is unschedulable. That is
+      # node-level infrastructure, not an app.
+      priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists
+          effect: NoExecute
+        - operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: generic-device-plugin
+          image: ghcr.io/squat/generic-device-plugin:0.2.0@sha256:66c8d5c270eb2b721f1064c549b9b7898152a6d2f0163380a5d37dc7636c20ff
+          args:
+            # Advertises `devic.es/dri`. `devic.es` is the plugin's default
+            # --domain; the resource name is <domain>/<device name>.
+            #
+            # renderD128 only, deliberately. It is the render node, which is
+            # what VAAPI transcoding uses and which is already world-writable.
+            # card1 is the privileged display node (crw-rw---- root:26) and
+            # nothing here needs it, so it is not advertised at all.
+            #
+            # count: 10 lets the one physical device be allocated to up to ten
+            # pods at once. A GPU render node is happily shared; without a count
+            # the first pod to claim it would make every other GPU workload
+            # unschedulable.
+            - --device
+            - |
+              name: dri
+              groups:
+                - count: 10
+                  paths:
+                    - path: /dev/dri/renderD128
+          # No memory limit: this is a static process that watches a socket, so
+          # there is no runaway to bound, per the policy set in #911.
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: dev
+              mountPath: /dev
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: dev
+          hostPath:
+            path: /dev

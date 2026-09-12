@@ -1,0 +1,108 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: tandoor
+  namespace: tandoor
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: "5.1.0"
+      sourceRef:
+        kind: HelmRepository
+        name: bjw-s
+        namespace: flux-system
+      interval: 12h
+  install:
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+
+  values:
+    controllers:
+      main:
+        type: deployment
+        replicas: 1
+
+        containers:
+          main:
+            image:
+              repository: vabene1111/recipes
+              tag: "2.6.13"
+              pullPolicy: IfNotPresent
+
+            env:
+              - name: TZ
+                value: "Europe/Berlin"
+              - name: ALLOWED_HOSTS
+                value: "recipes.pxldi.de,tandoor.tandoor.svc.cluster.local"
+              - name: DB_ENGINE
+                value: "django.db.backends.postgresql"
+              - name: POSTGRES_HOST
+                value: "tandoor-postgresql-rw"
+              - name: POSTGRES_PORT
+                value: "5432"
+              - name: POSTGRES_DB
+                value: "tandoor"
+              - name: POSTGRES_USER
+                value: "tandoor"
+              - name: POSTGRES_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: tandoor-credentials
+                    key: POSTGRES_PASSWORD
+              - name: SECRET_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: tandoor-credentials
+                    key: SECRET_KEY
+
+            # The Host header is required. Tandoor is Django, and kubelet sends
+            # the pod IP as Host, which trips ALLOWED_HOSTS and returns 400 —
+            # a failed probe, and a pod that never becomes Ready. Verified: 400
+            # without the header, 302 with it (kubelet accepts 200-399, and the
+            # redirect to the login page is exactly what a healthy Tandoor does
+            # for an unauthenticated request).
+            probes:
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 80
+                    httpHeaders:
+                      - name: Host
+                        value: recipes.pxldi.de
+                  initialDelaySeconds: 30
+                  periodSeconds: 15
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+
+            resources:
+              requests:
+                memory: "896Mi"
+                cpu: "100m"
+
+    service:
+      main:
+        controller: main
+        ports:
+          http:
+            port: 80
+
+    persistence:
+      media:
+        existingClaim: tandoor-media-pvc
+        globalMounts:
+          - path: /opt/recipes/mediafiles
+      static:
+        type: emptyDir
+        globalMounts:
+          - path: /opt/recipes/staticfiles

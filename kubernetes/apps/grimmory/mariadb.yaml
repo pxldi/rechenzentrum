@@ -1,0 +1,88 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grimmory-mariadb
+  namespace: grimmory
+  labels:
+    app: grimmory-mariadb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grimmory-mariadb
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: grimmory-mariadb
+    spec:
+      containers:
+        - name: mariadb
+          image: lscr.io/linuxserver/mariadb:11.8.8
+          ports:
+            - containerPort: 3306
+              name: mysql
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grimmory-credentials
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              value: grimmory
+            - name: MYSQL_USER
+              value: grimmory
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grimmory-credentials
+                  key: DB_PASSWORD
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          livenessProbe:
+            exec:
+              command:
+                - mariadb-admin
+                - ping
+                - "-h"
+                - localhost
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - mariadb-admin
+                - ping
+                - "-h"
+                - localhost
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: grimmory-mariadb-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grimmory-mariadb
+  namespace: grimmory
+spec:
+  type: ClusterIP
+  selector:
+    app: grimmory-mariadb
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306
+      protocol: TCP

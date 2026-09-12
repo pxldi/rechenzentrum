@@ -1,0 +1,23 @@
+# No authentik-forward-auth middleware, for the same reason the app it replaces
+# had none: forward-auth gates the whole hostname, and the browser extension and
+# the mobile apps authenticate with bearer tokens against /api. They cannot
+# follow an authentik redirect, so they would be handed a login page instead of
+# the API.
+#
+# The host is still authentik-gated. Karakeep speaks OIDC itself, its own
+# password form is off (DISABLE_PASSWORD_AUTH in config.env), and the only
+# endpoint in the flow that accepts a password is authentik's.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: karakeep
+  namespace: karakeep
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: "Host(`links.pxldi.de`)"
+      services:
+        - name: karakeep
+          port: 3000

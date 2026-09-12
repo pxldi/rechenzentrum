@@ -1,0 +1,117 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: velero
+  namespace: velero
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: velero
+      version: 12.1.0
+      sourceRef:
+        kind: HelmRepository
+        name: vmware-tanzu
+        namespace: velero
+      interval: 12h
+  install:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  upgrade:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  values:
+    kubectl:
+      image:
+        repository: docker.io/bitnamilegacy/kubectl
+    # Velero configuration
+    configuration:
+      # Backblaze B2 as S3-compatible backend
+      podVolumeOperationTimeout: 6h
+      defaultItemOperationTimeout: 4h
+      resourceTimeout: 30m
+      backupStorageLocation:
+        - name: default
+          provider: aws
+          bucket: rechenzentrum-backups
+          default: true
+          config:
+            region: eu-central-003
+            s3ForcePathStyle: "true"
+            s3Url: https://s3.eu-central-003.backblazeb2.com
+            # CRC32 (not "") is required for PutObject into an Object Lock bucket:
+            # S3 rejects lock-parameter writes with no Content-MD5 or x-amz-checksum-* header.
+            checksumAlgorithm: "CRC32"
+            tagging: ""
+
+      # Volume snapshot location (disabled for now, using restic/kopia instead)
+      volumeSnapshotLocation:
+        - name: default
+          provider: aws
+          config:
+            region: eu-central-003
+
+      # Use node-agent (formerly restic) for volume backups
+      uploaderType: kopia
+
+    # Credentials for B2
+    credentials:
+      useSecret: true
+      existingSecret: b2-credentials
+      secretContents: {}
+
+    # Deploy node-agent (kopia) for PVC backups
+    deployNodeAgent: true
+
+    # Node agent configuration
+    nodeAgent:
+      podVolumePath: /var/lib/kubelet/pods
+      privileged: false
+      extraEnvVars:
+        - name: KOPIA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kopia-encryption
+              key: repository-password
+      resources:
+        requests:
+          memory: 200Mi
+          cpu: 100m
+
+    # Velero server resources
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+
+    # Init containers for plugins
+    initContainers:
+      - name: velero-plugin-for-aws
+        # PINNED: v1.14.1 sends empty x-amz-tagging on PutObject, B2 rejects with 400.
+        # Unpin when fix is released: https://github.com/vmware-tanzu/velero-plugin-for-aws/pull/299
+        image: velero/velero-plugin-for-aws:v1.14.0
+        #image: velero/velero-plugin-for-aws:v1.14.1
+        volumeMounts:
+          - mountPath: /target
+            name: plugins
+
+    # Backup schedules
+    schedules: {}
+
+    # Cleanup configuration
+    cleanUpCRDs: false
+
+    # Metrics
+    #
+    # enabled: true published port 8085 and nothing ever read it — there was no
+    # ServiceMonitor, so Prometheus held zero velero_* series and the alerts in
+    # prometheusrule.yaml had nothing to evaluate. Backup failures were
+    # invisible by construction, which is how a two-week PartiallyFailed weekly
+    # went unnoticed.
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true

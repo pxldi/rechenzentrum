@@ -1,0 +1,124 @@
+name: OpenTofu Authentik
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "terraform/authentik/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "terraform/authentik/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  TOFU_VERSION: "1.9.0"
+  WORKING_DIR: terraform/authentik
+
+jobs:
+  # Runs on every PR, with NO credentials in the environment.
+  #
+  # `tofu plan` used to run here holding AUTHENTIK_TOKEN and the B2 keys, but
+  # `tofu init` downloads providers named by the PR's own code and plan-time data
+  # sources execute — so any PR touching terraform/authentik/** could run
+  # arbitrary code with those secrets. Branch protection stops the merge, not the
+  # plan run. Validation catches syntax and type errors without needing state or
+  # provider auth, so the PR feedback loop keeps working with nothing to steal.
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: OpenTofu Init (no backend)
+        run: tofu init -backend=false
+
+      - name: OpenTofu Validate
+        run: tofu validate -no-color
+
+  # Full plan against real state. Manual only — you run this from the Actions tab
+  # when you want to review a terraform change before merging it.
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && vars.ENABLE_INFRA_APPLY == 'true'
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: OpenTofu Init
+        run: tofu init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.B2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL_S3: ${{ secrets.B2_ENDPOINT_URL }}
+
+      - name: OpenTofu Plan
+        run: tofu plan -no-color
+        env:
+          AUTHENTIK_URL: ${{ secrets.AUTHENTIK_URL }}
+          AUTHENTIK_TOKEN: ${{ secrets.AUTHENTIK_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.B2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL_S3: ${{ secrets.B2_ENDPOINT_URL }}
+          # Same value as OAUTH_CLIENT_SECRET in karakeep's SOPS secret.
+          # Both sides have to be changed together or OIDC login breaks.
+          TF_VAR_karakeep_oidc_client_secret: ${{ secrets.KARAKEEP_OIDC_CLIENT_SECRET }}
+          # Same value as OIDC_CLIENT_SECRET in the ryot namespace. This one was
+          # not chosen here: it is what the provider already had when it was
+          # adopted, so that the import did not rotate it.
+          TF_VAR_ryot_oidc_client_secret: ${{ secrets.RYOT_OIDC_CLIENT_SECRET }}
+
+  apply:
+    name: Apply
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.ENABLE_INFRA_APPLY == 'true'
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+
+      - name: OpenTofu Init
+        run: tofu init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.B2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL_S3: ${{ secrets.B2_ENDPOINT_URL }}
+
+      - name: OpenTofu Apply
+        run: tofu apply -auto-approve
+        env:
+          AUTHENTIK_URL: ${{ secrets.AUTHENTIK_URL }}
+          AUTHENTIK_TOKEN: ${{ secrets.AUTHENTIK_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.B2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL_S3: ${{ secrets.B2_ENDPOINT_URL }}
+          # Same value as OAUTH_CLIENT_SECRET in karakeep's SOPS secret.
+          # Both sides have to be changed together or OIDC login breaks.
+          TF_VAR_karakeep_oidc_client_secret: ${{ secrets.KARAKEEP_OIDC_CLIENT_SECRET }}
+          # Same value as OIDC_CLIENT_SECRET in the ryot namespace. This one was
+          # not chosen here: it is what the provider already had when it was
+          # adopted, so that the import did not rotate it.
+          TF_VAR_ryot_oidc_client_secret: ${{ secrets.RYOT_OIDC_CLIENT_SECRET }}

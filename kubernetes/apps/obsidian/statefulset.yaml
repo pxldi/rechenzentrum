@@ -1,0 +1,84 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: obsidian-sync
+  namespace: obsidian-sync
+  labels:
+    app: obsidian-sync
+spec:
+  replicas: 1
+  serviceName: obsidian-sync
+  selector:
+    matchLabels:
+      app: obsidian-sync
+  template:
+    metadata:
+      labels:
+        app: obsidian-sync
+      annotations:
+        backup.velero.io/backup-volumes: "data"
+    spec:
+      initContainers:
+        - name: fix-permissions
+          image: busybox:1.38
+          command:
+            - sh
+            - -c
+            - |
+              echo "Current permissions:"
+              ls -lan /opt/couchdb/data
+              echo "Fixing permissions for CouchDB (UID 5984)..."
+              chown -Rv 5984:5984 /opt/couchdb/data
+              chmod -Rv 755 /opt/couchdb/data
+              echo "New permissions:"
+              ls -lan /opt/couchdb/data
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: data
+              mountPath: /opt/couchdb/data
+      containers:
+        - name: couchdb
+          image: couchdb:3.5.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5984
+              name: http
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: COUCHDB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: obsidian-sync-secret
+                  key: COUCHDB_USER
+            - name: COUCHDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: obsidian-sync-secret
+                  key: COUCHDB_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /opt/couchdb/data
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5984
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+          readinessProbe:
+            tcpSocket:
+              port: 5984
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: obsidian-sync-data-pvc

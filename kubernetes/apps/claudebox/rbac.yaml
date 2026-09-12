@@ -1,0 +1,190 @@
+---
+# Cluster access for claudebox.
+#
+# A session on this pod is asked to debug the cluster it lives in: "why is
+# cantus crashlooping", "what did that rollout do". Without a token `kubectl` is
+# on PATH and inert, and every such question has to bounce off a human at a
+# laptop, which is the thing this pod exists to avoid. Read access is what turns
+# the pod from a place code runs into a place questions get answered.
+#
+# The roles below are the ones that used to live in kubernetes/apps/openclaw/
+# rbac.yaml as `openclaw-read` and `openclaw-exec`. #908 deleted that directory
+# and the ClusterRoles went with it, so they are re-declared here rather than
+# referenced. They are also renamed: the old files already noted that
+# `openclaw-read` undersold its scope once a second agent was bound to it, and
+# with openclaw gone the name pointed at nothing at all. The rules are
+# unchanged, including both omissions, which are the load-bearing part.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: claudebox
+  namespace: claudebox
+  labels:
+    app.kubernetes.io/name: claudebox
+---
+# Read access for observability and debugging. All changes to the cluster flow
+# through git -> PR -> Flux, so an agent never needs a write verb here.
+#
+# Resources are enumerated rather than wildcarded for two reasons:
+#   1. RBAC cannot express "everything except Secrets" — a wildcard hands the
+#      agent every credential in the cluster (B2 keys, Cloudflare token, the
+#      authentik secret key, database passwords) in decrypted form.
+#   2. A wildcard silently grants any CRD installed later, including ones with
+#      credential-bearing specs.
+#
+# Deliberately NOT granted:
+#   secrets      - see above. Secrets are edited in git via `sops`, not read live.
+#   nodes/proxy  - reaches the kubelet API directly, which allows exec into ANY
+#                  pod on the node. It bypasses the namespace-scoped exec binding
+#                  in infrastructure-config/claudebox-exec/ entirely and silently
+#                  undoes this whole design.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agent-read
+  labels:
+    app.kubernetes.io/name: claudebox
+rules:
+  - apiGroups: [""]
+    resources:
+      - namespaces
+      - nodes
+      - pods
+      - pods/log
+      - pods/status
+      - services
+      - endpoints
+      - configmaps
+      - persistentvolumeclaims
+      - persistentvolumes
+      - serviceaccounts
+      - events
+      - limitranges
+      - resourcequotas
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - deployments/status
+      - replicasets
+      - statefulsets
+      - statefulsets/status
+      - daemonsets
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses", "volumeattachments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+  # Reading RBAC lets the agent explain "why did that 403" without being able to
+  # change the answer. These objects expose no credentials.
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["traefik.io"]
+    resources:
+      - ingressroutes
+      - ingressroutetcps
+      - middlewares
+      - traefikservices
+      - serverstransports
+      - tlsoptions
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["helm.toolkit.fluxcd.io"]
+    resources: ["helmreleases"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["source.toolkit.fluxcd.io"]
+    resources:
+      - helmrepositories
+      - helmcharts
+      - gitrepositories
+      - ocirepositories
+      - buckets
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+    resources: ["kustomizations"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["notification.toolkit.fluxcd.io"]
+    resources: ["alerts", "providers", "receivers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources: ["clusters", "backups", "scheduledbackups", "poolers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["cert-manager.io"]
+    resources:
+      ["certificates", "certificaterequests", "issuers", "clusterissuers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["acme.cert-manager.io"]
+    resources: ["orders", "challenges"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["velero.io"]
+    resources:
+      - backups
+      - restores
+      - schedules
+      - backupstoragelocations
+      - volumesnapshotlocations
+      - podvolumebackups
+      - podvolumerestores
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["monitoring.coreos.com"]
+    resources:
+      - servicemonitors
+      - podmonitors
+      - prometheuses
+      - prometheusrules
+      - alertmanagers
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: claudebox-read
+  labels:
+    app.kubernetes.io/name: claudebox
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: agent-read
+subjects:
+  - kind: ServiceAccount
+    name: claudebox
+    namespace: claudebox
+---
+# Interactive debugging. Defined as a ClusterRole purely so one definition can be
+# reused by per-namespace RoleBindings — it is NEVER bound cluster-wide. The one
+# binding that exists is in infrastructure-config/claudebox-exec/, and it names
+# a single namespace.
+#
+# Exec into a pod inherits that pod's mounted secrets and ServiceAccount token,
+# so that namespace list is the real security boundary here, not the omission of
+# `secrets` from agent-read above.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agent-exec
+  labels:
+    app.kubernetes.io/name: claudebox
+rules:
+  - apiGroups: [""]
+    resources: ["pods/exec", "pods/attach", "pods/portforward"]
+    verbs: ["create", "get"]

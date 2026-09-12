@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none"
+     stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Rechenzentrum">
+  <!-- The house is drawn quiet and the rack inside it carries the one accent:
+       the mark says a data centre that lives in a home, and the lilac is spent
+       on the working part rather than the outline. The rack has no base of
+       its own; it stands on the floor line of the house. -->
+  <g stroke="#bcb2b8" stroke-width="2.25">
+    <path d="M5 21.5 24 6.5l19 15" />
+    <path d="M9.5 19v22.5h29V19" />
+  </g>
+  <g stroke="#bfa3e8" stroke-width="2.25">
+    <path d="M17 41.5V27a1.5 1.5 0 0 1 1.5-1.5h11a1.5 1.5 0 0 1 1.5 1.5v14.5" />
+    <path d="M17 31.5h14M17 36.5h14" />
+  </g>
+</svg>

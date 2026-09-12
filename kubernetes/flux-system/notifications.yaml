@@ -1,0 +1,62 @@
+---
+# Flux had no Provider and no Alert at all, which meant every flux failure was
+# silent. Nothing polls flux; the only way to learn a HelmRelease had failed was
+# to run `flux get hr` by hand. velero-ui failed four times and rolled itself
+# back without a single notification — found by accident, days later.
+#
+# Routed through Alertmanager rather than straight at a gotify bridge: the
+# bridges speak Alertmanager's webhook JSON, not flux's event JSON, so `generic`
+# would post something they cannot parse. Going through Alertmanager also means
+# flux failures inherit the grouping, inhibition and repeat_interval that every
+# other alert here already has, instead of being a second, differently-behaved
+# notification path.
+#
+# The address needs the full /api/v2/alerts path. The bare service root answers
+# 404 and notification-controller only says so in its own logs.
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Provider
+metadata:
+  name: alertmanager
+  namespace: flux-system
+spec:
+  type: alertmanager
+  address: http://kube-prometheus-stack-alertmanager.observability.svc.cluster.local:9093/api/v2/alerts
+---
+# HelmRelease is in here deliberately, not just Kustomization. No Kustomization
+# sets healthChecks, so a failed HelmRelease never marks its parent
+# Kustomization unready — watching Kustomizations alone would reproduce exactly
+# the gap this is meant to close.
+#
+# ImageUpdateAutomation and ImagePolicy are here for the same reason: branding's
+# git-sync credentials broke during the org migration and failed quietly for
+# days, which is the same class of problem seen from another angle.
+#
+# Omitting `namespace` matches the kind cluster-wide, which is what is wanted —
+# the 25 HelmReleases live in 25 different namespaces and a list would go stale
+# the first time an app is added.
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: flux-failures
+  namespace: flux-system
+spec:
+  providerRef:
+    name: alertmanager
+  eventSeverity: error
+  eventSources:
+    - kind: Kustomization
+      name: "*"
+    - kind: HelmRelease
+      name: "*"
+    - kind: GitRepository
+      name: "*"
+    - kind: OCIRepository
+      name: "*"
+    - kind: HelmRepository
+      name: "*"
+    - kind: ImageRepository
+      name: "*"
+    - kind: ImagePolicy
+      name: "*"
+    - kind: ImageUpdateAutomation
+      name: "*"

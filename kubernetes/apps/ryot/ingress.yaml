@@ -1,0 +1,15 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ryot
+  namespace: ryot
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`track.pxldi.de`)
+      priority: 10
+      services:
+        - name: ryot
+          port: 8000

@@ -1,0 +1,21 @@
+---
+# Base backup nightly; WAL streams continuously between them.
+#
+# Staggered across clusters and kept clear of velero's 02:00 window so six
+# Postgres uploads and a full cluster backup are not competing for the same
+# residential uplink.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: tandoor-postgresql-daily
+  namespace: tandoor
+spec:
+  # Six fields, not five: CNPG's cron includes a leading seconds specifier.
+  schedule: "0 0 1 * * *"
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: tandoor-postgresql
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

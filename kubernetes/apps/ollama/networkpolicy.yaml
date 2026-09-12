@@ -1,0 +1,24 @@
+# Karakeep's inference and embedding workers talk to ollama over 11434: tags,
+# summaries and the search vectors. Written by hand rather than reusing the
+# shared allow-from-* components, which open every port on the pod to a whole
+# namespace. There is one port here and it is an unauthenticated API to a model
+# that will answer anything, so it is named.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-karakeep
+  namespace: ollama
+spec:
+  podSelector:
+    matchLabels:
+      app: ollama
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: karakeep
+      ports:
+        - protocol: TCP
+          port: 11434

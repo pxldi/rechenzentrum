@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: home-assistant
+  labels:
+    # privileged: hostNetwork + hostPort on home-assistant and matter-server;
+    # otbr is privileged with NET_ADMIN/SYS_ADMIN and a hostPath to the Thread
+    # radio
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/audit-version: latest
+    name: home-assistant

@@ -1,0 +1,89 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: observability
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Prometheus reaches its targets by connecting *out*, so scraping is egress from
+# this namespace and no ingress rule here affects it. What does need ingress:
+# grafana from traefik, and everything in here talking to everything else —
+# alertmanager to the two gotify bridges, grafana to prometheus, prometheus to
+# alertmanager.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-intra-namespace
+  namespace: observability
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-traefik
+  namespace: observability
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+---
+# The prometheus-operator admission webhook, same host-network apiserver problem
+# as cert-manager and cnpg. This one is `failurePolicy: Ignore`, so a mistake
+# here degrades rather than breaks — a malformed PrometheusRule would be admitted
+# unvalidated instead of rejected. Written the same way regardless, because the
+# reason the others cannot use a selector applies identically here.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-webhook
+  namespace: observability
+spec:
+  podSelector:
+    matchLabels:
+      app: kube-prometheus-stack-operator
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 10250
+---
+# notification-controller POSTs flux failures to Alertmanager's /api/v2/alerts.
+# Without this the default-deny above eats them and flux alerting is silent in a
+# new way — the same failure mode that took velero's health checks down in #924,
+# and just as invisible, since a working error-Alert and a blocked one both
+# produce no notifications on a healthy cluster.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-flux
+  namespace: observability
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: alertmanager
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: flux-system
+      ports:
+        - protocol: TCP
+          port: 9093

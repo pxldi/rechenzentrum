@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: device-plugins
+  labels:
+    # privileged: a device plugin mounts /dev and the kubelet's device-plugin
+    # socket directory and must run privileged to do its job. That is the entire
+    # point of it existing — it concentrates the privilege into one small
+    # DaemonSet that runs no user content, so that the workloads which actually
+    # need a device do not each have to be privileged themselves.
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/audit-version: latest

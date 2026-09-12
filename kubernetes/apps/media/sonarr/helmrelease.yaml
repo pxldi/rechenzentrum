@@ -1,0 +1,48 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: sonarr
+  namespace: media
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: sonarr
+      version: "26.7.4"
+      sourceRef:
+        kind: HelmRepository
+        name: truecharts
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    workload:
+      main:
+        podSpec:
+          annotations:
+            backup.velero.io/backup-volumes-excludes: "media,downloads"
+    env:
+      TZ: "Europe/Berlin"
+    metrics:
+      main:
+        enabled: false
+    persistence:
+      config:
+        enabled: true
+        existingClaim: sonarr-config-pvc
+      media:
+        enabled: true
+        type: pvc
+        existingClaim: media-pvc
+        mountPath: /media
+        readOnly: false
+      downloads:
+        enabled: true
+        existingClaim: downloads-pvc
+        mountPath: /downloads

@@ -1,0 +1,92 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./kubernetes/infrastructure
+  prune: true
+  # Was false, which meant this reported Ready the moment the objects were
+  # *applied* -- a traefik or cert-manager or velero release that then failed
+  # to become healthy still looked fine, and `apps` (which dependsOn this)
+  # proceeded regardless. The dependency was decorative.
+  #
+  # The cost is real and worth stating: `apps` now genuinely blocks on every
+  # HelmRelease here being Ready. One chronically unhealthy infrastructure
+  # release stops app changes from deploying. Running workloads are unaffected
+  # -- Flux stops applying, it does not tear down -- and it fails loudly into
+  # the existing Flux -> Alertmanager -> Gotify path, which is the point.
+  wait: true
+  # 5m was fine for apply-and-forget. Waiting for ~14 HelmReleases to become
+  # Ready on a cold start is a different job; a timeout here marks the whole
+  # Kustomization failed and takes `apps` down with it.
+  timeout: 15m
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+
+  # Drift detection for every HelmRelease this Kustomization owns.
+  #
+  # Applied as a patch rather than edited into 8 HelmReleases, so it lives in
+  # one place, is one line to revert, and new releases inherit it instead of
+  # being quietly exempt.
+  #
+  # Without it, helm-controller only compares the *release* to the chart: an
+  # out-of-band change to a Helm-managed object is invisible until the next
+  # upgrade happens to overwrite it. The manual ClusterRoleBinding deletion
+  # #920 needed is exactly that class of change.
+  #
+  # The ignores are not optional. cert-manager's webhooks have their caBundle
+  # written by cainjector, and cnpg and kube-prometheus-stack write their own
+  # the same way, none of which is in the chart. Detecting that as drift would
+  # have helm-controller revert it and the injector immediately rewrite it --
+  # a correction loop that never converges. Ignoring /webhooks wholesale is
+  # coarser than ignoring just caBundle, and it is what a JSON pointer can
+  # express without hardcoding webhook array indices.
+  # minReadySeconds was 0 everywhere, which means a pod counts as available the
+  # instant its readiness probe first passes. A container that starts, passes
+  # one probe and then dies -- a bad config, a missing mount, an image that
+  # crashes on first real request -- is rolled out to completion before anything
+  # notices.
+  #
+  # 10s is the smallest number that makes the failure visible rather than
+  # instantaneous. It is not a health check; it is a delay before Kubernetes
+  # believes the previous one.
+  #
+  # Honest about where this helps: on RollingUpdate Deployments it stops the
+  # rollout with the old pod still serving. On the Recreate ones -- most of the
+  # PVC-backed apps here, deliberately, because RWO means one pod -- the old pod
+  # is already gone, so this only delays "available" rather than protecting
+  # anything. Harmless there, valuable on the rest, and one place to change.
+  patches:
+    - target:
+        kind: Deployment
+      patch: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: all-deployments-in-this-kustomization
+        spec:
+          minReadySeconds: 10
+    - target:
+        kind: HelmRelease
+      patch: |
+        apiVersion: helm.toolkit.fluxcd.io/v2
+        kind: HelmRelease
+        metadata:
+          name: all-helmreleases-in-this-kustomization
+        spec:
+          driftDetection:
+            mode: enabled
+            ignore:
+              - paths: ["/webhooks"]
+                target:
+                  kind: ValidatingWebhookConfiguration
+              - paths: ["/webhooks"]
+                target:
+                  kind: MutatingWebhookConfiguration

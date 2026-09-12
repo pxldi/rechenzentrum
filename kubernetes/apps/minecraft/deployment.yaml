@@ -1,0 +1,123 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minecraft
+  namespace: minecraft
+  labels:
+    app: minecraft
+spec:
+  # Scaled to zero: a friend is hosting the world now. The PVC is kept, so
+  # setting this back to 1 resumes the server with its world and modpack intact.
+  replicas: 0
+  selector:
+    matchLabels:
+      app: minecraft
+  # RWO node-local PV + a single stateful game process: never run two at once.
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: minecraft
+    spec:
+      priorityClassName: rechenzentrum-bulk
+      # local-ssd PV is node-local, so pin to the node that holds it.
+      nodeSelector:
+        kubernetes.io/hostname: rechenzentrum
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      # itzg traps SIGTERM to save the world and stop cleanly; give it room.
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: minecraft
+          image: itzg/minecraft-server:2026.8.2-java17
+          imagePullPolicy: IfNotPresent
+          # Keep a console attachable via `kubectl attach -it`.
+          stdin: true
+          tty: true
+          ports:
+            - containerPort: 25565
+              name: game
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: UID
+              value: "1000"
+            - name: GID
+              value: "1000"
+            - name: EULA
+              value: "TRUE"
+            # --- Modpack: installed + kept in sync from the FTB API ---
+            # 127 = "FTB Presents Architect's Exodus", 100428 = version 1.7.0.
+            # itzg installs Forge 1.20.1 + all mods on first boot. Bump the
+            # version id to update the pack; it re-installs on next restart.
+            - name: TYPE
+              value: "FTBA"
+            - name: FTB_MODPACK_ID
+              value: "127"
+            - name: FTB_MODPACK_VERSION_ID
+              value: "100428"
+            # --- Memory / GC ---
+            # Aikar's flags (Xms=Xmx=6G). The container limit (8Gi) leaves
+            # ~2Gi for off-heap (metaspace, Netty direct buffers, mod native).
+            # If the heap is ever exceeded, only this pod OOMs — other homelab
+            # services are protected by the cgroup limit.
+            - name: INIT_MEMORY
+              value: "6G"
+            - name: MAX_MEMORY
+              value: "6G"
+            - name: USE_AIKAR_FLAGS
+              value: "true"
+            # --- Gameplay / server.properties (OVERRIDE lets env win on restart) ---
+            - name: OVERRIDE_SERVER_PROPERTIES
+              value: "true"
+            - name: MOTD
+              value: "pxldi — Architect's Exodus"
+            - name: DIFFICULTY
+              value: "normal"
+            - name: MAX_PLAYERS
+              value: "8"
+            - name: VIEW_DISTANCE
+              value: "10"
+            # Several pack mods teleport/elytra players; avoids false flight kicks.
+            - name: ALLOW_FLIGHT
+              value: "TRUE"
+            # Not advertised publicly; share the host:port with friends directly.
+            - name: ENABLE_RCON
+              value: "false"
+            # Admin: add your Minecraft username(s) here to get op on join.
+            - name: OPS
+              value: ""
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: "2"
+              memory: 6Gi
+            limits:
+              memory: 8Gi
+          # First boot downloads the pack, runs the Forge installer and generates
+          # the world — minutes of work — so startup gets a long grace window
+          # before liveness can kill it.
+          startupProbe:
+            tcpSocket:
+              port: game
+            periodSeconds: 15
+            failureThreshold: 60
+          livenessProbe:
+            tcpSocket:
+              port: game
+            periodSeconds: 30
+            failureThreshold: 5
+          readinessProbe:
+            tcpSocket:
+              port: game
+            periodSeconds: 15
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: minecraft-data

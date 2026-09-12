@@ -1,0 +1,14 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: immich
+  # Must match the HelmRelease's sourceRef.namespace, which is `immich`. The
+  # kustomization's `namespace: immich` rewrites this at apply time either way,
+  # so flux was happy with `flux-system` here — but Renovate reads the raw file,
+  # found no HelmRepository at immich/immich, and silently dropped the chart
+  # from extraction entirely. No immich chart PR has been opened since.
+  namespace: immich
+spec:
+  interval: 12h
+  url: https://immich-app.github.io/immich-charts

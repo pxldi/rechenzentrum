@@ -1,0 +1,51 @@
+---
+# Stops Velero filesystem-backing-up ephemeral volumes.
+#
+# Both schedules run with defaultVolumesToFsBackup: true, which means *every*
+# volume gets a Kopia filesystem backup — including emptyDirs. Measured on
+# 2026-09-11 across the backed-up namespaces:
+#
+#   emptyDir volumes: 88
+#   PVC volumes:      87
+#
+# So half the weekly run's filesystem work went to /tmp, /dev/shm, /var/run,
+# /plugins, nginx caches and CNPG scratch dirs. None of that is restorable
+# state: an emptyDir is destroyed with its pod, so a node reboot already wipes
+# every one of them (the auto-upgrade reboots on 2026-08-25 and 2026-09-08 did
+# exactly that). Backing them up can only ever restore data nothing depends on.
+#
+# It was also breaking the backups. weekly-full-backup went PartiallyFailed
+# four runs running (2026-08-16 through 09-06), and on 09-06 the failure was
+# media/cantus `tmp`:
+#
+#   Failed to upload the kopia snapshot ... /kopia/media/cantus-.../tmp:
+#   no such file or directory
+#
+# Kopia listed the directory, the app deleted a file underneath it, the read
+# failed. That race is unwinnable on a live scratch volume and recurs at
+# random — which is why the failing volume moved every week (palworld, then
+# obsidian-sync, then overleaf, then cantus) and healed on its own each time.
+# One failed PodVolumeBackup marks the whole run PartiallyFailed, and
+# PartiallyFailed never clears VeleroWeeklyBackupStale.
+#
+# A resource policy is used rather than per-pod
+# `backup.velero.io/backup-volumes-excludes` annotations because it matches on
+# volume *type*, not on a hand-maintained list of volume names. It therefore
+# covers every emptyDir added in the future, needs nothing from the CNPG
+# operator (21 of the 88 are on operator-generated pods, which would otherwise
+# need spec.inheritedMetadata), and cannot skip a PVC by accident — a PVC is
+# not an emptyDir, so no amount of drift in this file can drop real data.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: velero-volume-policy
+  namespace: velero
+data:
+  policy.yaml: |
+    version: v1
+    volumePolicies:
+      - conditions:
+          volumeTypes:
+            - emptyDir
+        action:
+          type: skip

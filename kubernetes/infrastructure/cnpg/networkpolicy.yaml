@@ -1,0 +1,34 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: cnpg-system
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Same shape and same reasoning as cert-manager's: two webhook configurations
+# (mutating and validating), both `failurePolicy: Fail`, both called by the
+# host-network apiserver which no selector can match. Getting this wrong stops
+# every CNPG Cluster operation in the cluster — authentik, nextcloud, immich,
+# paperless, adventurelog, wardrowbe and cantus all run their Postgres here.
+#
+# Port 9443 open to any source; the operator's own reconcile loop, which holds
+# credentials for every database, is closed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-webhook
+  namespace: cnpg-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: cloudnative-pg
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 9443

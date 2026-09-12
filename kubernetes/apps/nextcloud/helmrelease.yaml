@@ -1,0 +1,185 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: nextcloud
+  namespace: nextcloud
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: nextcloud
+      version: "9.2.6"
+      sourceRef:
+        kind: HelmRepository
+        name: nextcloud
+        namespace: flux-system
+      interval: 12h
+  install:
+    timeout: 10m
+    remediation:
+      retries: 3
+  upgrade:
+    timeout: 10m
+    remediation:
+      retries: 3
+  values:
+    image:
+      repository: nextcloud
+      tag: 34.0.3
+      flavor: apache
+      pullPolicy: IfNotPresent
+
+    replicaCount: 1
+
+    nextcloud:
+      host: cloud.pxldi.de
+      username: admin
+      existingSecret:
+        enabled: true
+        secretName: nextcloud-credentials
+        usernameKey: NEXTCLOUD_USERNAME
+        passwordKey: NEXTCLOUD_PASSWORD
+      trustedDomains:
+        - cloud.pxldi.de
+        - pxldi.de
+        - nextcloud.nextcloud.svc.cluster.local
+      datadir: /var/www/html/data
+      configs:
+        custom.config.php: |-
+          <?php
+          $CONFIG = array (
+            'trusted_proxies' => array('10.0.0.0/8'),
+            'overwrite.cli.url' => 'https://cloud.pxldi.de',
+            'overwriteprotocol' => 'https',
+          );
+      phpConfigs:
+        upload-limit.ini: |-
+          upload_max_filesize = 10G
+          post_max_size = 10G
+          memory_limit = 512M
+      defaultConfigs:
+        .htaccess: true
+        apache-pretty-urls.config.php: true
+        apcu.config.php: true
+        apps.config.php: true
+        autoconfig.php: true
+        redis.config.php: true
+        reverse-proxy.config.php: true
+        s3.config.php: false
+        smtp.config.php: false
+        swift.config.php: false
+        upgrade-disable-web.config.php: true
+
+    phpClientHttpsFix:
+      enabled: true
+      protocol: https
+
+    internalDatabase:
+      enabled: false
+
+    externalDatabase:
+      enabled: true
+      type: postgresql
+      host: nextcloud-postgresql
+      database: nextcloud
+      existingSecret:
+        enabled: true
+        secretName: nextcloud-credentials
+        usernameKey: POSTGRES_USER
+        passwordKey: POSTGRES_PASSWORD
+
+    postgresql:
+      enabled: true
+      global:
+        postgresql:
+          auth:
+            database: nextcloud
+            username: nextcloud
+            existingSecret: nextcloud-credentials
+            secretKeys:
+              userPasswordKey: POSTGRES_PASSWORD
+      primary:
+        persistence:
+          enabled: true
+          storageClass: local-ssd
+          size: 10Gi
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+
+    redis:
+      enabled: true
+      auth:
+        enabled: true
+        existingSecret: nextcloud-credentials
+        # Both the nextcloud container env helper and the bitnami redis
+        # subchart read the password from existingSecretPasswordKey; the
+        # redis-password key is the one the redis server already uses.
+        existingSecretPasswordKey: redis-password
+      master:
+        persistence:
+          enabled: true
+          storageClass: local-ssd
+          size: 1Gi
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+
+    persistence:
+      enabled: true
+      nextcloudData:
+        enabled: true
+        existingClaim: nextcloud-data-pvc
+
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+
+    livenessProbe:
+      httpGet:
+        path: /status.php
+        port: http
+        httpHeaders:
+          - name: Host
+            value: cloud.pxldi.de
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+
+    readinessProbe:
+      httpGet:
+        path: /status.php
+        port: http
+        httpHeaders:
+          - name: Host
+            value: cloud.pxldi.de
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+
+    startupProbe:
+      httpGet:
+        path: /status.php
+        port: http
+        httpHeaders:
+          - name: Host
+            value: cloud.pxldi.de
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 30
+
+    cronjob:
+      enabled: true
+      type: sidecar
+      sidecar:
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"

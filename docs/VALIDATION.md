@@ -38,4 +38,4 @@ checks Terraform formatting.
 
 Operational workflows are off until configured with their credentials and flags:
 `ENABLE_INFRA_APPLY`, `ENABLE_IMAGE_PUBLISH`, `ENABLE_FLAKE_UPDATES`,
-`ENABLE_NOTIFICATIONS`, `ENABLE_IMAGE_AUTOMATION`.
+`ENABLE_IMAGE_AUTOMATION`.

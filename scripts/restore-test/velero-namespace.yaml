@@ -1,0 +1,20 @@
+# Isolated target namespace for a Velero restore test. See docs/BACKUPS.md.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: restore-test
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: restore-test
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]

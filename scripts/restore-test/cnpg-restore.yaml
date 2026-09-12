@@ -1,0 +1,104 @@
+# CNPG point-in-time restore into an isolated namespace. Last run 2026-09-12
+# against cantus-postgresql; see docs/BACKUPS.md for the procedure and result.
+#
+# To test another database, change the four occurrences of the source cluster
+# name and path, the image tag (must match the source major), and targetTime.
+# The B2 read credential is applied separately from the source namespace's
+# SOPS file; it is deliberately not part of this manifest.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: restore-test
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: restore-test
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-operator
+  namespace: restore-test
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: cantus-restore
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: cantus-postgresql-source
+  namespace: restore-test
+spec:
+  configuration:
+    destinationPath: s3://rechenzentrum-cnpg/media/cantus-postgresql
+    endpointURL: https://s3.eu-central-003.backblazeb2.com
+    s3Credentials:
+      accessKeyId:
+        name: cnpg-b2-credentials
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: cnpg-b2-credentials
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+      maxParallel: 2
+    data:
+      compression: gzip
+  instanceSidecarConfiguration:
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "10m"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cantus-restore
+  namespace: restore-test
+spec:
+  # No spec.plugins entry: this cluster must never archive WAL, or it would
+  # overwrite the history it was restored from.
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.6
+  postgresql:
+    shared_preload_libraries: []
+  bootstrap:
+    recovery:
+      source: cantus-postgresql
+      recoveryTarget:
+        targetTime: "2026-09-12 21:47:36+00"
+  externalClusters:
+    - name: cantus-postgresql
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: cantus-postgresql-source
+          serverName: cantus-postgresql
+  resources:
+    requests:
+      memory: "768Mi"
+      cpu: "100m"
+  storage:
+    storageClass: local-ssd
+    size: 10Gi
+  walStorage:
+    storageClass: local-ssd
+    size: 5Gi

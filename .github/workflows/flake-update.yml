@@ -21,7 +21,7 @@ name: Flake Update
 on:
   schedule:
     # Sundays 05:23 UTC. Off the hour because GitHub delays scheduled runs that
-    # cluster at :00, and clear of ci-watchdog's :17.
+    # cluster at :00.
     - cron: "23 5 * * 0"
   workflow_dispatch:
 

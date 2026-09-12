@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ ... }:
 
 {
   # Merging to main already deploys the cluster (Flux). This makes it deploy
@@ -23,7 +23,8 @@
   #   already set so the reboot happens right after the switch, and only
   #   when the running kernel, initrd or kernel modules actually differ from
   #   the new generation -- a config-only change never reboots.
-  # - The deploy key is read-only. The host can pull config, never push it.
+  # - The fetch is anonymous over https. The repository is public since the
+  #   2026-09-12 handover, so the host holds no credential for it at all.
   # - 04:45, not a round number. 03:00 is when the internet goes away every
   #   night (renovate learned that the hard way), velero's daily backup runs
   #   at 04:00 local, and fredy restarts at 05:17. 04:45 is between them and
@@ -37,29 +38,15 @@
     enable = true;
     operation = "switch";
     # `?dir=nix` because the flake sits in a subdirectory of the repo; nix
-    # clones the repo and reads the flake from there. The module adds
-    # --refresh so the fetch is not served from the flake cache.
-    flake = "git+ssh://git@github.com/pxldi-labs/rechenzentrum?dir=nix";
+    # clones the repo and reads the flake from there. `ref=main` pins the
+    # branch, and the module adds --refresh so the fetch is not served from
+    # the flake cache.
+    flake = "git+https://github.com/pxldi/rechenzentrum?dir=nix&ref=main";
     dates = "04:45";
     # Spread nothing: the window above was chosen on purpose.
     randomizedDelaySec = "0";
     allowReboot = false;
     rebootWindow = { lower = "04:45"; upper = "05:10"; };
     persistent = true;
-  };
-
-  # The unit runs as root and authenticates with a dedicated read-only deploy
-  # key, kept under a name of its own so the pre-existing root key (a Flux
-  # bootstrap leftover from the previous homelab) stays untouched.
-  # IdentitiesOnly stops ssh from offering that older key first and getting
-  # rejected for the wrong repo.
-  systemd.services.nixos-upgrade.environment.GIT_SSH_COMMAND =
-    "${pkgs.openssh}/bin/ssh -i /root/.ssh/id_ed25519_autoupgrade -o IdentitiesOnly=yes -o BatchMode=yes";
-
-  # Pin GitHub's host key so the first unattended fetch cannot stall on a
-  # known_hosts prompt, and cannot be talked into accepting a different one.
-  # https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
-  programs.ssh.knownHosts."github.com" = {
-    publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
   };
 }

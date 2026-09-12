@@ -60,6 +60,11 @@ new Deployment at the new `cantus-postgresql-app` secret.
 
 ## Plan for slskd
 
+Done 2026-09-13 (PR #16 and the follow-up that set `media` to baseline). The
+old config PV object was deleted after the new pod was healthy; the two shared
+PVs keep their media claims. Kept for the record and for a future Cantus move.
+
+
 1. **Retain first.** Patch the live PVs for `downloads-pvc`,
    `cantus-music-pvc` and `slskd-config-pvc` to
    `persistentVolumeReclaimPolicy: Retain`. Live-only change; OpenEBS

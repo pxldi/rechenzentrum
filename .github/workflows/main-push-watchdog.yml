@@ -14,9 +14,9 @@ name: Main Push Watchdog
 # out loud — which is the difference between "nobody merged anything odd" as a
 # belief and as a checked fact.
 #
-# It runs on GitHub-hosted infrastructure for the same reason ci-watchdog.yml
-# does: a push that breaks the cluster would take an in-cluster detector with
-# it, and this is precisely the case where that happens.
+# It runs on GitHub-hosted infrastructure: a push that breaks the cluster
+# would take an in-cluster detector with it, and this is precisely the case
+# where that happens.
 
 on:
   push:

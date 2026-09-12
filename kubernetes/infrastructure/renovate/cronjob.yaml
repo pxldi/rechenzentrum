@@ -23,7 +23,8 @@ spec:
   # Everything below this line is about failure, not about scheduling.
   #
   # On 2026-08-06 the GitHub App this job authenticates as lost its installation
-  # (the repo moved from the pxldi account to the pxldi-labs org). mint-token
+  # (the repo moved from the pxldi account to the pxldi-labs org; it moved back
+  # to pxldi as a public repo on 2026-09-12, with a fresh installation). mint-token
   # started failing, and because a CronJob with no bounds is a CronJob that
   # never gives up, the cluster accumulated five jobs stuck in Init:0/1 — the
   # oldest running for 18 days — while Renovate opened no PRs for 17. Nothing
@@ -166,7 +167,7 @@ spec:
                 - name: RENOVATE_PLATFORM
                   value: "github"
                 - name: RENOVATE_REPOSITORIES
-                  value: "pxldi-labs/rechenzentrum"
+                  value: "pxldi/rechenzentrum"
                 # Tell Renovate it is running as an App rather than a user, so it
                 # attributes commits to the App and skips user-only API calls.
                 - name: RENOVATE_USERNAME

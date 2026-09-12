@@ -26,7 +26,10 @@ spec:
       main:
         podSpec:
           annotations:
-            backup.velero.io/backup-volumes-excludes: "media,data"
+            # transcode and cache are regenerated scratch space; the transcode
+            # volume alone was 42 GB on 2026-09-13 and made every full backup
+            # crawl against Backblaze.
+            backup.velero.io/backup-volumes-excludes: "media,data,transcode,cache"
 
     env:
       TZ: "Europe/Berlin"

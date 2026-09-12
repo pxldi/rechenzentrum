@@ -1,55 +1,35 @@
-# Recovery acceptance before stateful migration
+# Backups and restores
 
-Recent CNPG backups for all six databases reported `completed` during the
-2026-09-12 inspection. No new restore was executed in this migration session.
-Previous README claims of restore testing are historical, not current evidence.
+| Data | Backup path |
+| --- | --- |
+| Six CNPG databases | Barman Cloud plugin -> B2; base backups and WAL |
+| Selected application files | Velero/Kopia -> B2 |
+| Daily critical namespaces | `daily-critical-backup`, `0 2 * * *`, 30-day retention |
+| Weekly selected cluster resources | `weekly-full-backup`, `0 3 * * 0`, 90-day retention |
 
-## Independent recovery material
+Scopes and volume exclusions are defined in `kubernetes/infrastructure-config/velero/`.
+Database backup settings live in `kubernetes/databases/`. Large media and scratch
+volumes may be excluded; check coverage before assuming a file is recoverable.
 
-Keep the age private key, B2 credentials, Kopia encryption password, host access
-and disk/mount inventory in an operator-controlled recovery store outside this
-cluster. Recover those first; Flux cannot decrypt backup credentials without
-the age key, and Velero cannot retrieve backups without storage credentials.
-GitHub repository secrets do not move with a Git export.
+**Evidence, 2026-09-12:** recent backups for all six CNPG clusters reported
+`completed`. No new restore has been tested during this migration.
 
-## CNPG database restore
+## Restore acceptance
 
-Use the Barman Cloud plugin recovery procedure matching the installed plugin
-and CNPG versions. Recover a new Cluster into a dedicated namespace using the
-existing ObjectStore backup source and original `serverName`. Give the recovered
-cluster a different archive `serverName`, or disable archiving during the test;
-never let a test cluster overwrite the source backup history.
+1. Recover age, B2 and Kopia credentials from storage independent of the cluster.
+2. Create an isolated target with default-deny networking and bounded storage.
+3. Restore CNPG through the installed Barman plugin. Read the original backup
+   `serverName`; use a different archive name for the recovered cluster.
+4. Restore app files into new PVCs. Exclude production routes, namespaces,
+   scheduled jobs, Flux objects and privileged RBAC from test restores.
+5. Allow only required recovery traffic. Start the app against its restored
+   database and verify records, representative files and a read/write cycle.
+6. Record backup ID/time, recovery point, duration and checks. Keep user data and
+   SQL dumps private. Retain production data through the rollback window.
 
-The test namespace must start with default-deny ingress/egress. Permit only the
-operator, DNS, Kubernetes API where needed, and the backup endpoint. Do not
-restore production IngressRoutes, external DNS records, CronJobs, ScheduledBackups,
-Flux Kustomizations, privileged RoleBindings or production namespaces into it.
-Provision a bounded amount of storage on the intended recovery storage class.
+Define RPO/RTO targets before stateful migration. A completed backup or healthy
+Postgres process alone is not a successful application restore.
 
-Verify the Cluster Ready condition, connect through operator-controlled access,
-and compare application tables/record counts with a recorded reference. Starting
-Postgres alone is insufficient. For Tandoor, verify recipes, ingredients and
-meal plans; for Cantus, verify library entries and file references.
-
-## File data and application test
-
-Recover Tandoor media and other app files from Velero/Kopia into new claims.
-Restore the application against the recovered database, with no public route,
-outbound email, scheduled jobs or access to production databases. Verify a
-representative media/file download and an application-level read/write cycle.
-Do not use a filesystem copy of live PostgreSQL volumes as a substitute for
-the database-native backup.
-
-Record: source backup and timestamp, source/target namespace, database recovery
-point, recovery duration, record counts, file checks, application version and
-result. Keep identifying user data and SQL dumps outside the public repository.
-Choose and record RPO/RTO targets with the operator; the existing daily schedule
-does not itself establish an acceptable recovery objective.
-
-Keep production data until the migration's rollback window closes. Remove test
-namespaces and their claims only after confirming that no retained production
-volume is referenced. Namespace deletion is intentionally not automated here.
-
-References: [CNPG recovery](https://cloudnative-pg.io/documentation/current/recovery/),
-[Barman Cloud plugin](https://cloudnative-pg.io/plugin-barman-cloud/docs/),
-[Velero restore reference](https://velero.io/docs/main/restore-reference/).
+References: [CNPG](https://cloudnative-pg.io/documentation/current/recovery/),
+[Barman plugin](https://cloudnative-pg.io/plugin-barman-cloud/docs/),
+[Velero](https://velero.io/docs/main/restore-reference/).

@@ -1,14 +1,9 @@
 # Exposure inventory
 
-Generated from the GitOps baseline. This records routes, not proof of actual
-internet reachability: DNS, router forwarding and VPN routing must be checked.
-An app login alone does not make an administrative service suitable for public
-access. Mixed-route apps may deliberately bypass forward auth for API clients.
-
-No existing route has been removed or put behind VPN in this migration.
-The operator must identify services needing internet access before that change.
-Grafana, Traefik dashboard, Velero UI and developer interfaces are initial VPN
-candidates. Internal database/API/MCP services should stay class D.
+Baseline manifests, 2026-09-12. Routes do not prove internet reachability.
+DNS/router/VPN configuration and required client access still need confirmation.
+Existing routes are preserved. Grafana, Traefik/Velero UIs and developer interfaces
+are VPN candidates. A means public/app auth; B means extra proxy authentication.
 
 | Namespace | Route | Match | Middleware | Observed class |
 | --- | --- | --- | --- | --- |

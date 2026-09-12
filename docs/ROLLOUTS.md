@@ -1,13 +1,8 @@
-# Workload rollout inventory
+# Rollout inventory
 
-Read-only live inventory on 2026-09-12, including Helm-generated workloads.
-PVC or host volumes and application-level writers need individual review before
-allowing concurrent old/new instances. ReadWriteOnce is a single-node access
-mode, not a single-pod lock. A single-node host failure still causes downtime.
-
-No blanket RollingUpdate strategy or memory limit is applied to these workloads.
-Excalidraw is the first stateless pilot. Account for graceful termination, surge
-capacity and application/database compatibility before extending it.
+Live baseline, 2026-09-12; includes Helm-generated workloads.
+Review shared storage, concurrent writers and capacity before changing strategy.
+The Excalidraw pilot is configured separately; this table records the pre-migration state.
 
 | Namespace | Workload | Strategy | PVCs | Readiness on all containers |
 | --- | --- | --- | --- | --- |

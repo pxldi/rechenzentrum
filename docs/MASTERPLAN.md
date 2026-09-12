@@ -83,6 +83,6 @@ Configured does not mean live or restore-tested.
 | Exposure | Inventory recorded in [EXPOSURE.md](EXPOSURE.md); internet/VPN choices still open |
 | Backups | CNPG and Velero restores verified 2026-09-12, see [BACKUPS.md](BACKUPS.md); Cantus files are not backed up |
 | Image automation | PR workflow configured; writer credential needed; suspended |
-| Cantus namespace | Pending the shared-volume design above; database restore verified; its files have no backup, so the move must not touch the PV directories |
+| Cantus namespace | Design in [CANTUS_ISOLATION.md](CANTUS_ISOLATION.md): move slskd out first, Cantus stays; not started |
 | Edge/egress expansion | Pending service requirements and reachability tests |
 | ZeroClaw/MCP | Not deployed; provider/bot setup, software and scoped credentials needed |

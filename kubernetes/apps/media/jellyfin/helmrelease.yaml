@@ -26,10 +26,11 @@ spec:
       main:
         podSpec:
           annotations:
-            # transcode and cache are regenerated scratch space; the transcode
-            # volume alone was 42 GB on 2026-09-13 and made every full backup
-            # crawl against Backblaze.
-            backup.velero.io/backup-volumes-excludes: "media,data,transcode,cache"
+            # /data (JELLYFIN_DATA_DIR) holds jellyfin.db and the metadata
+            # images, 2.7 GB on 2026-09-13; it must be in every backup. transcode
+            # and cache are regenerated scratch space, and the transcode volume
+            # alone was 42 GB and made every full backup crawl against Backblaze.
+            backup.velero.io/backup-volumes-excludes: "media,transcode,cache"
 
     env:
       TZ: "Europe/Berlin"

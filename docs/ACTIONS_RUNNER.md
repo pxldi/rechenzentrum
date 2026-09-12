@@ -18,6 +18,6 @@ provide the full GitHub-hosted toolchain; install or containerize required tools
 Keep controller and runner chart versions aligned. Review `limits.yaml` and
 `networkpolicy.yaml` before changing capacity or connectivity.
 
-The GitHub App credential is SOPS-encrypted in `secret.yaml`. Moving this GitOps
-repository does not migrate the App installation or change the organization's
-runner scope.
+The GitHub App credential is SOPS-encrypted in `secret.yaml`. The App
+installation and the runner scope belong to the organization, not to this
+repository.

@@ -23,7 +23,9 @@ python3 scripts/schema-check.py
 python3 scripts/check-policies.py
 ```
 
-For this migration also run `python3 scripts/verify-preservation.py`.
+`python3 scripts/verify-preservation.py` compares the build with
+`policies/preservation-baseline.json`. An intentional change to a PVC, database
+or Helm spec updates the baseline in the same PR.
 
 Builds include Flux patches and check duplicate ownership/dependency cycles.
 Schemas cover Kubernetes 1.33 and the installed custom-resource kinds; unknown

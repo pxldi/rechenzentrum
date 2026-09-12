@@ -1,11 +1,6 @@
 # rechenzentrum
 
 Single-node NixOS/K3s homelab managed with Flux, Kustomize, Helm and SOPS.
-This public repository has fresh history; the previous repository remains at
-`pxldi-labs/rechenzentrum`.
-
-**Migration status:** Flux reconciles from this repository since 2026-09-12.
-See [implementation status](docs/IMPLEMENTATION.md) for what is still open.
 
 ## Layout
 
@@ -44,11 +39,10 @@ Terraform state and kubeconfigs are excluded.
 
 ## Operations
 
-- [Migration and rollback](docs/MIGRATION.md)
 - [Backups and restore acceptance](docs/BACKUPS.md)
 - [Exposure inventory](docs/EXPOSURE.md)
 - [Rollout inventory](docs/ROLLOUTS.md)
 - [Image automation](docs/IMAGE_AUTOMATION.md)
 - [Internal Actions runners](docs/ACTIONS_RUNNER.md)
 - [Host power settings](docs/QUIET_MODE.md)
-- [Remaining masterplan](docs/MASTERPLAN.md)
+- [Masterplan and open work](docs/MASTERPLAN.md)

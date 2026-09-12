@@ -2,7 +2,7 @@
 
 Live baseline, 2026-09-12; includes Helm-generated workloads.
 Review shared storage, concurrent writers and capacity before changing strategy.
-The Excalidraw pilot is configured separately; this table records the pre-migration state.
+The Excalidraw pilot is configured separately; this table records the state before it.
 
 | Namespace | Workload | Strategy | PVCs | Readiness on all containers |
 | --- | --- | --- | --- | --- |

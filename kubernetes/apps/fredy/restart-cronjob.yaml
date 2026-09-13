@@ -73,7 +73,7 @@ spec:
             - name: kubectl
               # Tag plus digest: Renovate needs the tag to find the next digest,
               # and the digest keeps the pull reproducible. Tracks the k3s minor.
-              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              image: rancher/kubectl:v1.36.2@sha256:06c7a7a9772737494ae1e0c3af90f1b5385630c147e47c1c7cea92f4bed55fbe
               command:
                 - kubectl
                 - rollout

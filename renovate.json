@@ -76,7 +76,7 @@
   ],
   "prHourlyLimit": 0,
   "prConcurrentLimit": 0,
-  "platformAutomerge": false,
+  "platformAutomerge": true,
   "timezone": "Europe/Berlin",
   "schedule": [
     "after 2am and before 6am"

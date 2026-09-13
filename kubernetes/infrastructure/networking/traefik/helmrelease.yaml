@@ -98,6 +98,14 @@ spec:
         # single-node cluster, so every endpoint is node-local and the usual
         # Local caveat about unbalanced traffic does not apply.
         externalTrafficPolicy: Local
+        # A tailnet request does not match the LoadBalancer IP, so kube-proxy
+        # ignores it and the packet falls through to the svclb pod's hostPort,
+        # which masquerades: Traefik logged 10.42.0.241 for a request to the
+        # node's tailnet address while a LAN request logged 192.168.8.101.
+        # Listing that address here makes kube-proxy own it under the same
+        # Local policy.
+        externalIPs:
+          - 100.122.211.109
 
     log:
       level: INFO

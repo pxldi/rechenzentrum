@@ -96,4 +96,4 @@ spec:
               - op: replace
                 path: /spec/template/spec/initContainers/1/image
                 # renovate: datasource=docker depName=docker versioning=docker
-                value: docker:29.7.2-dind
+                value: docker:29.8.0-dind

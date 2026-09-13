@@ -32,7 +32,7 @@ spec:
       terminationGracePeriodSeconds: 120
       containers:
         - name: minecraft
-          image: itzg/minecraft-server:2026.8.2-java17
+          image: itzg/minecraft-server:2026.9.1-java17
           imagePullPolicy: IfNotPresent
           # Keep a console attachable via `kubectl attach -it`.
           stdin: true

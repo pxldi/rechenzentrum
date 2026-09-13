@@ -162,6 +162,24 @@ spec:
                   set -eu
                   RENOVATE_TOKEN=$(cat /token/token)
                   export RENOVATE_TOKEN
+                  # Anonymous Docker Hub requests are rate limited per IP. A
+                  # single 429 makes the docker datasource throw an
+                  # ExternalHostError, which aborts the whole repository run and
+                  # leaves every pending PR unmerged. Authenticating raises the
+                  # limit. Built here rather than in renovate.json because that
+                  # file is public.
+                  # Optional on purpose: a run without the credential is worse
+                  # but still correct, so a missing secret key must not break it.
+                  if [ -n "${DOCKER_HUB_USERNAME:-}" ] && [ -n "${DOCKER_HUB_PASSWORD:-}" ]; then
+                    RENOVATE_HOST_RULES=$(printf \
+                      '[{"hostType":"docker","matchHost":"docker.io","username":"%s","password":"%s"}]' \
+                      "$DOCKER_HUB_USERNAME" "$DOCKER_HUB_PASSWORD")
+                    export RENOVATE_HOST_RULES
+                    unset DOCKER_HUB_PASSWORD
+                    echo "docker hub: authenticating as $DOCKER_HUB_USERNAME"
+                  else
+                    echo "docker hub: no credential, requests are rate limited" >&2
+                  fi
                   exec renovate
               env:
                 - name: RENOVATE_PLATFORM
@@ -180,6 +198,18 @@ spec:
                 # debug logged token-bearing request headers on every run.
                 - name: LOG_LEVEL
                   value: "info"
+                - name: DOCKER_HUB_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: renovate-app
+                      key: DOCKER_HUB_USERNAME
+                      optional: true
+                - name: DOCKER_HUB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: renovate-app
+                      key: DOCKER_HUB_PASSWORD
+                      optional: true
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:

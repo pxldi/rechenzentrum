@@ -35,15 +35,6 @@
       ]
     }
   ],
-  "hostRules": [
-    {
-      "matchHost": "docker.io",
-      "abortIgnoreStatusCodes": [
-        429
-      ],
-      "description": "Anonymous Docker Hub pulls are rate limited. A 429 aborted whole Renovate runs (2026-09-13), leaving the PR backlog unmerged. Skip the affected dependency instead."
-    }
-  ],
   "packageRules": [
     {
       "matchPackageNames": [

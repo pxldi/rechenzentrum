@@ -87,13 +87,17 @@ spec:
           default: false
 
     service:
-      type: LoadBalancer
-      # Traefik logged 10.42.0.1 as the client for every request: with the
-      # default Cluster policy k3s's servicelb masquerades the source address
-      # before Traefik sees it. Local skips that rewrite. This is a single-node
-      # cluster, so every endpoint is node-local and the usual Local caveat
-      # about unbalanced traffic does not apply.
-      externalTrafficPolicy: Local
+      # The chart passes `service.spec` straight into the Service spec; keys set
+      # directly under `service` are ignored, which is why the first attempt at
+      # externalTrafficPolicy silently did nothing.
+      spec:
+        type: LoadBalancer
+        # Traefik logged 10.42.0.1 as the client for every request: with the
+        # default Cluster policy k3s's servicelb masquerades the source address
+        # before Traefik sees it. Local skips that rewrite. This is a
+        # single-node cluster, so every endpoint is node-local and the usual
+        # Local caveat about unbalanced traffic does not apply.
+        externalTrafficPolicy: Local
 
     log:
       level: INFO

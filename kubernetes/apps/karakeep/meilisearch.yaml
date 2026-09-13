@@ -50,7 +50,13 @@ spec:
           # The version Karakeep's own compose pins. Newer 1.x servers exist;
           # let Renovate propose the bump so a human validates the index
           # migration.
-          image: getmeili/meilisearch:v1.53.2
+          #
+          # v1.53.2 was automerged on 2026-09-13 and crashlooped: the engine
+          # refuses to open a database written by 1.41.0 without an explicit
+          # MEILI_UPGRADE_DB, and that upgrade is one way. The on-disk database
+          # is untouched, so pinning back restores service with no data risk.
+          # renovate.json now keeps this image off automerge.
+          image: getmeili/meilisearch:v1.41.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

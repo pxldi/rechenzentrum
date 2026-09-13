@@ -81,7 +81,7 @@ Configured does not mean live or restore-tested.
 | Rollout pilot | Excalidraw has a startup probe and zero-unavailable rolling update |
 | Admission | Existing policies retained; additional Pod checks in Audit/Warn |
 | Exposure | Inventory recorded in [EXPOSURE.md](EXPOSURE.md); internet/VPN choices still open |
-| Backups | CNPG and Velero restores verified 2026-09-12, see [BACKUPS.md](BACKUPS.md); Cantus files are not backed up |
+| Backups | CNPG and Velero restores verified 2026-09-12, see [BACKUPS.md](BACKUPS.md); Cantus audio files are deliberately excluded, see [BACKUPS.md](BACKUPS.md#cantus) |
 | Image automation | PR workflow configured; writer credential needed; suspended |
 | Cantus namespace | slskd moved out 2026-09-13 and `media` is baseline; Cantus stays, see [CANTUS_ISOLATION.md](CANTUS_ISOLATION.md) |
 | Edge/egress expansion | Pending service requirements and reachability tests |

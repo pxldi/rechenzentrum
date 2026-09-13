@@ -83,3 +83,21 @@ Ready on the restored data, then delete the namespace and the restore record.
 References: [CNPG](https://cloudnative-pg.io/documentation/current/recovery/),
 [Barman plugin](https://cloudnative-pg.io/plugin-barman-cloud/docs/),
 [Velero](https://velero.io/docs/main/restore-reference/).
+
+## Cantus
+
+Cantus audio files are excluded from backup on purpose, decided 2026-09-13.
+
+`cantus-music-pvc` held 59 GB of downloaded audio and `cantus-uploads-pvc` was
+empty. Both are reproducible: the tracks are re-downloadable, and
+`cantus-postgresql` records which ones exist. That database is covered by the
+daily CNPG schedule, its most recent backup completed 2026-09-13, and a
+point-in-time restore was verified on 2026-09-12.
+
+Cantus keeps no configuration on a volume. Every setting arrives as an
+environment variable from `kubernetes/apps/media/cantus/deployment.yaml`, and the
+only application secret, `cantus-auth`, is sops-encrypted in the repository.
+
+A full loss therefore costs the audio files and nothing else. The database says
+what to fetch again. Backing up 59 GB of re-downloadable audio to Backblaze was
+judged not worth its cost.

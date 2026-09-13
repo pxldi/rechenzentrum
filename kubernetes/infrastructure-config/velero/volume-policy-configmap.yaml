@@ -49,3 +49,12 @@ data:
             - emptyDir
         action:
           type: skip
+      # Data that a download or a rebuild replaces. Label the PVC rather than
+      # listing volume names here, so the claim that owns the data also carries
+      # the reason it is not worth backing up. Only ever put this on something
+      # whose loss costs time, never information.
+      - conditions:
+          pvcLabels:
+            backup.rechenzentrum.dev/reproducible: "true"
+        action:
+          type: skip

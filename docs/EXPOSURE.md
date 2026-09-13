@@ -1,61 +1,93 @@
 # Exposure inventory
 
-Baseline manifests, 2026-09-12. Routes do not prove internet reachability.
-DNS/router/VPN configuration and required client access still need confirmation.
-Existing routes are preserved. Grafana, Traefik/Velero UIs and developer interfaces
-are VPN candidates. A means public/app auth; B means extra proxy authentication.
+Generated from the live cluster on 2026-09-13, after the internal-only rollout.
+Routes do not prove internet reachability; DNS and the router decide that too.
 
-| Namespace | Route | Match | Middleware | Observed class |
-| --- | --- | --- | --- | --- |
-| adventurelog | adventurelog | Host(`travel.pxldi.de`) | none | A / app auth |
-| adventurelog | adventurelog | Host(`travel.pxldi.de`) && (PathPrefix(`/media`) \|\| PathPrefix(`/static`) \|\| PathPrefix(`/accounts`) \|\| PathPrefix(`/csrf`) \|\| PathPrefix(`/admin`)) | add-trailing-slash, adventurelog-headers | A / app auth |
-| adventurelog | adventurelog-django-admin | Host(`travel-admin.pxldi.de`) | authentik-forward-auth | B candidate |
-| authentik | authentik | Host(`auth.pxldi.de`) | none | A / app auth |
-| branding | branding | Host(`branding.pxldi.de`) | none | A / app auth |
-| excalidraw | excalidraw | Host(`draw.pxldi.de`) | authentik-forward-auth | B candidate |
-| fredy | fredy | Host(`immo.pxldi.de`) | none | A / app auth |
-| glance | glance | Host(`glance.pxldi.de`) | authentik-forward-auth | B candidate |
-| gotify | gotify | Host(`gotify.pxldi.de`) | none | A / app auth |
-| grimmory | grimmory | Host(`books.pxldi.de`) | none | A / app auth |
-| home-assistant | home-assistant | Host(`home.pxldi.de`) | none | A / app auth |
-| homepage | homepage | Host(`pxldi.de`) | authentik-forward-auth | B candidate |
-| immich | immich | Host(`photos.pxldi.de`) | none | A / app auth |
-| jdownloader | jdownloader | Host(`download.pxldi.de`) | authentik-forward-auth | B candidate |
-| karakeep | karakeep | Host(`links.pxldi.de`) | none | A / app auth |
-| media | cantus | Host(`cantus.pxldi.de`) | authentik-forward-auth, cantus-proxy-key | B candidate |
-| media | cantus | Host(`cantus.pxldi.de`) && PathPrefix(`/api/`) && HeaderRegexp(`Authorization`, `^Bearer `) | none | A / app auth |
-| media | cantus | Host(`cantus.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`) | none | A / app auth |
-| media | jellyfin | Host(`jellyfin.pxldi.de`) | none | A / app auth |
-| media | navidrome | Host(`music.pxldi.de`) | none | A / app auth |
-| media | prowlarr | Host(`prowlarr.pxldi.de`) | authentik-forward-auth | B candidate |
-| media | radarr | Host(`radarr.pxldi.de`) | authentik-forward-auth | B candidate |
-| media | sabnzbd | Host(`sabnzbd.pxldi.de`) | authentik-forward-auth | B candidate |
-| media | seerr | Host(`request.pxldi.de`) | none | A / app auth |
-| media | slskd | Host(`slskd.pxldi.de`) | authentik-forward-auth | B candidate |
-| media | sonarr | Host(`sonarr.pxldi.de`) | authentik-forward-auth | B candidate |
-| monitoring | uptime-kuma | Host(`uptime.pxldi.de`) | authentik-forward-auth | B candidate |
-| monitoring | uptime-kuma | Host(`uptime.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`) | none | A / app auth |
-| multica | multica | Host(`code.pxldi.de`) | none | A / app auth |
-| multica | multica | Host(`code.pxldi.de`) && (PathPrefix(`/api`) \|\| PathPrefix(`/ws`) \|\| PathPrefix(`/uploads`) \|\| PathPrefix(`/auth`)) | none | A / app auth |
-| multica | multica | Host(`code.pxldi.de`) && (PathPrefix(`/auth/callback`) \|\| PathPrefix(`/auth/hg-sso/callback`)) | none | A / app auth |
-| n8n | n8n | Host(`automation.pxldi.de`) | authentik-forward-auth | B candidate |
-| n8n | n8n | Host(`automation.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`) | none | A / app auth |
-| nextcloud | nextcloud | Host(`cloud.pxldi.de`) | nextcloud-headers | A / app auth |
-| nextcloud | nextcloud | Host(`cloud.pxldi.de`) && (Path(`/.well-known/carddav`) \|\| Path(`/.well-known/caldav`)) | nextcloud-wellknown-dav | A / app auth |
-| nextcloud | nextcloud | Host(`cloud.pxldi.de`) && PathPrefix(`/remote.php/dav`) | nextcloud-headers, nextcloud-dav-no-compress | A / app auth |
-| observability | grafana | Host(`grafana.pxldi.de`) | authentik-forward-auth | B candidate |
-| observability | grafana | Host(`grafana.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`) | none | A / app auth |
-| obsidian-sync | obsidian-sync | Host(`obsidian.pxldi.de`) | none | A / app auth |
-| overleaf | overleaf | Host(`latex.pxldi.de`) | none | A / app auth |
-| paperless | paperless | Host(`paperless.pxldi.de`) | none | A / app auth |
-| ryot | ryot | Host(`track.pxldi.de`) | none | A / app auth |
-| searxng | searxng | Host(`search.pxldi.de`) | authentik-forward-auth | B candidate |
-| sparkyfitness | sparkyfitness | Host(`fit.pxldi.de`) | none | A / app auth |
-| sure | sure | Host(`finance.pxldi.de`) | authentik-forward-auth | B candidate |
-| tandoor | tandoor | Host(`recipes.pxldi.de`) | none | A / app auth |
-| traefik | dashboard | Host(`traefik.pxldi.de`) | authentik-forward-auth | B candidate |
-| velero | velero-ui | Host(`velero.pxldi.de`) | authentik-forward-auth | B candidate |
-| velero | velero-ui | Host(`velero.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`) | none | A / app auth |
-| wardrowbe | wardrowbe | Host(`wear.pxldi.de`) | authentik-forward-auth | B candidate |
-| wardrowbe | wardrowbe | Host(`wear.pxldi.de`) && PathPrefix(`/api/v1`) | authentik-forward-auth | B candidate |
-| wardrowbe | wardrowbe | Host(`wear.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`) | none | A / app auth |
+Three states:
+
+- **LAN/tailnet + Authentik** — the `internal-only` middleware refuses any source
+  address outside 192.168.8.0/24 and 100.64.0.0/10, and an Authentik login
+  follows. Unreachable from the internet.
+- **Authentik** — reachable from the internet, gated by an Authentik login.
+- **public** — reachable from the internet, protected only by whatever the
+  application itself enforces.
+
+The `/outpost.goauthentik.io/` sub-routes carry no middleware on purpose: the
+Authentik outpost needs them to complete a login, and they serve nothing else.
+
+## Deliberate exceptions
+
+- **Karakeep** (`links.pxldi.de`) stays Authentik-only. It is shared with someone
+  who has an account but no device on the tailnet.
+- **Cantus's API route** (`cantus.pxldi.de` with a Bearer header) stays public so
+  a client that cannot follow a login redirect works away from home. Cantus
+  validates the token and answers 401 to anything it did not mint. No proxy key
+  applies there, so identity headers on those requests are never believed.
+
+## Known issues
+
+- **`pxldi.de` (the apex) is unreachable.** It resolves to Cloudflare rather than
+  to the house, so requests arrive wearing Cloudflare's address and
+  `internal-only` rejects them. AdGuard rewrites `*.pxldi.de` to 192.168.8.226
+  but has no entry for the apex. Add one and the homepage behaves like every
+  other name.
+- **`wear.pxldi.de` returns Authentik's 404 page.** The request passes the
+  allowlist and reaches forward-auth, and Authentik has no application bound to
+  that host. Unrelated to the allowlist, which answers 403 when it rejects.
+
+## Routes
+
+| Namespace | Route | State | Middlewares |
+| --- | --- | --- | --- |
+| authentik | `auth.pxldi.de` | public | none |
+| n8n | `automation.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| n8n | `automation.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
+| grimmory | `books.pxldi.de` | public | none |
+| branding | `branding.pxldi.de` | public | none |
+| media | `cantus.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth,cantus-proxy-key |
+| media | `cantus.pxldi.de PathPrefix(`/api/`) && HeaderRegexp(`Authorization`, `^Beare` | public | none |
+| media | `cantus.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
+| nextcloud | `cloud.pxldi.de` | public | nextcloud-headers |
+| nextcloud | `cloud.pxldi.de (Path(`/.well-known/carddav`) \|\| Path(`/.well-known/caldav` | public | nextcloud-wellknown-dav |
+| nextcloud | `cloud.pxldi.de PathPrefix(`/remote.php/dav`)` | public | nextcloud-headers,nextcloud-dav-no-compress |
+| multica | `code.pxldi.de` | public | none |
+| multica | `code.pxldi.de (PathPrefix(`/api`) \|\| PathPrefix(`/ws`) \|\| PathPrefix(`` | public | none |
+| multica | `code.pxldi.de (PathPrefix(`/auth/callback`) \|\| PathPrefix(`/auth/hg-sso/` | public | none |
+| jdownloader | `download.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| excalidraw | `draw.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| sure | `finance.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| sparkyfitness | `fit.pxldi.de` | public | none |
+| glance | `glance.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| gotify | `gotify.pxldi.de` | public | none |
+| observability | `grafana.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| observability | `grafana.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
+| home-assistant | `home.pxldi.de` | public | none |
+| fredy | `immo.pxldi.de` | public | none |
+| media | `jellyfin.pxldi.de` | public | none |
+| overleaf | `latex.pxldi.de` | public | none |
+| karakeep | `links.pxldi.de` | public | none |
+| media | `music.pxldi.de` | public | none |
+| obsidian-sync | `obsidian.pxldi.de` | public | none |
+| paperless | `paperless.pxldi.de` | public | none |
+| immich | `photos.pxldi.de` | public | none |
+| media | `prowlarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| homepage | `pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| media | `radarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| tandoor | `recipes.pxldi.de` | public | none |
+| media | `request.pxldi.de` | public | none |
+| media | `sabnzbd.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| searxng | `search.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| slskd | `slskd.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| media | `sonarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| ryot | `track.pxldi.de` | public | none |
+| traefik | `traefik.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| adventurelog | `travel-admin.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| adventurelog | `travel.pxldi.de` | public | none |
+| adventurelog | `travel.pxldi.de (PathPrefix(`/media`) \|\| PathPrefix(`/static`) \|\| PathPr` | public | add-trailing-slash,adventurelog-headers |
+| monitoring | `uptime.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| monitoring | `uptime.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
+| velero | `velero.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| velero | `velero.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
+| wardrowbe | `wear.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| wardrowbe | `wear.pxldi.de PathPrefix(`/api/v1`)` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| wardrowbe | `wear.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |

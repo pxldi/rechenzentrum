@@ -38,6 +38,18 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /opt/couchdb/data
+        - name: copy-config
+          image: busybox:1.38
+          command:
+            - sh
+            - -c
+            - cp -v /config/obsidian.ini /local.d/obsidian.ini
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: local-d
+              mountPath: /local.d
       containers:
         - name: couchdb
           image: couchdb:3.5.2
@@ -62,14 +74,13 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /opt/couchdb/data
-            # CouchDB reads every *.ini in local.d at start. Without this mount
-            # the ConfigMap was never applied, so CORS stayed off and
-            # Self-hosted LiveSync could not enable live mode (native fetch
-            # fails without CORS, only the request API worked).
-            - name: config
-              mountPath: /opt/couchdb/etc/local.d/obsidian.ini
-              subPath: obsidian.ini
-              readOnly: true
+            # CouchDB reads every *.ini in local.d at start. The image's
+            # entrypoint runs `find /opt/couchdb ! -user couchdb -exec chown`
+            # under `set -e`, and chown fails on a read-only ConfigMap mount,
+            # so the ini is copied into a writable emptyDir by the init
+            # container instead of being mounted here directly.
+            - name: local-d
+              mountPath: /opt/couchdb/etc/local.d
           livenessProbe:
             httpGet:
               path: /
@@ -93,3 +104,5 @@ spec:
         - name: config
           configMap:
             name: obsidian-sync-config
+        - name: local-d
+          emptyDir: {}

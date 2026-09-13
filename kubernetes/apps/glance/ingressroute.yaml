@@ -13,5 +13,7 @@ spec:
         - name: glance
           port: 8080
       middlewares:
+        - name: internal-only
+          namespace: traefik
         - name: authentik-forward-auth
           namespace: traefik

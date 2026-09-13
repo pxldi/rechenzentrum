@@ -13,5 +13,7 @@ spec:
         - name: homepage
           port: 3000
       middlewares:
+        - name: internal-only
+          namespace: traefik
         - name: authentik-forward-auth
           namespace: traefik

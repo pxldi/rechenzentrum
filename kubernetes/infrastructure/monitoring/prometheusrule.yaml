@@ -128,10 +128,19 @@ spec:
         #
         # max() collapses stale series from previous exporter pods, which linger
         # in the TSDB after a rollout and would otherwise read as a dead link.
+        #
+        # Gated on speedtest_up. When the Ookla CLI cannot fetch its
+        # configuration it reports Download=0 and Ping=0 and sets
+        # speedtest_up to 0, which is indistinguishable from a dead link by
+        # throughput alone. That happened on 2026-09-12, Ookla-side, and this
+        # alert spent a day claiming the WAN was down while the node was
+        # pulling images the whole time. A failed measurement is not a
+        # measurement of failure; SpeedtestExporterFailing covers that case.
         - alert: WanThroughputCollapsed
           expr: |
             max(
               last_over_time(speedtest_download_bits_per_second[45m])
+              and last_over_time(speedtest_up[45m]) == 1
             ) < 50e6
           for: 30m
           labels:
@@ -145,3 +154,23 @@ spec:
               a duplex mismatch, a wedged router — as readily as a real outage.
               Cross-check NodeSoftirqCorePinned first: if both are firing the
               cause is inside the node, not upstream of it.
+
+        # The companion to the gate above: with WanThroughputCollapsed silent
+        # on a failed test, something still has to say the measurement stopped.
+        # Deliberately info, because it reports a blind spot rather than an
+        # outage, and the usual cause is Ookla rather than anything here.
+        - alert: SpeedtestExporterFailing
+          expr: |
+            max_over_time(speedtest_up[2h]) == 0
+              or absent_over_time(speedtest_up[2h])
+          for: 1h
+          labels:
+            severity: info
+          annotations:
+            summary: "Speedtest has not completed a run in 2h"
+            description: >-
+              The exporter is reachable but every test failed, or it stopped
+              producing samples entirely. WAN throughput is unmeasured until
+              this clears; it does not mean the link is down. Check the
+              exporter's logs for the Ookla CLI's error before looking at the
+              network.

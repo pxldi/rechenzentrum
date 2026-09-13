@@ -50,7 +50,7 @@ spec:
           # The version Karakeep's own compose pins. Newer 1.x servers exist;
           # let Renovate propose the bump so a human validates the index
           # migration.
-          image: getmeili/meilisearch:v1.41.0
+          image: getmeili/meilisearch:v1.53.2
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

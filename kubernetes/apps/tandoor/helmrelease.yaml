@@ -34,7 +34,7 @@ spec:
           main:
             image:
               repository: vabene1111/recipes
-              tag: "2.6.13"
+              tag: "2.6.15"
               pullPolicy: IfNotPresent
 
             env:

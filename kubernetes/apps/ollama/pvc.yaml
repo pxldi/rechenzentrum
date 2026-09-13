@@ -3,6 +3,9 @@ kind: PersistentVolumeClaim
 metadata:
   name: ollama-models
   namespace: ollama
+  labels:
+    # Models are pulled from the registry on demand.
+    backup.rechenzentrum.dev/reproducible: "true"
 spec:
   accessModes:
     - ReadWriteOnce

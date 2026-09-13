@@ -17,6 +17,10 @@ kind: PersistentVolumeClaim
 metadata:
   name: soundcloud-music-pvc
   namespace: media
+  labels:
+    # Downloaded audio. Navidrome rebuilds its index from the files,
+    # and the files come back from SoundCloud.
+    backup.rechenzentrum.dev/reproducible: "true"
 spec:
   accessModes:
     - ReadWriteOnce

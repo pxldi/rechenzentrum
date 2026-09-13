@@ -101,3 +101,27 @@ only application secret, `cantus-auth`, is sops-encrypted in the repository.
 A full loss therefore costs the audio files and nothing else. The database says
 what to fetch again. Backing up 59 GB of re-downloadable audio to Backblaze was
 judged not worth its cost.
+
+## What is excluded, and why
+
+Back up what is hard to obtain or cannot be reproduced. Anything a download or a
+rebuild replaces stays out, and the exclusion is recorded here.
+
+Two mechanisms do this. `backup.velero.io/backup-volumes-excludes` on a pod names
+individual volumes. The volume policy in
+`kubernetes/infrastructure-config/velero/volume-policy-configmap.yaml` matches on
+volume type and on PVC labels, which is preferred because the claim that owns the
+data carries the reason alongside it.
+
+| What | Size on 2026-09-13 | Why it is out |
+| --- | --- | --- |
+| Every `emptyDir` | 88 volumes | Destroyed with the pod; a reboot already wipes them |
+| `jellyfin` transcode and cache | 42 GB | Scratch, regenerated on demand |
+| `media-pvc`, jellyfin `data` for media | 6.3 TB | Media library, not backup material |
+| `ollama-models` | 2.6 GB | Pulled from the registry on demand |
+| `soundcloud-music-pvc` | 0.5 GB | Downloaded audio; Navidrome reindexes from the files |
+| Cantus audio | 59 GB | Re-downloadable, and the database records what exists |
+
+To exclude a new claim, add `backup.rechenzentrum.dev/reproducible: "true"` to its
+labels and add a row above. Only use it where a loss costs time rather than
+information.

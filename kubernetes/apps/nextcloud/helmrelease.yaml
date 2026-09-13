@@ -26,7 +26,7 @@ spec:
   values:
     image:
       repository: nextcloud
-      tag: 34.0.3
+      tag: 34.0.4
       flavor: apache
       pullPolicy: IfNotPresent
 

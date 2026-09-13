@@ -72,6 +72,13 @@
       "groupName": "actions-runner-controller",
       "automerge": false,
       "description": "ARC refuses to run a controller and a scale set on different chart versions, so the two must land in one PR. Not automerged: these are 0.x, where a minor bump has broken the runner API before, and merging here changes the live cluster."
+    },
+    {
+      "matchPackageNames": [
+        "getmeili/meilisearch"
+      ],
+      "automerge": false,
+      "description": "Meilisearch refuses to start against a database written by an older engine, and the in-place upgrade is one way. v1.53.2 was automerged on 2026-09-13 and crashlooped karakeep's index until it was pinned back."
     }
   ],
   "prHourlyLimit": 0,

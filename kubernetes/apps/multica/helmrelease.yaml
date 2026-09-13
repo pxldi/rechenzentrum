@@ -20,7 +20,7 @@ spec:
   chart:
     spec:
       chart: multica
-      version: "0.4.36"
+      version: "0.4.43"
       sourceRef:
         kind: HelmRepository
         name: multica

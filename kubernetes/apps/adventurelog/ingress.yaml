@@ -61,6 +61,8 @@ spec:
       match: Host(`travel-admin.pxldi.de`)
       priority: 10
       middlewares:
+        - name: internal-only
+          namespace: traefik
         - name: authentik-forward-auth
           namespace: traefik
       services:

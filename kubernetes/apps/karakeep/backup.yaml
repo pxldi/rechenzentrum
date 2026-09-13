@@ -40,7 +40,7 @@ spec:
               # binary. The namespace enforces baseline, which permits this;
               # everything else about the container stays closed. Same shape as
               # the branding sidecar.
-              image: alpine:3.22
+              image: alpine:3.24
               command:
                 - sh
                 - -c

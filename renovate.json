@@ -37,20 +37,31 @@
   ],
   "packageRules": [
     {
-      "matchPackageNames": ["velero/velero-plugin-for-aws"],
+      "matchPackageNames": [
+        "velero/velero-plugin-for-aws"
+      ],
       "allowedVersions": "/^v?1\\.14\\.0$/",
       "description": "Pinned at v1.14.0: newer 1.14.x releases send empty x-amz-tagging to B2"
     },
     {
-      "matchUpdateTypes": ["minor", "patch"],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
       "automerge": true
     },
     {
-      "matchUpdateTypes": ["major"],
-      "schedule": ["at any time"]
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "schedule": [
+        "at any time"
+      ]
     },
     {
-      "matchPackageNames": ["boulderbadgedad/soulsync"],
+      "matchPackageNames": [
+        "boulderbadgedad/soulsync"
+      ],
       "versioning": "loose"
     },
     {
@@ -69,5 +80,6 @@
   "timezone": "Europe/Berlin",
   "schedule": [
     "after 2am and before 6am"
-  ]
+  ],
+  "rebaseWhen": "conflicted"
 }

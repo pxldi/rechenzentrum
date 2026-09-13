@@ -11,6 +11,11 @@ spec:
     - kind: Rule
       match: Host(`traefik.pxldi.de`)
       middlewares:
+        # Order matters: reject off-network callers before asking Authentik
+        # anything, so an unauthenticated probe from the internet never
+        # reaches the identity provider.
+        - name: internal-only
+          namespace: traefik
         - name: authentik-forward-auth
           namespace: traefik
       services:

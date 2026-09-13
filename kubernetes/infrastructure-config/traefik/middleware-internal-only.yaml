@@ -1,0 +1,31 @@
+---
+# Refuses anything that did not come from the LAN or the tailnet.
+#
+# This only works because the Traefik Service carries
+# externalTrafficPolicy: Local and lists the node's tailnet address in
+# externalIPs. Without the first, k3s's servicelb masquerades every packet and
+# Traefik sees 10.42.0.1; without the second, a request to the tailnet address
+# falls through to the svclb pod's hostPort and is masqueraded the same way.
+# Both were measured on 2026-09-13: a LAN request logs 192.168.8.101 and a
+# tailnet request logs 100.105.195.13. If either setting is reverted this
+# middleware starts rejecting everything, which is the safe direction to fail.
+#
+# depth and excludedIPs are deliberately unset. There is no proxy in front of
+# Traefik, so X-Forwarded-For is attacker-controlled and must not be consulted;
+# the remote address is the only trustworthy source.
+#
+# The cluster's own pod range is NOT allowed. Nothing in the cluster should
+# reach another service through its public hostname, and leaving 10.42.0.0/16
+# out means a compromised pod cannot use these routes either.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: internal-only
+  namespace: traefik
+spec:
+  ipAllowList:
+    sourceRange:
+      # The LAN.
+      - 192.168.8.0/24
+      # The tailnet. Tailscale allocates every node out of 100.64.0.0/10.
+      - 100.64.0.0/10

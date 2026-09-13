@@ -24,7 +24,7 @@ spec:
       priorityClassName: rechenzentrum-critical
       containers:
         - name: gotify
-          image: ghcr.io/gotify/server:3.0.0
+          image: ghcr.io/gotify/server:3.1.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80

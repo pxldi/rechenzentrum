@@ -13,9 +13,12 @@ kind: NetworkPolicy
 metadata:
   name: uptime-kuma-egress-to-apiserver
 spec:
+  # The pod carries `app: uptime-kuma` and nothing else: kustomization.yaml sets
+  # the app.kubernetes.io labels with includeTemplates false, so they reach the
+  # Deployment and the Service but never the pod a policy has to select.
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: uptime-kuma
+      app: uptime-kuma
   policyTypes:
     - Egress
   egress:

@@ -34,9 +34,6 @@ Authentik outpost needs them to complete a login, and they serve nothing else.
   rewrite covering `*.pxldi.de` does not match the bare apex. The apex rewrite
   was added on 2026-09-15 and the allowlist restored. If the homepage starts
   answering 403 again, check that rewrite before anything else.
-- **`wear.pxldi.de` returns Authentik's 404 page.** The request passes the
-  allowlist and reaches forward-auth, and Authentik has no application bound to
-  that host. Unrelated to the allowlist, which answers 403 when it rejects.
 
 ## Routes
 
@@ -91,6 +88,3 @@ Authentik outpost needs them to complete a login, and they serve nothing else.
 | monitoring | `uptime.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
 | velero | `velero.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | velero | `velero.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
-| wardrowbe | `wear.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| wardrowbe | `wear.pxldi.de PathPrefix(`/api/v1`)` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| wardrowbe | `wear.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |

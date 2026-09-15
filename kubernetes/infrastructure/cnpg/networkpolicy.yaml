@@ -13,7 +13,7 @@ spec:
 # (mutating and validating), both `failurePolicy: Fail`, both called by the
 # host-network apiserver which no selector can match. Getting this wrong stops
 # every CNPG Cluster operation in the cluster — authentik, nextcloud, immich,
-# paperless, adventurelog, wardrowbe and cantus all run their Postgres here.
+# paperless, adventurelog and cantus all run their Postgres here.
 #
 # Port 9443 open to any source; the operator's own reconcile loop, which holds
 # credentials for every database, is closed.

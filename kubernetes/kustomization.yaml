@@ -9,6 +9,5 @@ resources:
   - database-n8n.yaml
   - database-immich.yaml
   - database-multica.yaml
-  - database-wardrowbe.yaml
   - database-cantus.yaml
   - namespaces.yaml

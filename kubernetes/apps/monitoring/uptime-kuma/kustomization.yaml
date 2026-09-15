@@ -6,6 +6,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
+  - networkpolicy-egress.yaml
 
 # Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
 labels:

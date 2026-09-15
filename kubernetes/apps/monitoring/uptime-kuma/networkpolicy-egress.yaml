@@ -1,0 +1,27 @@
+---
+# Uptime Kuma watches the API server itself: monitor "Kubernetes API" is a TCP
+# check on 6443, and the "Infrastructure" group reports down when it does. The
+# namespace's default-deny egress plus allow-internet-egress (which excludes
+# the private ranges) blocks it, and allow-egress-to-cluster reaches pods only,
+# while the API server runs on the node.
+#
+# The address is the node's, on the API port. A request to the API Service
+# address is rewritten to exactly that, so the rule sees it either way; see
+# docs/EGRESS.md on matching after DNAT.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: uptime-kuma-egress-to-apiserver
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: uptime-kuma
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.8.226/32
+      ports:
+        - protocol: TCP
+          port: 6443

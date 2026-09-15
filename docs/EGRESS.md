@@ -39,7 +39,7 @@ Every application namespace except the two at the end of this section.
 | `karakeep` | own namespace, internet, Traefik, `ollama` | Meilisearch here, crawls pages, OIDC by public name, tags with a local model |
 | `media` | own namespace, internet, Traefik, API server, `slskd` | Nine workloads; indexers and metadata; the cantus CNPG cluster |
 | `minecraft` | internet | Mojang authentication |
-| `monitoring` | internet, cluster, Traefik | uptime-kuma probes 27 namespaces |
+| `monitoring` | internet, cluster, Traefik, API server | uptime-kuma probes 27 namespaces, and the API server is one of the things it watches |
 | `n8n` | own namespace, internet, cluster, Traefik, API server | A workflow can call anything; CNPG |
 | `nextcloud` | own namespace, internet, Traefik | Postgres and Redis here; app updates; its own public name |
 | `obsidian-sync` | nothing | CouchDB, single node, clients connect inbound |

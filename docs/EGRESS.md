@@ -45,7 +45,7 @@ if you only ever test a name that does not exist.
 | `allow-intra-namespace-egress` | Any pod in the same namespace. The egress twin of the ingress-only `allow-intra-namespace` |
 | `allow-internet-egress` | `0.0.0.0/0` except the pod and service networks, every RFC1918 range, the tailnet and link-local |
 | `allow-egress-to-ingress` | The Traefik pod on 8443. For an app that calls another service here by its public hostname |
-| `allow-egress-to-apiserver` | The node on 6443. Only for a namespace holding a CNPG cluster |
+| `allow-egress-to-apiserver` | The node on 6443, for CNPG instance pods only. The one component here that does not use an empty pod selector |
 
 `allow-internet-egress` is a compromise worth being explicit about. NetworkPolicy
 has no notion of a hostname, so "only this one geocoder" cannot be written here.
@@ -104,8 +104,12 @@ Backups are covered by the internet rule. The barman-cloud plugin runs as a
 native sidecar *inside* the instance pod, not as a separate deployment, so WAL
 and base backups leave from there straight to B2.
 
-Do not hand this component to an ordinary application. Nothing else here should
-reach the API server, which is the same reasoning behind
+This is the one component whose `podSelector` is not empty. It selects pods
+carrying `cnpg.io/cluster`, which CNPG stamps on every instance pod, so the
+application sharing the namespace does not get the API server too. An empty
+selector shipped first and did exactly that, caught by probing the app pod after
+the policies landed rather than only the database. Nothing but a database should
+reach the API server here, which is the same reasoning behind
 `automountServiceAccountToken: false` on every default ServiceAccount.
 
 ## When a chart already did it

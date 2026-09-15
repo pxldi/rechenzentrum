@@ -19,7 +19,7 @@ Authentik outpost needs them to complete a login, and they serve nothing else.
 
 - **Karakeep** (`links.pxldi.de`) stays Authentik-only. It is shared with someone
   who has an account but no device on the tailnet.
-- **Schall's API route** (`cantus.pxldi.de` with a Bearer header) stays public so
+- **Schall's API route** (`schall.pxldi.de` with a Bearer header) stays public so
   a client that cannot follow a login redirect works away from home. Schall
   validates the token and answers 401 to anything it did not mint. No proxy key
   applies there, so identity headers on those requests are never believed.
@@ -44,9 +44,9 @@ Authentik outpost needs them to complete a login, and they serve nothing else.
 | n8n | `automation.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
 | grimmory | `books.pxldi.de` | public | none |
 | branding | `branding.pxldi.de` | public | none |
-| media | `cantus.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth,cantus-proxy-key |
-| media | `cantus.pxldi.de PathPrefix(`/api/`) && HeaderRegexp(`Authorization`, `^Beare` | public | none |
-| media | `cantus.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
+| media | `schall.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth,cantus-proxy-key |
+| media | `schall.pxldi.de PathPrefix(`/api/`) && HeaderRegexp(`Authorization`, `^Beare` | public | none |
+| media | `schall.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
 | nextcloud | `cloud.pxldi.de` | public | nextcloud-headers |
 | nextcloud | `cloud.pxldi.de (Path(`/.well-known/carddav`) \|\| Path(`/.well-known/caldav` | public | nextcloud-wellknown-dav |
 | nextcloud | `cloud.pxldi.de PathPrefix(`/remote.php/dav`)` | public | nextcloud-headers,nextcloud-dav-no-compress |

@@ -67,9 +67,11 @@ applications and persistent data while completing the user's request.
   commands documented in `docs/VALIDATION.md`.
 - Build Flux roots including patches, validate Kubernetes and custom-resource
   schemas, check Secret fields and scan the current tree with Gitleaks.
-- `python3 scripts/verify-preservation.py` checks workload identities and PVC,
-  database and Helm specs against `policies/preservation-baseline.json`. Update
-  the baseline in the same PR as an intentional change to one of those specs.
+- `python3 scripts/verify-preservation.py` runs in CI. It checks workload
+  identities against `policies/preservation-baseline.json`, plus a spec hash for
+  PVCs and CNPG Clusters. Update the baseline in the same PR as an intentional
+  change to one of those. HelmReleases are identity-only: a chart version is
+  reviewed in the PR that changes it, not hashed here.
 - Test meaningful failure cases for security-sensitive checks. Do not describe
   static validation as proof of live health, policy enforcement or recovery.
 - Report what was merged, what reconciled, and any specific unfinished gates.

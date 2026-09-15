@@ -150,104 +150,79 @@
     "kind": "StatefulSet"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/arc-runners/homelab-runners": {
-    "kind": "HelmRelease",
-    "spec_sha256": "ce48826b1521fc6d5f021815d1ff737e6f551c8ffcb0ffaea6e6ce9eebab06d5"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/arc-systems/arc-controller": {
-    "kind": "HelmRelease",
-    "spec_sha256": "abf66d0e196edfa5a6a53b327c2bfd954207c000b09a2c5f67d0f98cdcec83c5"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/authentik/authentik": {
-    "kind": "HelmRelease",
-    "spec_sha256": "e4e1dc5a6863d236d5f9287b99ebb63e1ed26a23f0f6730308c2ec13341a1a66"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/cert-manager/cert-manager": {
-    "kind": "HelmRelease",
-    "spec_sha256": "3bbb2366914c1cfea1ec2cef33a3c47577243843fbad74f5b8af94832a3a6f02"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/cnpg-system/barman-cloud": {
-    "kind": "HelmRelease",
-    "spec_sha256": "01ecf9dd466dc26f85e0c8be029ec573e6614a4e8898e43439c2399ac10e8b39"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/cnpg-system/cnpg": {
-    "kind": "HelmRelease",
-    "spec_sha256": "3cfbce85bc34f1df58c41dab732ea47fbe2b4b736da19d3667d729f2a3d56528"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/grimmory/grimmory": {
-    "kind": "HelmRelease",
-    "spec_sha256": "39bd73389ee48e2419df8e24a3bc075b48cd1668e22fc152ff914c187b40d679"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/home-assistant/home-assistant": {
-    "kind": "HelmRelease",
-    "spec_sha256": "ba1f50108d418ad5cea71ff9062fc48b4dec8b12c94b835f2d69d0c083d72f67"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/immich/immich": {
-    "kind": "HelmRelease",
-    "spec_sha256": "7127c5cdf4930249bb790927fc7a25f48b8411a21baa90101c6987b846632242"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/media/jellyfin": {
-    "kind": "HelmRelease",
-    "spec_sha256": "0d1d0135e3663200e57b5298569f87c657622b6e7b69afd22434346d81be49a6"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/media/prowlarr": {
-    "kind": "HelmRelease",
-    "spec_sha256": "65a636ef9e91810fca3ff6974029a70d39cf2f39a524aaa7333f770d8299bdfc"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/media/radarr": {
-    "kind": "HelmRelease",
-    "spec_sha256": "ac360852c711c8f6b0702a79be53dc01cfd8a118389d5b80985be6bb84a5466e"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/media/sabnzbd": {
-    "kind": "HelmRelease",
-    "spec_sha256": "564130db86371d9955a85bf8ea88cfe685a9f9c13c4290ff59981d840723f9d3"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/media/seerr": {
-    "kind": "HelmRelease",
-    "spec_sha256": "1206f651a175ebb3a328ca59e1892536ffec33fae2510d8e25e7c70f41840dcc"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/media/sonarr": {
-    "kind": "HelmRelease",
-    "spec_sha256": "d14d2d074dbb74077f283e7f9b2116f46b49a4a0b605a6a4ff5fc89baefb97d3"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/n8n/n8n": {
-    "kind": "HelmRelease",
-    "spec_sha256": "a402563198c0b582970a18bceefc13cdb107fd468528e428ff9c9288b8ac7576"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/nextcloud/nextcloud": {
-    "kind": "HelmRelease",
-    "spec_sha256": "f0b8c5d2e5152450c3f0a109a738c4c8dcc1babc0090f215e556e5be80368ded"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/observability/kube-prometheus-stack": {
-    "kind": "HelmRelease",
-    "spec_sha256": "08a4279145a85977ff8e387a187f45e9bdf8bf696bb91b7888437ac14bc095f4"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/openebs/openebs": {
-    "kind": "HelmRelease",
-    "spec_sha256": "6c8be2e3a1344df9e35d0820a9da8a694e43fea938fa19f1cca5cdec61d8b79d"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/overleaf/overleaf": {
-    "kind": "HelmRelease",
-    "spec_sha256": "7352104c1cad0b9612f575fd7ad8dbb199b0e631afbb5c94c7cdf434f43bb521"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/sparkyfitness/sparkyfitness": {
-    "kind": "HelmRelease",
-    "spec_sha256": "3ef7105ff6fd857bb04fb3f52b06859aa1cc939e04cfb36461e23aa411ffb7f7"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/tandoor/tandoor": {
-    "kind": "HelmRelease",
-    "spec_sha256": "f96298b395111dd01d5da9483ac6b03eea177ef1c198c120633a55aa257a9c04"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/traefik/traefik": {
-    "kind": "HelmRelease",
-    "spec_sha256": "446a4017f1532cd5db4821d0b33ddd8867853a5ec496c8f62431c78a27b44050"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/velero/velero": {
-    "kind": "HelmRelease",
-    "spec_sha256": "d1b4f776ecb94457ba24e22401e740a4a6f0f44789e49752f7ffeaccef254fc7"
+    "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/velero/velero-ui": {
-    "kind": "HelmRelease",
-    "spec_sha256": "4150d0eec24cb34e47e16436de4f8cdf887f5456168152138b7d89c23c53101a"
+    "kind": "HelmRelease"
   },
   "postgresql.cnpg.io/v1/Cluster/immich/immich-postgresql": {
     "kind": "Cluster",

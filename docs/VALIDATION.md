@@ -24,8 +24,16 @@ python3 scripts/check-policies.py
 ```
 
 `python3 scripts/verify-preservation.py` compares the build with
-`policies/preservation-baseline.json`. An intentional change to a PVC, database
-or Helm spec updates the baseline in the same PR.
+`policies/preservation-baseline.json` and runs in CI alongside the commands
+above. Every entry is an identity, so a workload that is renamed, moved between
+namespaces or dropped fails the check; PVCs and CNPG Clusters additionally carry
+a hash of their spec. An intentional change to one of those updates the baseline
+in the same PR.
+
+HelmReleases are identity-only. They carried a spec hash until 2026-09-16, which
+meant every chart bump had to rewrite the baseline; none ever did, the check
+failed on 19 of 20 of them, and because no workflow ran it nobody noticed. The
+chart version is pinned in the manifest and reviewed in the PR that changes it.
 
 Builds include Flux patches and check duplicate ownership/dependency cycles.
 Schemas cover Kubernetes 1.33 and the installed custom-resource kinds; unknown

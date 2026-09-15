@@ -42,3 +42,5 @@ jobs:
         run: python3 scripts/schema-check.py
       - name: Check repository policies
         run: python3 scripts/check-policies.py
+      - name: Verify preserved identities and persistent specs
+        run: python3 scripts/verify-preservation.py

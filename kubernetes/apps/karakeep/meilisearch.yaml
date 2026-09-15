@@ -47,15 +47,11 @@ spec:
         fsGroup: 1000
       containers:
         - name: meilisearch
-          # The version Karakeep's own compose pins. Newer 1.x servers exist;
-          # let Renovate propose the bump so a human validates the index
-          # migration.
-          #
-          # v1.53.2 was automerged on 2026-09-13 and crashlooped: the engine
-          # refuses to open a database written by 1.41.0 without an explicit
-          # MEILI_UPGRADE_DB, and that upgrade is one way. The on-disk database
-          # is untouched, so pinning back restores service with no data risk.
-          # renovate.json now keeps this image off automerge.
+          # Renovate proposes bumps here but does not merge them
+          # (renovate.json keeps this image off automerge): the engine refuses
+          # to open a database written by an older minor, and the upgrade is
+          # one way. v1.53.2 landed on 2026-09-13 and again on 2026-09-15 and
+          # crashlooped both times against the 1.41.0 database on disk.
           image: getmeili/meilisearch:v1.53.2
           imagePullPolicy: IfNotPresent
           ports:
@@ -70,6 +66,12 @@ spec:
               value: "true"
             - name: MEILI_DB_PATH
               value: /meili_data
+            # One-shot: rewrites the on-disk database from 1.41.0 to the
+            # engine's format on the next boot. Remove it once the pod is
+            # ready. The upgrade cannot be undone, but the index is derived
+            # data that karakeep can rebuild from its SQLite database.
+            - name: MEILI_UPGRADE_DB
+              value: "true"
             - name: MEILI_MASTER_KEY
               valueFrom:
                 secretKeyRef:

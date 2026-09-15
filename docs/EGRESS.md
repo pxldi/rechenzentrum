@@ -29,6 +29,9 @@ if you only ever test a name that does not exist.
 | `gotify` | DNS | Clients connect inbound and hold the socket; the server initiates nothing. `/proc/net/tcp` in the live pod held one established socket, inbound from a cluster address |
 | `obsidian-sync` | DNS | CouchDB, single node, no clustering and no replication target of its own. LiveSync clients connect inbound through Traefik. No established outbound socket in the live pod |
 | `adventurelog` | DNS, its own namespace, the internet outside the house | Frontend calls the backend and the backend calls the database, both by Service name here. The backend geocodes against OpenStreetMap |
+| `grimmory` | DNS, its own namespace, the internet | Reaches its MariaDB by Service name; looks up book metadata |
+| `sure` | DNS, its own namespace, the internet | `sure-web` and `sure-worker` reach `sure-db` and `sure-redis` by Service name; fetches market data |
+| `ryot` | DNS, its own namespace, the internet, Traefik on the node | Reaches `ryot-postgres` by Service name; queries metadata providers; and points `SERVER_OIDC_ISSUER_URL` at a `pxldi.de` name |
 
 ## The four components
 
@@ -38,6 +41,7 @@ if you only ever test a name that does not exist.
 | `allow-dns` | CoreDNS, UDP and TCP 53 |
 | `allow-intra-namespace-egress` | Any pod in the same namespace. The egress twin of the ingress-only `allow-intra-namespace` |
 | `allow-internet-egress` | `0.0.0.0/0` except the pod and service networks, every RFC1918 range, the tailnet and link-local |
+| `allow-egress-to-ingress` | The node, TCP 443 only. For an app that calls another service here by its public hostname |
 
 `allow-internet-egress` is a compromise worth being explicit about. NetworkPolicy
 has no notion of a hostname, so "only this one geocoder" cannot be written here.
@@ -77,11 +81,17 @@ the part that was never the threat.
   it is a namespaced object with a pod selector, so it applies to whatever ends
   up in the namespace. That makes HelmRelease namespaces lockable and also means
   the blast radius is the whole namespace.
-- **A pod calling a `pxldi.de` name does not take a cluster path.** CoreDNS
-  forwards to AdGuard, which answers with the node's address, so the request
-  goes pod to node to Traefik. A `namespaceSelector` rule for the destination
-  namespace will not match it; that needs an `ipBlock` for the node. Apps sitting
-  behind `authentik-forward-auth` are not affected, because Traefik does the
+- **A pod calling a `pxldi.de` name does not take a cluster path, and does not
+  get a stable answer.** CoreDNS forwards to two upstreams: AdGuard, which
+  rewrites these names to the node, and Quad9, which answers with the public
+  record. Measured in the ryot pod on 2026-09-15: ten lookups in a row returned
+  the public address, and a few minutes later the same name returned the node's.
+  Both reach the same Traefik, one directly and one back out through the router,
+  and either can be the cached answer when the application looks. No
+  `namespaceSelector` matches either path. `allow-internet-egress` covers the
+  public address; `allow-egress-to-ingress` covers the node. An app doing this
+  needs both, or it fails intermittently. Apps sitting behind
+  `authentik-forward-auth` are not affected, because Traefik does the
   authentication and the app never talks to Authentik itself.
 - **Adding these two components rolls nothing.** They add NetworkPolicy objects
   and touch no pod template, so a stateful app does not restart and a
@@ -90,14 +100,16 @@ the part that was never the threat.
 
 ## Not yet assessed
 
-Every other app namespace. The ones that will need real allowance sets rather
-than DNS alone, roughly in order of difficulty: anything with an in-namespace
-database (`grimmory`, `adventurelog`, `sure`, `ryot`, `sparky-fitness`,
-`overleaf`), anything with a CNPG cluster in its own namespace (`immich`, `n8n`,
-`tandoor`, `multica`, `cantus`), anything that fetches from the internet by
-design (`karakeep`, `paperless-ngx`, `searxng`, `glance`, `gethomepage`,
-`ollama`, `jdownloader`, the `media` namespace), and `slskd`, whose egress
-already goes through gluetun's tunnel.
+The remaining app namespaces, roughly in order of difficulty: the rest of the
+in-namespace-database group (`sparky-fitness`, `overleaf`), anything with a CNPG
+cluster in its own namespace (`immich`, `n8n`, `tandoor`, `multica`, `cantus`),
+anything that fetches from the internet by design (`karakeep`, `paperless-ngx`,
+`searxng`, `glance`, `gethomepage`, `ollama`, `jdownloader`, the `media`
+namespace), and `slskd`, whose egress already goes through gluetun's tunnel.
+
+`gethomepage` and `glance` are their own problem: both query other applications
+across namespaces to draw their widgets, so they need a fan-out of
+`namespaceSelector` rules rather than one internet rule.
 
 `media` deserves its own warning: one `default-deny-egress` there covers
 jellyfin, four *arr apps, sabnzbd and Cantus at once. Split the requirements per

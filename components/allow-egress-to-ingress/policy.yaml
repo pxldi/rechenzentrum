@@ -1,0 +1,35 @@
+---
+# For an application that calls another service here by its public hostname,
+# the way ryot points its OIDC issuer at auth.pxldi.de. Such a request does not
+# take a cluster path and no namespaceSelector will ever match it.
+#
+# What a pod gets back for one of these names is not stable. Measured in the
+# ryot pod on 2026-09-15, ten lookups in a row returned the WAN address, and a
+# few minutes later the same name returned the node's LAN address, because
+# CoreDNS forwards to two upstreams: AdGuard, which rewrites these names to the
+# node, and Quad9, which answers with the public record. Both answers reach the
+# same Traefik, one directly and one back through the router, and either can be
+# the one in cache when the application looks. So both have to be allowed or the
+# call fails intermittently, which is the worst way for it to fail.
+#
+# `allow-internet-egress` already covers the public address. This adds the node,
+# on 443 only. That is the same Traefik the internet reaches, so a pod that can
+# talk to it gains nothing it could not get by going out and back.
+#
+# The address is the node's; it moves with the cluster. `allow-internet-egress`
+# excludes the private ranges wholesale, which is why this has to name it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-ingress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.8.226/32
+      ports:
+        - protocol: TCP
+          port: 443

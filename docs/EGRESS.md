@@ -28,10 +28,10 @@ if you only ever test a name that does not exist.
 | `excalidraw` | DNS | The pilot, 2026-09-12 |
 | `gotify` | DNS | Clients connect inbound and hold the socket; the server initiates nothing. `/proc/net/tcp` in the live pod held one established socket, inbound from a cluster address |
 | `obsidian-sync` | DNS | CouchDB, single node, no clustering and no replication target of its own. LiveSync clients connect inbound through Traefik. No established outbound socket in the live pod |
-| `adventurelog` | DNS, its own namespace, the internet outside the house | Frontend calls the backend and the backend calls the database, both by Service name here. The backend geocodes against OpenStreetMap |
+| `adventurelog` | DNS, its own namespace, the internet outside the house, Traefik | Frontend calls the backend and the backend calls the database, both by Service name here. The backend geocodes against OpenStreetMap |
 | `grimmory` | DNS, its own namespace, the internet | Reaches its MariaDB by Service name; looks up book metadata |
 | `sure` | DNS, its own namespace, the internet | `sure-web` and `sure-worker` reach `sure-db` and `sure-redis` by Service name; fetches market data |
-| `ryot` | DNS, its own namespace, the internet, Traefik on the node | Reaches `ryot-postgres` by Service name; queries metadata providers; and points `SERVER_OIDC_ISSUER_URL` at a `pxldi.de` name |
+| `ryot` | DNS, its own namespace, the internet, Traefik | Reaches `ryot-postgres` by Service name; queries metadata providers; and points `SERVER_OIDC_ISSUER_URL` at a `pxldi.de` name |
 
 ## The four components
 
@@ -49,6 +49,37 @@ What the rule does buy is that a compromised pod cannot reach another namespace'
 database, the node's kubelet or API server, the router, or anything else on the
 LAN or the tailnet. The application's own internet access is unchanged, which is
 the part that was never the threat.
+
+## Who calls whom
+
+Egress isolation only breaks things when a namespace initiates a call that the
+policies do not name. This is every cross-namespace call in the repository,
+swept from the manifests rather than remembered, so a namespace can be checked
+against it before it is locked.
+
+| Caller | Reaches | How |
+| --- | --- | --- |
+| `gethomepage` | 24 services in 15 namespaces | `<service>.<namespace>.svc.cluster.local`, for the widget data |
+| `glance` | 18 services | `https://<name>.pxldi.de`, so through Traefik, not through the cluster |
+| `monitoring` | 27 namespaces | uptime-kuma probes and scrapes |
+| `observability` | `gotify` | alert delivery |
+| `n8n` | `gotify` | notifications from workflows |
+| `karakeep` | `ollama` | `ollama.ollama.svc.cluster.local` |
+| `media` (Cantus) | `slskd` | an ExternalName alias onto `slskd.slskd.svc.cluster.local` |
+| `multica-daemon` | `multica` | `multica-backend.multica.svc.cluster.local` |
+
+Two things follow. A caller needs a `namespaceSelector` rule per target before it
+is locked; `allow-internet-egress` does not cover a cluster path, since the
+service network is excluded. And `glance` is the exception in the table: it goes
+out through Traefik like any browser would, so it needs
+`allow-egress-to-ingress` and the internet rule rather than eight
+`namespaceSelector` rules. Measured 2026-09-15 in the glance pod,
+`jellyfin.pxldi.de` resolved to the public address, which is the same coin flip
+described below and the same reason it needs both.
+
+None of this touches the seven namespaces locked so far: none of them appears in
+the caller column. Being in the *target* column is harmless, because that is
+someone else's ingress and these components only restrict egress.
 
 ## Before locking a namespace
 
@@ -120,9 +151,9 @@ anything that fetches from the internet by design (`karakeep`, `paperless-ngx`,
 `searxng`, `glance`, `gethomepage`, `ollama`, `jdownloader`, the `media`
 namespace), and `slskd`, whose egress already goes through gluetun's tunnel.
 
-`gethomepage` and `glance` are their own problem: both query other applications
-across namespaces to draw their widgets, so they need a fan-out of
-`namespaceSelector` rules rather than one internet rule.
+`gethomepage` is the hardest single namespace: 24 targets across 15 namespaces,
+each needing its own `namespaceSelector` rule. `glance` looks similar and is not,
+because it goes through Traefik; see the table above.
 
 `media` deserves its own warning: one `default-deny-egress` there covers
 jellyfin, four *arr apps, sabnzbd and Cantus at once. Split the requirements per

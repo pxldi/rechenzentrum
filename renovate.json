@@ -44,6 +44,13 @@
       "description": "Pinned at v1.14.0: newer 1.14.x releases send empty x-amz-tagging to B2"
     },
     {
+      "matchPackageNames": [
+        "rancher/kubectl"
+      ],
+      "allowedVersions": "/^v?1\\.33\\./",
+      "description": "kubectl supports one minor of skew from the API server. The node runs k3s 1.33, so hold this at 1.33.x and move the range by hand when k3s moves."
+    },
+    {
       "matchUpdateTypes": [
         "minor",
         "patch"

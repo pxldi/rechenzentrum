@@ -1,0 +1,34 @@
+---
+# For applications that genuinely need the internet: a metadata lookup, a
+# geocoder, an update feed. NetworkPolicy has no notion of a hostname, so
+# "only nominatim.openstreetmap.org" cannot be expressed here; the achievable
+# rule is "out of the house, but nowhere inside it".
+#
+# That is still worth having. It does not stop an application reaching the
+# internet, which it is supposed to do anyway. It stops a compromised pod
+# reaching another namespace's database, the node's kubelet or API server, the
+# router, or anything else on the LAN or the tailnet.
+#
+# The excluded ranges, in order: the pod network, the service network, the LAN
+# and every other RFC1918 range, the tailnet, and link-local, which is where a
+# cloud metadata service would sit if this ever ran on one.
+#
+# Pair it with `allow-dns`. CoreDNS is a cluster address and is excluded here.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-internet-egress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+              - 169.254.0.0/16

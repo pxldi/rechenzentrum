@@ -28,14 +28,34 @@ if you only ever test a name that does not exist.
 | `excalidraw` | DNS | The pilot, 2026-09-12 |
 | `gotify` | DNS | Clients connect inbound and hold the socket; the server initiates nothing. `/proc/net/tcp` in the live pod held one established socket, inbound from a cluster address |
 | `obsidian-sync` | DNS | CouchDB, single node, no clustering and no replication target of its own. LiveSync clients connect inbound through Traefik. No established outbound socket in the live pod |
+| `adventurelog` | DNS, its own namespace, the internet outside the house | Frontend calls the backend and the backend calls the database, both by Service name here. The backend geocodes against OpenStreetMap |
+
+## The four components
+
+| Component | What it permits |
+| --- | --- |
+| `default-deny-egress` | Nothing. `podSelector: {}`, so it covers every pod in the namespace |
+| `allow-dns` | CoreDNS, UDP and TCP 53 |
+| `allow-intra-namespace-egress` | Any pod in the same namespace. The egress twin of the ingress-only `allow-intra-namespace` |
+| `allow-internet-egress` | `0.0.0.0/0` except the pod and service networks, every RFC1918 range, the tailnet and link-local |
+
+`allow-internet-egress` is a compromise worth being explicit about. NetworkPolicy
+has no notion of a hostname, so "only this one geocoder" cannot be written here.
+What the rule does buy is that a compromised pod cannot reach another namespace's
+database, the node's kubelet or API server, the router, or anything else on the
+LAN or the tailnet. The application's own internet access is unchanged, which is
+the part that was never the threat.
 
 ## Before locking a namespace
 
-1. **Read the pod's own connections.** `kubectl -n <ns> exec <pod> -- sh -c 'cat
+1. **Read the pod's own connections, while it is busy.** `kubectl -n <ns> exec <pod> -- sh -c 'cat
    /proc/net/tcp /proc/net/tcp6'` and keep the rows in state `01`
    (ESTABLISHED). Column 2 is local, column 3 is remote; a remote with an
-   ephemeral port is an inbound connection and does not need an egress rule. Do
-   this while the app is doing something, not while it idles.
+   ephemeral port is an inbound connection and does not need an egress rule.
+   An idle app tells you nothing: adventurelog's Django backend held no socket
+   at all between requests, because it opens a database connection per request
+   and closes it again. Plenty of images also carry neither `curl` nor a shell,
+   so this is a hint, never the whole answer.
 2. **Read its configuration for destinations it reaches only sometimes.** A
    database URL, an SMTP host, an OIDC issuer, an update check, a metadata
    provider. Those do not show up in a snapshot of sockets.

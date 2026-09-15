@@ -1,0 +1,21 @@
+---
+# The egress twin of `infrastructure-config/networkpolicies/allow-intra-namespace`,
+# which is `policyTypes: [Ingress]` only. That one lets pods in a namespace
+# accept each other's traffic; it does not let them open a connection. So an app
+# that reaches its own database in the same namespace loses it the moment
+# `default-deny-egress` goes on, and loses it silently: the pod stays Ready and
+# the request fails inside the application.
+#
+# Same shape as the ingress twin on purpose, an empty podSelector on both ends,
+# because a namespace here is one application and its parts.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-intra-namespace-egress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector: {}

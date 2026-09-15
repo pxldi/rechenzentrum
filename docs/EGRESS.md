@@ -41,7 +41,7 @@ if you only ever test a name that does not exist.
 | `allow-dns` | CoreDNS, UDP and TCP 53 |
 | `allow-intra-namespace-egress` | Any pod in the same namespace. The egress twin of the ingress-only `allow-intra-namespace` |
 | `allow-internet-egress` | `0.0.0.0/0` except the pod and service networks, every RFC1918 range, the tailnet and link-local |
-| `allow-egress-to-ingress` | The node, TCP 443 only. For an app that calls another service here by its public hostname |
+| `allow-egress-to-ingress` | The Traefik pod on 8443. For an app that calls another service here by its public hostname |
 
 `allow-internet-egress` is a compromise worth being explicit about. NetworkPolicy
 has no notion of a hostname, so "only this one geocoder" cannot be written here.
@@ -88,12 +88,25 @@ the part that was never the threat.
   the public address, and a few minutes later the same name returned the node's.
   Both reach the same Traefik, one directly and one back out through the router,
   and either can be the cached answer when the application looks. No
-  `namespaceSelector` matches either path. `allow-internet-egress` covers the
-  public address; `allow-egress-to-ingress` covers the node. An app doing this
-  needs both, or it fails intermittently. Apps sitting behind
+  `allow-internet-egress` covers the public address, which leaves as a public
+  address and is only turned around at the router. `allow-egress-to-ingress`
+  covers the other answer, and has to name the Traefik pod rather than the node,
+  for the DNAT reason below. An app doing this needs both, or it fails
+  intermittently. Apps sitting behind
   `authentik-forward-auth` are not affected, because Traefik does the
   authentication and the app never talks to Authentik itself.
-- **Adding these two components rolls nothing.** They add NetworkPolicy objects
+- **An egress policy matches the destination after DNAT.** A packet a pod sends
+  to a Service address, or to the node on 443, has already been rewritten to the
+  receiving pod and its *container* port by the time kube-router evaluates it.
+  So a rule naming a Service address, a node address, or the port the Service
+  publishes matches nothing. Measured on 2026-09-15: a pod carrying
+  `ipBlock: <node>/32` on port 443 still could not reach the node, and could not
+  reach Traefik's ClusterIP or the Traefik pod on 443 either, while the same pod
+  reached the public address fine, because that one leaves as a public address
+  and is only turned around at the router. Write selectors and the container's
+  port. This is also why `allow-dns` works: it selects the CoreDNS pods, and a
+  query sent to the kube-dns Service address arrives as the pod behind it.
+- **Adding these components rolls nothing.** They add NetworkPolicy objects
   and touch no pod template, so a stateful app does not restart and a
   crashlooping-pod trap cannot bite. The failure mode is the opposite one: the
   app keeps running and quietly cannot reach something.

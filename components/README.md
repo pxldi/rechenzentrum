@@ -19,8 +19,10 @@ selectors across this repository.
   database, because `allow-intra-namespace` is ingress-only.
   `allow-internet-egress` excludes the pod and service networks and the private
   ranges by literal CIDR; check them before deploying on a different cluster.
-  `allow-egress-to-ingress` names the node's address and is only for an app that
-  calls another service here by its public hostname.
+  `allow-egress-to-ingress` selects the Traefik pod on its container port and is
+  only for an app that calls another service here by its public hostname; an
+  egress rule matches the destination after DNAT, so a Service or node address
+  is the wrong thing to write.
 
 Kustomize components patch resources rendered by Kustomize. They do not reach
 pods rendered later inside a HelmRelease; use chart values or Helm postRenderers

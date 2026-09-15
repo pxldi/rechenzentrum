@@ -71,7 +71,7 @@ spec:
             - name: SCHALL_UPLOAD_STAGING_PATH
               value: "/uploads"
             - name: SCHALL_MUSICBRAINZ_USER_AGENT
-              value: "Schall/0.1.0 (https://cantus.pxldi.de)"
+              value: "Schall/0.1.0 (https://schall.pxldi.de)"
             # No SCHALL_NAVIDROME_PATH_MAP: cantus-music-pvc is mounted at
             # /music on both sides now, so the two already name the same file
             # and the identity mapping is the correct one. Set it again the day

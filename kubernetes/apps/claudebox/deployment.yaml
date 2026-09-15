@@ -18,7 +18,12 @@
 # whole footprint is 512Mi requested against a 6Gi ceiling rather than 15Gi of
 # limits across two containers.
 #
-# The image is the one built for the Multica daemon, unchanged. That was
+# The image is the one built for the Multica daemon, unchanged. Multica itself
+# was deleted from this repository on 2026-09-15, so claudebox is now the only
+# consumer and `images/multica-daemon/` plus
+# `.github/workflows/multica-daemon-image.yml` exist for it alone. They keep the
+# old name rather than being renamed in the same change as the deletion; that is
+# a rename of a published package and belongs on its own. That image was
 # already the reviewed answer to "what does an agent expect to find on PATH" —
 # Go 1.24.13, Node 24, kubectl/helm/flux/kustomize/stern/k9s, sops and age, gh,
 # sqlc and goose, the PostgreSQL 17 client, Playwright's Chromium. It also
@@ -175,9 +180,7 @@ spec:
       containers:
         # Note the owner: pxldi-labs, not pxldi. The image workflow tags
         # ghcr.io/${github.repository_owner}/multica-daemon and this repo moved
-        # to the pxldi-labs org, so builds land there. multica-daemon's own
-        # Deployment still points at the pxldi package and is a version behind;
-        # that workload sits at 0 replicas and bumping it is not this change.
+        # to the pxldi-labs org, so builds land there.
         - name: claudebox
           image: ghcr.io/pxldi-labs/multica-daemon:sha-ec91dd10fbc6f6ac11f3adc38d7002330ead8b8c
           imagePullPolicy: IfNotPresent

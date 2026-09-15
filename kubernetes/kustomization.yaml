@@ -8,6 +8,5 @@ resources:
   - database-tandoor.yaml
   - database-n8n.yaml
   - database-immich.yaml
-  - database-multica.yaml
   - database-cantus.yaml
   - namespaces.yaml

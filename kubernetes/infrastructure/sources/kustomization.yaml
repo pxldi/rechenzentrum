@@ -22,5 +22,4 @@ resources:
   - jellyfin.yaml
   - vmware-tanzu.yaml
   - seerr.yaml
-  - multica.yaml
   - actions-runner-controller.yaml

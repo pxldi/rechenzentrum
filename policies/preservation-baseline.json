@@ -80,9 +80,6 @@
   "apps/v1/Deployment/monitoring/uptime-kuma": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/multica-daemon/multica-daemon": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/observability/gotify-bridge-critical": {
     "kind": "Deployment"
   },
@@ -212,10 +209,6 @@
     "kind": "HelmRelease",
     "spec_sha256": "d14d2d074dbb74077f283e7f9b2116f46b49a4a0b605a6a4ff5fc89baefb97d3"
   },
-  "helm.toolkit.fluxcd.io/v2/HelmRelease/multica/multica": {
-    "kind": "HelmRelease",
-    "spec_sha256": "32ae14aed99293ea8ae2fb9120fb8a3bf03b49d602d23132a55e65995882409f"
-  },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/n8n/n8n": {
     "kind": "HelmRelease",
     "spec_sha256": "a402563198c0b582970a18bceefc13cdb107fd468528e428ff9c9288b8ac7576"
@@ -263,10 +256,6 @@
   "postgresql.cnpg.io/v1/Cluster/media/cantus-postgresql": {
     "kind": "Cluster",
     "spec_sha256": "98066bb88336862b364ffb69f04cfa11a96055df38481b184ef9c764f38c4118"
-  },
-  "postgresql.cnpg.io/v1/Cluster/multica/multica-postgresql": {
-    "kind": "Cluster",
-    "spec_sha256": "ad079a901da167f28e20110d0de02abb9d1073422dcc956f6bb2f137f5e319c8"
   },
   "postgresql.cnpg.io/v1/Cluster/n8n/n8n-postgresql": {
     "kind": "Cluster",
@@ -349,12 +338,6 @@
     "kind": "Namespace"
   },
   "v1/Namespace//monitoring": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//multica": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//multica-daemon": {
     "kind": "Namespace"
   },
   "v1/Namespace//n8n": {
@@ -534,10 +517,6 @@
   "v1/PersistentVolumeClaim/monitoring/uptime-kuma-pvc": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "a6777e4e1b11fd9f8d491776e5fff1ea48ae86dc340612ff25e603bcf655d96d"
-  },
-  "v1/PersistentVolumeClaim/multica-daemon/multica-daemon-data-pvc": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "733cb5e48806feb3ec25ed06f1630d0f5159f42d6c1ebcf215948c3a31a31c4b"
   },
   "v1/PersistentVolumeClaim/n8n/n8n-data-pvc": {
     "kind": "PersistentVolumeClaim",

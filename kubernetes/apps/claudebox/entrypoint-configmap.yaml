@@ -1,7 +1,8 @@
 ---
 # Startup sequence for the Remote Control servers. Kept in a ConfigMap rather
 # than inline in the Deployment so the shell is readable and diffable on its
-# own — the same split multica-daemon uses.
+# own — the split the multica daemon used, which this repository no longer
+# deploys.
 #
 # Two things have to be true before `claude remote-control` will start, and
 # neither can be expressed in a manifest because both are per-account state on
@@ -49,7 +50,7 @@ data:
     # git's ownership check fires on the ones it did not create itself.
     git config --global --add safe.directory '*'
 
-    # Private clones. Same arrangement as multica-daemon: gh answers git's
+    # Private clones. Same arrangement the multica daemon used: gh answers git's
     # credential requests from GH_TOKEN in the environment, so the token is
     # never written to the PVC.
     #

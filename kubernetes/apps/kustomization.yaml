@@ -28,8 +28,6 @@ resources:
   - home-assistant
   - obsidian
   - palworld
-  - multica
-  - multica-daemon
   - claudebox
   - minecraft
   - actions-runner

@@ -11,13 +11,13 @@ resources:
   - jellyfin
   - navidrome
   - seerr
-  - cantus
+  - schall
   - networkpolicy-egress-slskd.yaml
 components:
   # Egress. Nine workloads that talk to each other by Service name: the *arr
-  # apps to prowlarr and sabnzbd, seerr to jellyfin, cantus to its own Postgres.
+  # apps to prowlarr and sabnzbd, seerr to jellyfin, schall to its own Postgres.
   # The internet rule is for indexers, usenet and metadata; the API server for
-  # the cantus CNPG instance. networkpolicy-egress-slskd.yaml adds slskd, which
+  # the schall CNPG instance. networkpolicy-egress-slskd.yaml adds slskd, which
   # left this namespace but is still Schall's download path.
   - ../../../components/default-deny-egress
   - ../../../components/allow-dns

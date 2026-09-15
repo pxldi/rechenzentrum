@@ -10,7 +10,7 @@
 #
 # 30Gi, down from the 50Gi this claim had before #908 deleted it. That number
 # was sized for foscal: an Android SDK on the volume, a Gradle cache measured at
-# 1.7Gi, and the build output of three repos. Only rechenzentrum and cantus live
+# 1.7Gi, and the build output of three repos. Only rechenzentrum and schall live
 # here now, both of which are a git checkout plus a Go module cache.
 apiVersion: v1
 kind: PersistentVolumeClaim

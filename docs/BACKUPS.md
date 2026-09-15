@@ -95,7 +95,7 @@ daily CNPG schedule, its most recent backup completed 2026-09-13, and a
 point-in-time restore was verified on 2026-09-12.
 
 Schall keeps no configuration on a volume. Every setting arrives as an
-environment variable from `kubernetes/apps/media/cantus/deployment.yaml`, and the
+environment variable from `kubernetes/apps/media/schall/deployment.yaml`, and the
 only application secret, `cantus-auth`, is sops-encrypted in the repository.
 
 A full loss therefore costs the audio files and nothing else. The database says

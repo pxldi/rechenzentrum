@@ -10,7 +10,7 @@ spec:
   # development; left running, this would keep rewriting that line back to a
   # pinned tag every five minutes and quietly undo it.
   #
-  # Unsuspend, and restore the setter marker on the cantus deployment, when
+  # Unsuspend, and restore the setter marker on the schall deployment, when
   # Schall is versioned and the manifest should record what is running again.
   suspend: true
   interval: 5m

@@ -204,9 +204,9 @@ spec:
             # /home/pxldi rather than /data, and the reason is portability of
             # conversation history. Claude Code files transcripts under
             # ~/.claude/projects/<absolute-cwd-with-dashes>/, so a repo checked
-            # out at /data/projects/cantus records under -data-projects-cantus
+            # out at /data/projects/schall records under -data-projects-schall
             # while the same repo on the operator's workstation records under
-            # -home-pxldi-projects-cantus. Same conversations, two filing
+            # -home-pxldi-projects-schall. Same conversations, two filing
             # systems, and `claude --resume` on either machine finds nothing the
             # other wrote. Mounting the volume where the workstation keeps its
             # home makes the two identical, so history moves with an rsync in
@@ -233,7 +233,7 @@ spec:
             - name: CLAUDEBOX_REPO_ROOTS
               value: >-
                 /home/pxldi/projects/rechenzentrum
-                /home/pxldi/projects/cantus
+                /home/pxldi/projects/schall
             # Concurrent sessions the ad-hoc server will hand out. It does not
             # apply to the two repos above — those are one session each by
             # definition. 2 rather than the old 3 because two long-lived

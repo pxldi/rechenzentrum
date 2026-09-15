@@ -68,7 +68,7 @@
   "apps/v1/Deployment/karakeep/karakeep": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/media/cantus": {
+  "apps/v1/Deployment/media/schall": {
     "kind": "Deployment"
   },
   "apps/v1/Deployment/media/navidrome": {

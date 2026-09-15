@@ -141,7 +141,7 @@ data:
             href: https://cantus.pxldi.de
             icon: "mdi-music-box-#bfa3e8"
             description: Music library
-            siteMonitor: http://cantus.media.svc.cluster.local:8080
+            siteMonitor: http://schall.media.svc.cluster.local:8080
         - Immich:
             href: https://photos.pxldi.de
             icon: immich.png

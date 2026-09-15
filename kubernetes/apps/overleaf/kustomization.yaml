@@ -12,6 +12,18 @@ resources:
   - secret.yaml
   - ingress.yaml
 components:
+  # Egress. The web container reaches overleaf-mongo and overleaf-redis by
+  # Service name here, so the intra-namespace twin is required. The internet
+  # rule is for OVERLEAF_EMAIL_SMTP_HOST, which is an external relay on 587.
+  # allow-egress-to-ingress is a precaution for OVERLEAF_SITE_URL: it is an
+  # identity setting rather than something the app fetches, but a pxldi.de name
+  # resolves to the node or to the public address depending on which upstream
+  # CoreDNS last asked, so a call to it would fail intermittently without this.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-intra-namespace-egress
+  - ../../../components/allow-internet-egress
+  - ../../../components/allow-egress-to-ingress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

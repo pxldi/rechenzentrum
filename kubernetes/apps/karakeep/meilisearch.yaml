@@ -51,7 +51,9 @@ spec:
           # (renovate.json keeps this image off automerge): the engine refuses
           # to open a database written by an older minor, and the upgrade is
           # one way. v1.53.2 landed on 2026-09-13 and again on 2026-09-15 and
-          # crashlooped both times against the 1.41.0 database on disk.
+          # crashlooped both times against the 1.41.0 database on disk. A
+          # one-boot MEILI_UPGRADE_DB rewrote the database to the 1.53
+          # format on 2026-09-15; the next minor bump needs the same.
           image: getmeili/meilisearch:v1.53.2
           imagePullPolicy: IfNotPresent
           ports:
@@ -66,12 +68,6 @@ spec:
               value: "true"
             - name: MEILI_DB_PATH
               value: /meili_data
-            # One-shot: rewrites the on-disk database from 1.41.0 to the
-            # engine's format on the next boot. Remove it once the pod is
-            # ready. The upgrade cannot be undone, but the index is derived
-            # data that karakeep can rebuild from its SQLite database.
-            - name: MEILI_UPGRADE_DB
-              value: "true"
             - name: MEILI_MASTER_KEY
               valueFrom:
                 secretKeyRef:

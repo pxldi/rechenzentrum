@@ -13,15 +13,14 @@ spec:
         - name: homepage
           port: 3000
       middlewares:
-        # internal-only is deliberately absent, unlike every other private
-        # route. `pxldi.de` is the only name that resolves to Cloudflare
-        # (188.114.96.3) instead of the house (78.43.53.100), so requests reach
-        # Traefik wearing Cloudflare's address and the allowlist rejected them
-        # from the LAN as well, 403 for everyone from 2026-09-13 to 09-15.
-        #
-        # Restore it once the apex resolves like every subdomain: add an AdGuard
-        # rewrite for `pxldi.de` -> 192.168.8.226, or stop proxying the apex
-        # through Cloudflare. Trusting X-Forwarded-For instead is not an option
-        # while the subdomains reach Traefik directly.
+        # The apex is the only name still proxied by Cloudflare in public DNS,
+        # so this route depends on AdGuard rewriting the bare name to Traefik
+        # locally; without that, requests arrive wearing Cloudflare's address
+        # and the allowlist refuses them from the LAN as well. The wildcard
+        # rewrite does not cover the apex, and that missing entry is what made
+        # this route answer 403 to everyone from 2026-09-13 to 09-15. If the
+        # rewrite is ever dropped, this route breaks first.
+        - name: internal-only
+          namespace: traefik
         - name: authentik-forward-auth
           namespace: traefik

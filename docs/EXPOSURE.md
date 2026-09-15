@@ -6,8 +6,8 @@ Routes do not prove internet reachability; DNS and the router decide that too.
 Three states:
 
 - **LAN/tailnet + Authentik** — the `internal-only` middleware refuses any source
-  address outside 192.168.8.0/24 and 100.64.0.0/10, and an Authentik login
-  follows. Unreachable from the internet.
+  address outside the house LAN and the tailnet, and an Authentik login follows.
+  Unreachable from the internet.
 - **Authentik** — reachable from the internet, gated by an Authentik login.
 - **public** — reachable from the internet, protected only by whatever the
   application itself enforces.
@@ -26,13 +26,14 @@ Authentik outpost needs them to complete a login, and they serve nothing else.
 
 ## Known issues
 
-- **`pxldi.de` (the apex) cannot use the allowlist.** It resolves to Cloudflare
-  (188.114.96.3) rather than to the house (78.43.53.100), so requests arrive
-  wearing Cloudflare's address and `internal-only` rejected them from the LAN as
-  well. The homepage answered 403 to everyone from 2026-09-13 to 09-15; the
-  allowlist was removed from it and Authentik still gates it. To make it private,
-  first make the apex resolve like every subdomain, either an AdGuard rewrite to
-  192.168.8.226 or no Cloudflare proxy on the apex, then restore the middleware.
+- **The apex depends on one AdGuard rewrite.** It is the only name still proxied
+  by Cloudflare in public DNS; every subdomain points straight at the house. So
+  an apex request that is not rewritten locally arrives wearing Cloudflare's
+  address, and `internal-only` refuses it, from the LAN too. That is what made
+  the homepage answer 403 to everyone from 2026-09-13 to 09-15: the AdGuard
+  rewrite covering `*.pxldi.de` does not match the bare apex. The apex rewrite
+  was added on 2026-09-15 and the allowlist restored. If the homepage starts
+  answering 403 again, check that rewrite before anything else.
 - **`wear.pxldi.de` returns Authentik's 404 page.** The request passes the
   allowlist and reaches forward-auth, and Authentik has no application bound to
   that host. Unrelated to the allowlist, which answers 403 when it rejects.

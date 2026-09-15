@@ -2,7 +2,7 @@
 apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImageRepository
 metadata:
-  name: cantus
+  name: schall
   namespace: flux-system
 spec:
   image: ghcr.io/pxldi/schall
@@ -11,11 +11,11 @@ spec:
 apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImagePolicy
 metadata:
-  name: cantus
+  name: schall
   namespace: flux-system
 spec:
   imageRepositoryRef:
-    name: cantus
+    name: schall
   # Schall CI publishes main-<commit timestamp>-<short sha>. Ordering on the
   # extracted timestamp makes "newest build" unambiguous, and the pattern
   # ignores anything that is not a main build.

@@ -2,7 +2,7 @@
 # Cluster access for claudebox.
 #
 # A session on this pod is asked to debug the cluster it lives in: "why is
-# cantus crashlooping", "what did that rollout do". Without a token `kubectl` is
+# schall crashlooping", "what did that rollout do". Without a token `kubectl` is
 # on PATH and inert, and every such question has to bounce off a human at a
 # laptop, which is the thing this pod exists to avoid. Read access is what turns
 # the pod from a place code runs into a place questions get answered.

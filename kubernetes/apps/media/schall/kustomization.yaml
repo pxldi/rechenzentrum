@@ -12,8 +12,8 @@ resources:
 # Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
 labels:
   - pairs:
-      app.kubernetes.io/name: cantus
-      app.kubernetes.io/instance: cantus
+      app.kubernetes.io/name: schall
+      app.kubernetes.io/instance: schall
       app.kubernetes.io/component: application
       app.kubernetes.io/part-of: rechenzentrum
       app.kubernetes.io/managed-by: flux

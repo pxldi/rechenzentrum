@@ -53,7 +53,7 @@ spec:
             - name: ND_ENABLEUSEREDITING
               value: "true"
             # The two contracts Schall playlist sync rests on, both written
-            # down in cantus/docs/decisions/0010. Set here rather than left to
+            # down in schall/docs/decisions/0010. Set here rather than left to
             # their defaults because a default is not a promise, and what
             # breaks when either changes is the user's playlists.
             #
@@ -73,7 +73,7 @@ spec:
             #
             # Navidrome copies this onto a player row the first time a client
             # calls under a given name and never re-reads it for that row, so
-            # it has to be true before "cantus-sync" first introduces itself.
+            # it has to be true before "schall-sync" first introduces itself.
             # The existing "cantus" row, created by the rescan trigger, keeps
             # whatever it was created with — which is why sync uses a name of
             # its own.

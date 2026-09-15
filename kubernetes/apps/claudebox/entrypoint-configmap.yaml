@@ -240,7 +240,7 @@ data:
     # several unrelated repositories, and `worktree` needs the server to be
     # rooted in one git repository. Sessions therefore share this directory:
     # they work in whichever subdirectory you point them at, and a session that
-    # wanders into rechenzentrum or cantus can conflict with the long-lived one
+    # wanders into rechenzentrum or schall can conflict with the long-lived one
     # already there.
     #
     # --capacity is a per-server cap on concurrent sessions, not a reservation.

@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cantus
+  name: schall
   namespace: media
   labels:
-    app: cantus
+    app: schall
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: cantus
+      app: schall
   template:
     metadata:
       labels:
-        app: cantus
+        app: schall
       annotations:
         backup.velero.io/backup-volumes-excludes: "music,downloads,uploads"
     spec:
@@ -29,7 +29,7 @@ spec:
         fsGroup: 568
         fsGroupChangePolicy: OnRootMismatch
       containers:
-        - name: cantus
+        - name: schall
           image: ghcr.io/pxldi/schall:main
           imagePullPolicy: Always
           ports:

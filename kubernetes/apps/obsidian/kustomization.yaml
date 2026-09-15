@@ -10,6 +10,11 @@ resources:
   - service.yaml
   - ingress.yaml
 components:
+  # Egress: this pod opens no outbound connection of its own. Checked in the
+  # live pod before locking it, /proc/net/tcp held no established socket
+  # that obsidian-sync had initiated. Only DNS is allowed out.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

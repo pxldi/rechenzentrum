@@ -84,5 +84,5 @@ Configured does not mean live or restore-tested.
 | Backups | CNPG and Velero restores verified 2026-09-12, see [BACKUPS.md](BACKUPS.md); Cantus audio files are deliberately excluded, see [BACKUPS.md](BACKUPS.md#cantus) |
 | Image automation | PR workflow configured; writer credential needed; suspended |
 | Cantus namespace | slskd moved out 2026-09-13 and `media` is baseline; Cantus stays, see [CANTUS_ISOLATION.md](CANTUS_ISOLATION.md) |
-| Edge/egress expansion | Pending service requirements and reachability tests |
+| Edge/egress expansion | Enforcement proven on the live cluster; method and per-namespace requirements in [EGRESS.md](EGRESS.md). Locked: excalidraw, gotify, obsidian-sync |
 | ZeroClaw/MCP | Not deployed; provider/bot setup, software and scoped credentials needed |

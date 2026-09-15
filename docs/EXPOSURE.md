@@ -26,11 +26,13 @@ Authentik outpost needs them to complete a login, and they serve nothing else.
 
 ## Known issues
 
-- **`pxldi.de` (the apex) is unreachable.** It resolves to Cloudflare rather than
-  to the house, so requests arrive wearing Cloudflare's address and
-  `internal-only` rejects them. AdGuard rewrites `*.pxldi.de` to 192.168.8.226
-  but has no entry for the apex. Add one and the homepage behaves like every
-  other name.
+- **`pxldi.de` (the apex) cannot use the allowlist.** It resolves to Cloudflare
+  (188.114.96.3) rather than to the house (78.43.53.100), so requests arrive
+  wearing Cloudflare's address and `internal-only` rejected them from the LAN as
+  well. The homepage answered 403 to everyone from 2026-09-13 to 09-15; the
+  allowlist was removed from it and Authentik still gates it. To make it private,
+  first make the apex resolve like every subdomain, either an AdGuard rewrite to
+  192.168.8.226 or no Cloudflare proxy on the apex, then restore the middleware.
 - **`wear.pxldi.de` returns Authentik's 404 page.** The request passes the
   allowlist and reaches forward-auth, and Authentik has no application bound to
   that host. Unrelated to the allowlist, which answers 403 when it rejects.

@@ -11,9 +11,14 @@ selectors across this repository.
   Set container-level `allowPrivilegeEscalation`, capabilities and filesystem
   permissions per image. Do not apply to apps needing the Kubernetes API token
   or images that require root. A component is not an admission boundary.
-* `default-deny-egress` and `allow-dns`: combine with existing ingress isolation
-  and app-specific destination/port allowances in the same PR. DNS selects the
+* `default-deny-egress`, `allow-dns`, `allow-intra-namespace-egress` and
+  `allow-internet-egress`: combine with existing ingress isolation and
+  app-specific destination/port allowances in the same PR. DNS selects the
   K3s CoreDNS pods; verify this before deploying on a different cluster.
+  `allow-intra-namespace-egress` is required by any app that reaches its own
+  database, because `allow-intra-namespace` is ingress-only.
+  `allow-internet-egress` excludes the pod and service networks and the private
+  ranges by literal CIDR; check them before deploying on a different cluster.
 
 Kustomize components patch resources rendered by Kustomize. They do not reach
 pods rendered later inside a HelmRelease; use chart values or Helm postRenderers

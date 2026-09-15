@@ -32,7 +32,7 @@ spec:
           env:
             # /music is the library Navidrome's own config owns, which is why
             # the UI offers no way to delete it. So it stays, and what is behind
-            # it becomes the Cantus tree: the library that cannot be removed is
+            # it becomes the Schall tree: the library that cannot be removed is
             # the one that should survive.
             - name: ND_MUSICFOLDER
               value: /music
@@ -52,7 +52,7 @@ spec:
               value: "true"
             - name: ND_ENABLEUSEREDITING
               value: "true"
-            # The two contracts Cantus playlist sync rests on, both written
+            # The two contracts Schall playlist sync rests on, both written
             # down in cantus/docs/decisions/0010. Set here rather than left to
             # their defaults because a default is not a promise, and what
             # breaks when either changes is the user's playlists.
@@ -94,7 +94,7 @@ spec:
           volumeMounts:
             - name: music-soundcloud
               mountPath: /music-soundcloud
-            # Cantus owns this tree and is its only writer; Navidrome reads it
+            # Schall owns this tree and is its only writer; Navidrome reads it
             # and is told when it changes. Read-only so that stays true however
             # the player is configured.
             - name: music

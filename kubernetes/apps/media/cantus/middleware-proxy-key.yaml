@@ -1,5 +1,5 @@
 # Chained after authentik-forward-auth on the browser route. Sets the header
-# Cantus needs before it believes the X-authentik-* identity headers, which
+# Schall needs before it believes the X-authentik-* identity headers, which
 # any pod that can reach the service could otherwise write itself. The value
 # is the one in auth-secret.yaml; a Traefik headers middleware cannot read a
 # Secret, so it is encrypted here with its own regex (customRequestHeaders).

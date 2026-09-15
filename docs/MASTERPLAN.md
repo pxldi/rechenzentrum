@@ -6,7 +6,7 @@ applications and data.
 ## Repository and delivery
 
 - Public GitOps monorepo.
-- Separate repositories for Cantus and MCP software; no submodules.
+- Separate repositories for Schall and MCP software; no submodules.
 - GitHub-hosted public CI, required PR checks, and agent-authorized merges.
 - YAML, Flux/Kustomize, Kubernetes/CRD schema, policy and secret validation.
 - SOPS-encrypted secrets in Git; private keys and plaintext secrets outside it.
@@ -28,7 +28,7 @@ applications and data.
 - Classify services: A public, B internet behind extra authentication, C VPN-only,
   D cluster-internal. Preserve required clients/API routes during changes.
 - Default-deny ingress/egress with explicit DNS and application allowances.
-- Isolate Cantus in its own namespace after resolving shared media PVCs. Cantus
+- Isolate Schall in its own namespace after resolving shared media PVCs. Schall
   mounts `media/cantus-music-pvc`, `media/cantus-uploads-pvc` and the shared
   `media/downloads-pvc`, which other media apps also use. A PVC cannot be
   referenced across namespaces, so changing only `metadata.namespace` breaks the
@@ -80,9 +80,9 @@ Configured does not mean live or restore-tested.
 | Components/labels | Metadata-only app labels; opt-in rollout, hardening, DNS/egress components |
 | Rollout pilot | Excalidraw has a startup probe and zero-unavailable rolling update |
 | Admission | Existing policies retained; additional Pod checks in Audit/Warn |
-| Exposure | Decided and applied 2026-09-13: 19 routes require LAN or tailnet plus Authentik, see [EXPOSURE.md](EXPOSURE.md). Karakeep and the Cantus API stay public on purpose |
-| Backups | CNPG and Velero restores verified 2026-09-12, see [BACKUPS.md](BACKUPS.md); Cantus audio files are deliberately excluded, see [BACKUPS.md](BACKUPS.md#cantus) |
+| Exposure | Decided and applied 2026-09-13: 19 routes require LAN or tailnet plus Authentik, see [EXPOSURE.md](EXPOSURE.md). Karakeep and the Schall API stay public on purpose |
+| Backups | CNPG and Velero restores verified 2026-09-12, see [BACKUPS.md](BACKUPS.md); Schall audio files are deliberately excluded, see [BACKUPS.md](BACKUPS.md#cantus) |
 | Image automation | PR workflow configured; writer credential needed; suspended |
-| Cantus namespace | slskd moved out 2026-09-13 and `media` is baseline; Cantus stays, see [CANTUS_ISOLATION.md](CANTUS_ISOLATION.md) |
+| Schall namespace | slskd moved out 2026-09-13 and `media` is baseline; Schall stays, see [SCHALL_ISOLATION.md](SCHALL_ISOLATION.md) |
 | Edge/egress expansion | Done for every application namespace, see [EGRESS.md](EGRESS.md). `home-assistant` is hostNetwork so policy does not apply; `actions-runner` already had an equivalent rule |
 | ZeroClaw/MCP | Not deployed; provider/bot setup, software and scoped credentials needed |

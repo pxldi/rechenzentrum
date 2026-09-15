@@ -187,7 +187,7 @@ spec:
             - name: downloads
               mountPath: /downloads
             # The share, kept at /music so slskd.yml still names it. Read-only
-            # because Cantus is the only writer of this tree, and a share is
+            # because Schall is the only writer of this tree, and a share is
             # something peers take from rather than put into.
             - name: music
               mountPath: /music

@@ -1,5 +1,5 @@
 ---
-# Cantus reaches slskd for Soulseek downloads. slskd left this namespace on
+# Schall reaches slskd for Soulseek downloads. slskd left this namespace on
 # 2026-09-13 so that media could drop to the `baseline` pod-security level, and
 # cantus/slskd-alias.yaml is the ExternalName that keeps the old in-namespace
 # name working; the traffic itself now crosses a namespace boundary and needs

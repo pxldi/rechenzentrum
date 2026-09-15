@@ -137,7 +137,7 @@ data:
               user: "{{HOMEPAGE_VAR_NAVIDROME_USER}}"
               token: "{{HOMEPAGE_VAR_NAVIDROME_TOKEN}}"
               salt: "{{HOMEPAGE_VAR_NAVIDROME_SALT}}"
-        - Cantus:
+        - Schall:
             href: https://cantus.pxldi.de
             icon: "mdi-music-box-#bfa3e8"
             description: Music library

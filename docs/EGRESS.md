@@ -102,7 +102,7 @@ against it before it is locked.
 | `observability` | `gotify` | alert delivery |
 | `n8n` | `gotify` | notifications from workflows |
 | `karakeep` | `ollama` | `ollama.ollama.svc.cluster.local` |
-| `media` (Cantus) | `slskd` | an ExternalName alias onto `slskd.slskd.svc.cluster.local` |
+| `media` (Schall) | `slskd` | an ExternalName alias onto `slskd.slskd.svc.cluster.local` |
 
 Two things follow. A caller needs a `namespaceSelector` rule per target before it
 is locked; `allow-internet-egress` does not cover a cluster path, since the

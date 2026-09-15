@@ -10,7 +10,7 @@
 Scopes and volume exclusions are defined in `kubernetes/infrastructure-config/velero/`.
 Database backup settings live in `kubernetes/databases/`. Large media and scratch
 volumes may be excluded; check coverage before assuming a file is recoverable.
-Cantus excludes all three of its volumes (`music`, `downloads`, `uploads`) through
+Schall excludes all three of its volumes (`music`, `downloads`, `uploads`) through
 a pod annotation, so its files have no backup at all. Only its database does.
 
 **Evidence, 2026-09-12:** recent backups for all six CNPG clusters reported
@@ -84,9 +84,9 @@ References: [CNPG](https://cloudnative-pg.io/documentation/current/recovery/),
 [Barman plugin](https://cloudnative-pg.io/plugin-barman-cloud/docs/),
 [Velero](https://velero.io/docs/main/restore-reference/).
 
-## Cantus
+## Schall
 
-Cantus audio files are excluded from backup on purpose, decided 2026-09-13.
+Schall audio files are excluded from backup on purpose, decided 2026-09-13.
 
 `cantus-music-pvc` held 59 GB of downloaded audio and `cantus-uploads-pvc` was
 empty. Both are reproducible: the tracks are re-downloadable, and
@@ -94,7 +94,7 @@ empty. Both are reproducible: the tracks are re-downloadable, and
 daily CNPG schedule, its most recent backup completed 2026-09-13, and a
 point-in-time restore was verified on 2026-09-12.
 
-Cantus keeps no configuration on a volume. Every setting arrives as an
+Schall keeps no configuration on a volume. Every setting arrives as an
 environment variable from `kubernetes/apps/media/cantus/deployment.yaml`, and the
 only application secret, `cantus-auth`, is sops-encrypted in the repository.
 
@@ -120,7 +120,7 @@ data carries the reason alongside it.
 | `media-pvc`, jellyfin `data` for media | 6.3 TB | Media library, not backup material |
 | `ollama-models` | 2.6 GB | Pulled from the registry on demand |
 | `soundcloud-music-pvc` | 0.5 GB | Downloaded audio; Navidrome reindexes from the files |
-| Cantus audio | 59 GB | Re-downloadable, and the database records what exists |
+| Schall audio | 59 GB | Re-downloadable, and the database records what exists |
 | `slskd-config` | 6.2 GB on 2026-09-15 | Partial downloads, a search cache and transfer history; the configuration is a sops Secret, not on the volume |
 
 To exclude a new claim, add `backup.rechenzentrum.dev/reproducible: "true"` to its

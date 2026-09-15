@@ -40,7 +40,7 @@ spec:
     shared_preload_libraries: []
 
   # No credentials secret: CNPG generates cantus-postgresql-app, whose uri key
-  # is the connection string Cantus reads. Nothing to keep in SOPS.
+  # is the connection string Schall reads. Nothing to keep in SOPS.
   bootstrap:
     initdb:
       database: cantus

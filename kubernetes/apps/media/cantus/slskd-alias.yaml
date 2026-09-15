@@ -1,5 +1,5 @@
 ---
-# Cantus stores slskd's address in its own settings table as http://slskd:5030,
+# Schall stores slskd's address in its own settings table as http://slskd:5030,
 # a short name that only resolved while both lived in media. slskd moved to
 # its own namespace on 2026-09-13; this alias keeps the short name working so
 # the setting did not have to change under the app. Remove it once the

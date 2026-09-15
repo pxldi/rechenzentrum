@@ -48,7 +48,7 @@ locals {
       description = "Music Discovery / Media Management & Soulseek Downloads"
     }
     cantus = {
-      name        = "Cantus"
+      name        = "Schall"
       host        = "cantus.${var.domain}"
       icon        = ""
       description = "Music Collection Manager"

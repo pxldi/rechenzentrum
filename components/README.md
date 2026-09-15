@@ -17,4 +17,7 @@ selectors across this repository.
 
 Kustomize components patch resources rendered by Kustomize. They do not reach
 pods rendered later inside a HelmRelease; use chart values or Helm postRenderers
-for those workloads.
+for those workloads. That limit is about patches. A component whose content is a
+NetworkPolicy adds a namespaced object with a pod selector, so it does apply to
+Helm-rendered pods in the same namespace; `default-deny-egress` and
+`allow-dns` are in that group. See [docs/EGRESS.md](../docs/EGRESS.md).

@@ -5,6 +5,14 @@ namespace: monitoring
 resources:
   - uptime-kuma
 components:
+  # Egress. uptime-kuma probes 27 namespaces, which is why it takes the
+  # cluster-wide rule rather than a selector per target, plus external endpoints
+  # and a few checks against public names.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-internet-egress
+  - ../../../components/allow-egress-to-cluster
+  - ../../../components/allow-egress-to-ingress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

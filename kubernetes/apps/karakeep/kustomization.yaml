@@ -20,10 +20,20 @@ resources:
   - service.yaml
   - ingress.yaml
   - networkpolicy.yaml
+  - networkpolicy-egress-ollama.yaml
 # Only default-deny is shared. The allow-from-* components open every port on
 # the pod to a namespace, and this pod carries a browser devtools port; see the
 # header of networkpolicy.yaml.
 components:
+  # Egress. Reaches meilisearch in this namespace, crawls the pages it archives,
+  # and speaks OIDC to authentik by public name.
+  # networkpolicy-egress-ollama.yaml adds the one cross-namespace destination,
+  # the local model it tags with.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-intra-namespace-egress
+  - ../../../components/allow-internet-egress
+  - ../../../components/allow-egress-to-ingress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
 
 # Resource metadata only: preserve existing Service/Deployment selectors and pod templates.

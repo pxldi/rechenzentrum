@@ -1,0 +1,17 @@
+---
+# Karakeep tags bookmarks with a local model. config.env points
+# OLLAMA_BASE_URL at ollama.ollama.svc.cluster.local, which is the one
+# destination it needs outside its own namespace.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: karakeep-egress-to-ollama
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ollama

@@ -23,10 +23,17 @@ resources:
   - entrypoint-configmap.yaml
   - managed-settings-configmap.yaml
   - deployment.yaml
+  - networkpolicy-egress.yaml
 components:
   # No ingress of any kind: the servers dial out to the Anthropic API and serve
   # nothing. No allow-from-traefik, no Service, no IngressRoute — same shape as
   # the multica daemon, which this repository no longer deploys.
+  # Egress. An agent workspace: it clones repositories, installs packages and
+  # drives this cluster. networkpolicy-egress.yaml adds the API server, which it
+  # has a ServiceAccount token and RBAC for.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-internet-egress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-from-monitoring
 

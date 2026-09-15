@@ -23,20 +23,52 @@ if you only ever test a name that does not exist.
 
 ## Locked
 
-| Namespace | What it may reach | Evidence |
-| --- | --- | --- |
-| `excalidraw` | DNS | The pilot, 2026-09-12 |
-| `gotify` | DNS | Clients connect inbound and hold the socket; the server initiates nothing. `/proc/net/tcp` in the live pod held one established socket, inbound from a cluster address |
-| `obsidian-sync` | DNS | CouchDB, single node, no clustering and no replication target of its own. LiveSync clients connect inbound through Traefik. No established outbound socket in the live pod |
-| `adventurelog` | DNS, its own namespace, the internet outside the house, Traefik | Frontend calls the backend and the backend calls the database, both by Service name here. The backend geocodes against OpenStreetMap |
-| `grimmory` | DNS, its own namespace, the internet | Reaches its MariaDB by Service name; looks up book metadata |
-| `sure` | DNS, its own namespace, the internet | `sure-web` and `sure-worker` reach `sure-db` and `sure-redis` by Service name; fetches market data |
-| `tandoor` | DNS, its own namespace, the internet, the API server | App reaches `tandoor-postgresql-rw`; recipe import fetches pasted URLs; the barman sidecar ships WAL to B2; the CNPG instance manager watches its own Cluster |
-| `overleaf` | DNS, its own namespace, the internet, Traefik | Reaches `overleaf-mongo` and `overleaf-redis` by Service name; sends invite mail through an external SMTP relay |
-| `sparkyfitness` | DNS, plus whatever its chart already allowed | The chart ships a per-component model; only the database was missing a policy |
-| `ryot` | DNS, its own namespace, the internet, Traefik | Reaches `ryot-postgres` by Service name; queries metadata providers; and points `SERVER_OIDC_ISSUER_URL` at a `pxldi.de` name |
+Every application namespace except the two at the end of this section.
 
-## The four components
+| Namespace | Beyond DNS | Why |
+| --- | --- | --- |
+| `claudebox` | internet, API server | Clones repositories and drives this cluster; it carries a ServiceAccount token and RBAC |
+| `excalidraw` | nothing | The pilot |
+| `fredy` | own namespace, internet | Scrapes property listings |
+| `glance` | internet, Traefik | Its widgets fetch 18 public URLs the way a browser would |
+| `gotify` | nothing | Clients connect inbound and hold the socket |
+| `grimmory` | own namespace, internet | MariaDB here; book metadata outside |
+| `homepage` | own namespace, internet, cluster, Traefik | Reads a widget out of 24 services in 15 namespaces |
+| `immich` | own namespace, internet, API server | Server, ML and valkey talk here; geocoding data outside; CNPG |
+| `jdownloader` | internet | The point of it |
+| `karakeep` | own namespace, internet, Traefik, `ollama` | Meilisearch here, crawls pages, OIDC by public name, tags with a local model |
+| `media` | own namespace, internet, Traefik, API server, `slskd` | Nine workloads; indexers and metadata; the cantus CNPG cluster |
+| `minecraft` | internet | Mojang authentication |
+| `monitoring` | internet, cluster, Traefik | uptime-kuma probes 27 namespaces |
+| `n8n` | own namespace, internet, cluster, Traefik, API server | A workflow can call anything; CNPG |
+| `nextcloud` | own namespace, internet, Traefik | Postgres and Redis here; app updates; its own public name |
+| `obsidian-sync` | nothing | CouchDB, single node, clients connect inbound |
+| `ollama` | internet | Pulls models on demand |
+| `overleaf` | own namespace, internet, Traefik | Mongo and Redis here; SMTP outside |
+| `palworld` | internet | Server list and updates |
+| `paperless` | own namespace, internet, Traefik | Postgres, Redis, Gotenberg and Tika here |
+| `ryot` | own namespace, internet, Traefik | Postgres here; metadata providers; OIDC by public name |
+| `searxng` | own namespace, internet | Querying upstream engines is the job |
+| `slskd` | own namespace, internet | gluetun's tunnel and Soulseek peers |
+| `sparkyfitness` | whatever its chart already allowed | See the chart section below |
+| `sure` | own namespace, internet | Postgres and Redis here; market data outside |
+| `tandoor` | own namespace, internet, API server | Postgres here; recipe import; CNPG |
+| `whisper-cpp` | nothing | Transcription happens in the pod; sits at zero replicas |
+
+### Two namespaces deliberately left alone
+
+**`home-assistant`.** Its pods run with `hostNetwork: true`, and NetworkPolicy
+does not apply to a host-network pod, so every component here would be inert.
+Its own `networkpolicy.yaml` already says so. It also talks to Zigbee, Thread and
+Matter devices all over the LAN, which is exactly what `allow-internet-egress`
+excludes, so the rule would be wrong for it even if it did apply.
+
+**`actions-runner`.** It already carries `runners-egress-internet-only`, which is
+`allow-internet-egress` plus DNS under another name, and it is the one app here
+whose kustomization has no `namespace:`, because it spans `arc-systems` and
+`arc-runners`. Nothing to add.
+
+## The components
 
 | Component | What it permits |
 | --- | --- |
@@ -46,6 +78,7 @@ if you only ever test a name that does not exist.
 | `allow-internet-egress` | `0.0.0.0/0` except the pod and service networks, every RFC1918 range, the tailnet and link-local |
 | `allow-egress-to-ingress` | The Traefik pod on 8443. For an app that calls another service here by its public hostname |
 | `allow-egress-to-apiserver` | The node on 6443, for CNPG instance pods only. The one component here that does not use an empty pod selector |
+| `allow-egress-to-cluster` | Every pod in every namespace. Only for the namespaces that legitimately talk to all of them |
 
 `allow-internet-egress` is a compromise worth being explicit about. NetworkPolicy
 has no notion of a hostname, so "only this one geocoder" cannot be written here.
@@ -190,18 +223,14 @@ the standard set on top of a per-component model makes it weaker, not stronger.
   crashlooping-pod trap cannot bite. The failure mode is the opposite one: the
   app keeps running and quietly cannot reach something.
 
-## Not yet assessed
+## What is left
 
-The remaining app namespaces, roughly in order of difficulty: the other CNPG
-namespaces (`immich`, `n8n`, `cantus`),
-anything that fetches from the internet by design (`karakeep`, `paperless-ngx`,
-`searxng`, `glance`, `gethomepage`, `ollama`, `jdownloader`, the `media`
-namespace), and `slskd`, whose egress already goes through gluetun's tunnel.
+Nothing to add. Every application namespace is covered, and the two exceptions
+above are exceptions on their merits rather than a backlog.
 
-`gethomepage` is the hardest single namespace: 24 targets across 15 namespaces,
-each needing its own `namespaceSelector` rule. `glance` looks similar and is not,
-because it goes through Traefik; see the table above.
-
-`media` deserves its own warning: one `default-deny-egress` there covers
-jellyfin, four *arr apps, sabnzbd and Cantus at once. Split the requirements per
-app first.
+What remains is narrowing. `homepage`, `monitoring` and `n8n` hold
+`allow-egress-to-cluster`, which does not isolate them from other namespaces,
+because reaching other namespaces is what they are for. If `homepage`'s widget
+list ever stops changing, a `namespaceSelector` per target would be tighter than
+one blanket rule. `monitoring` and `n8n` have no such stable list and probably
+never will.

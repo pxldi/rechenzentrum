@@ -7,6 +7,14 @@ resources:
   - deployment.yaml
   - ingressroute.yaml
 components:
+  # Egress. Its monitor widget fetches 18 https://<name>.pxldi.de URLs the way a
+  # browser would, so it goes through Traefik rather than through the cluster,
+  # and such a name resolves to the node or to the public address depending on
+  # which upstream CoreDNS last asked. It needs both rules.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-internet-egress
+  - ../../../components/allow-egress-to-ingress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

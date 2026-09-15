@@ -9,6 +9,16 @@ resources:
   - deployment.yaml
   - ingressroute.yaml
 components:
+  # Egress. The dashboard reads a widget out of 24 services in 15 namespaces,
+  # which is why it takes the cluster-wide rule rather than two dozen selectors.
+  # The internet rule is for the weather widget and the Traefik rule for the few
+  # links it resolves by public name.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-intra-namespace-egress
+  - ../../../components/allow-internet-egress
+  - ../../../components/allow-egress-to-cluster
+  - ../../../components/allow-egress-to-ingress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

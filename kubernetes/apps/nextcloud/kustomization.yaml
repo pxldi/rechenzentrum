@@ -9,6 +9,14 @@ resources:
   - pvcs.yaml
   - secret.yaml
 components:
+  # Egress. Reaches its own Postgres and Redis here, fetches app updates and
+  # previews from the internet, and resolves its own public name for federation
+  # and WebDAV.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-intra-namespace-egress
+  - ../../../components/allow-internet-egress
+  - ../../../components/allow-egress-to-ingress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

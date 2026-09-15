@@ -37,7 +37,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: otbr
-          image: openthread/border-router:v2026.07.0
+          image: openthread/border-router:v2026.09.0
           # 5Mi average / 8Mi peak over 7d. Tiny, but a request is what keeps
           # the Thread border router out of the BestEffort eviction bucket.
           resources:

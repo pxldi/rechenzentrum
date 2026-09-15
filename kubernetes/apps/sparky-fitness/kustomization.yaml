@@ -10,6 +10,18 @@ resources:
   - ingressroute.yaml
   - networkpolicy.yaml
 components:
+  # Egress, deliberately only these two. The chart already ships a per-component
+  # egress model that is tighter than the namespace-wide components would be:
+  # frontend may reach server on 3010 and nothing else, server may reach
+  # postgresql on 5432 and nothing else, and networkpolicy.yaml here adds public
+  # 443 for the server alone. Adding allow-intra-namespace-egress would undo
+  # that by letting the frontend talk straight to the database.
+  #
+  # What was missing is the database itself. It carried an ingress-only policy,
+  # so its egress was unrestricted. default-deny-egress closes that, and the
+  # chart's own allows keep frontend and server working.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
   - ../../infrastructure-config/networkpolicies/allow-from-homepage
 
 # Resource metadata only: preserve existing Service/Deployment selectors and pod templates.

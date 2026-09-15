@@ -31,6 +31,8 @@ if you only ever test a name that does not exist.
 | `adventurelog` | DNS, its own namespace, the internet outside the house, Traefik | Frontend calls the backend and the backend calls the database, both by Service name here. The backend geocodes against OpenStreetMap |
 | `grimmory` | DNS, its own namespace, the internet | Reaches its MariaDB by Service name; looks up book metadata |
 | `sure` | DNS, its own namespace, the internet | `sure-web` and `sure-worker` reach `sure-db` and `sure-redis` by Service name; fetches market data |
+| `overleaf` | DNS, its own namespace, the internet, Traefik | Reaches `overleaf-mongo` and `overleaf-redis` by Service name; sends invite mail through an external SMTP relay |
+| `sparkyfitness` | DNS, plus whatever its chart already allowed | The chart ships a per-component model; only the database was missing a policy |
 | `ryot` | DNS, its own namespace, the internet, Traefik | Reaches `ryot-postgres` by Service name; queries metadata providers; and points `SERVER_OIDC_ISSUER_URL` at a `pxldi.de` name |
 
 ## The four components
@@ -80,6 +82,24 @@ described below and the same reason it needs both.
 None of this touches the seven namespaces locked so far: none of them appears in
 the caller column. Being in the *target* column is harmless, because that is
 someone else's ingress and these components only restrict egress.
+
+## When a chart already did it
+
+`sparkyfitness` is the case to copy before reaching for the namespace-wide
+components. Its chart ships a NetworkPolicy per component: the frontend may
+reach the server on 3010 and nothing else, the server may reach postgresql on
+5432 and nothing else, both may do DNS, and `networkpolicy.yaml` in the app
+directory adds public 443 for the server alone. That is tighter than
+`allow-intra-namespace-egress`, which would let the frontend talk straight to
+the database.
+
+So the namespace gets `default-deny-egress` and `allow-dns` and nothing else.
+Policies are additive, so the chart's allows survive and the one real gap
+closes: the database carried an ingress-only policy, which left its egress
+unrestricted.
+
+Check for this before locking any namespace whose app comes from a chart. Adding
+the standard set on top of a per-component model makes it weaker, not stronger.
 
 ## Before locking a namespace
 
@@ -144,8 +164,7 @@ someone else's ingress and these components only restrict egress.
 
 ## Not yet assessed
 
-The remaining app namespaces, roughly in order of difficulty: the rest of the
-in-namespace-database group (`sparky-fitness`, `overleaf`), anything with a CNPG
+The remaining app namespaces, roughly in order of difficulty: anything with a CNPG
 cluster in its own namespace (`immich`, `n8n`, `tandoor`, `multica`, `cantus`),
 anything that fetches from the internet by design (`karakeep`, `paperless-ngx`,
 `searxng`, `glance`, `gethomepage`, `ollama`, `jdownloader`, the `media`

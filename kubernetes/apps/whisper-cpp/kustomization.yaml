@@ -6,6 +6,10 @@ resources:
   - deployment.yaml
   - service.yaml
 components:
+  # Egress. Transcription happens in the pod and nothing leaves it. The
+  # deployment sits at zero replicas; DNS is the whole allowance when it runs.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-monitoring

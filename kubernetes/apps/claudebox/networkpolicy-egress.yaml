@@ -1,0 +1,25 @@
+---
+# claudebox drives the cluster: it carries a ServiceAccount token and rbac.yaml
+# gives it real permissions, so an agent working in there runs kubectl against
+# this API server. `allow-egress-to-apiserver` is not reusable here, because it
+# selects CNPG instance pods; this is the same rule with the selector this
+# namespace needs.
+#
+# The address is the node's, on the API port. A request to the API Service
+# address is rewritten to exactly that, so the rule sees it either way; see
+# docs/EGRESS.md on matching after DNAT.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: claudebox-egress-to-apiserver
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.8.226/32
+      ports:
+        - protocol: TCP
+          port: 6443

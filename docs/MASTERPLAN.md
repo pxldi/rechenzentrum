@@ -84,5 +84,5 @@ Configured does not mean live or restore-tested.
 | Backups | CNPG and Velero restores verified 2026-09-12, see [BACKUPS.md](BACKUPS.md); Cantus audio files are deliberately excluded, see [BACKUPS.md](BACKUPS.md#cantus) |
 | Image automation | PR workflow configured; writer credential needed; suspended |
 | Cantus namespace | slskd moved out 2026-09-13 and `media` is baseline; Cantus stays, see [CANTUS_ISOLATION.md](CANTUS_ISOLATION.md) |
-| Edge/egress expansion | Enforcement proven on the live cluster; method and per-namespace requirements in [EGRESS.md](EGRESS.md). Locked: excalidraw, gotify, obsidian-sync, adventurelog, grimmory, sure, ryot, overleaf, sparkyfitness, tandoor |
+| Edge/egress expansion | Done for every application namespace, see [EGRESS.md](EGRESS.md). `home-assistant` is hostNetwork so policy does not apply; `actions-runner` already had an equivalent rule |
 | ZeroClaw/MCP | Not deployed; provider/bot setup, software and scoped credentials needed |

@@ -8,6 +8,10 @@ resources:
   - service.yaml
   - networkpolicy.yaml
 components:
+  # Egress. Mojang authentication and the server's own update checks.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-internet-egress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-monitoring

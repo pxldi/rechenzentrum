@@ -9,6 +9,11 @@ resources:
   - service.yaml
   - ingress.yaml
 components:
+  # Egress. Scrapes property listings, so it needs the internet.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-intra-namespace-egress
+  - ../../../components/allow-internet-egress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

@@ -1,0 +1,27 @@
+---
+# For the two namespaces that legitimately talk to every other one: the homepage
+# dashboard, which reads a widget out of 24 services across 15 namespaces, and
+# uptime-kuma, which probes 27. Writing a namespaceSelector per target there
+# would be two dozen rules that have to be edited every time an app is added or
+# removed, and the first time one is forgotten the symptom is a widget that
+# quietly shows nothing.
+#
+# Be honest about what this does and does not buy. It does not isolate these
+# namespaces from the rest of the cluster; that is the one thing they are for.
+# It does keep them off the LAN, the router, the node's kubelet and API server,
+# and anything else outside the pod network, which `default-deny-egress` alone
+# would also do and which nothing did before.
+#
+# Do not reach for this because a per-target rule is tedious. Every other
+# namespace here has a knowable list of destinations.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-cluster
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector: {}

@@ -7,6 +7,10 @@ resources:
   - service.yaml
   - networkpolicy.yaml
 components:
+  # Egress. Pulls models from the registry on demand.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-internet-egress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-monitoring

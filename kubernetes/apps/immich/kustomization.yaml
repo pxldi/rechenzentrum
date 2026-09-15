@@ -8,6 +8,15 @@ resources:
   - ingress.yaml
   - pvc.yaml
 components:
+  # Egress. Server, machine-learning and valkey reach each other and
+  # immich-postgresql-rw by Service name here. The internet rule is for the
+  # reverse-geocoding dataset and model downloads; the API server is for the
+  # CNPG instance manager.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-intra-namespace-egress
+  - ../../../components/allow-internet-egress
+  - ../../../components/allow-egress-to-apiserver
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

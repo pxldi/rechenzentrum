@@ -9,6 +9,12 @@ resources:
   - service.yaml
   - ingress.yaml
 components:
+  # Egress. A metasearch engine: querying upstream search engines is the whole
+  # job.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-intra-namespace-egress
+  - ../../../components/allow-internet-egress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

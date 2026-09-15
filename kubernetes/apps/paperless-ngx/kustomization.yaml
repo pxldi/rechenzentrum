@@ -11,6 +11,13 @@ resources:
   - service.yaml
   - ingress.yaml
 components:
+  # Egress. Reaches its own Postgres, Redis and the Gotenberg and Tika sidecars
+  # here; the internet rule is for OCR language data and update checks.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-intra-namespace-egress
+  - ../../../components/allow-internet-egress
+  - ../../../components/allow-egress-to-ingress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

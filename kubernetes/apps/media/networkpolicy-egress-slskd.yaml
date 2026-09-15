@@ -1,0 +1,19 @@
+---
+# Cantus reaches slskd for Soulseek downloads. slskd left this namespace on
+# 2026-09-13 so that media could drop to the `baseline` pod-security level, and
+# cantus/slskd-alias.yaml is the ExternalName that keeps the old in-namespace
+# name working; the traffic itself now crosses a namespace boundary and needs
+# saying so here.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: media-egress-to-slskd
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: slskd

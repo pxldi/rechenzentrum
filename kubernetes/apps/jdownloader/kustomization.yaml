@@ -8,6 +8,10 @@ resources:
   - service.yaml
   - ingress.yaml
 components:
+  # Egress. A downloader: the internet is the point.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-internet-egress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

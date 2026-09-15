@@ -12,6 +12,14 @@ resources:
   - soulseek-secret.yaml
   - networkpolicy-allow-from-media.yaml
 components:
+  # Egress. gluetun dials the VPN endpoint and slskd reaches Soulseek peers
+  # through the tunnel. Both are outside the house, so the internet rule covers
+  # them; the tunnel does not change which rule applies, because the policy sees
+  # the encapsulated packets leaving the pod.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-intra-namespace-egress
+  - ../../../components/allow-internet-egress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

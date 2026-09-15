@@ -48,7 +48,7 @@ spec:
             # writes here stays correct.
             image:
               # renovate: datasource=github-releases depName=immich-app/immich
-              tag: v3.2.0
+              tag: v3.2.1
             env:
               TZ: Europe/Berlin
               DB_HOSTNAME: immich-postgresql-rw

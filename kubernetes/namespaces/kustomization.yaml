@@ -17,8 +17,6 @@ resources:
   - media.yaml
   - minecraft.yaml
   - monitoring.yaml
-  - multica-daemon.yaml
-  - multica.yaml
   - n8n.yaml
   - nextcloud.yaml
   - obsidian.yaml

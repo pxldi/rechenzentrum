@@ -70,7 +70,6 @@ against it before it is locked.
 | `n8n` | `gotify` | notifications from workflows |
 | `karakeep` | `ollama` | `ollama.ollama.svc.cluster.local` |
 | `media` (Cantus) | `slskd` | an ExternalName alias onto `slskd.slskd.svc.cluster.local` |
-| `multica-daemon` | `multica` | `multica-backend.multica.svc.cluster.local` |
 
 Two things follow. A caller needs a `namespaceSelector` rule per target before it
 is locked; `allow-internet-egress` does not cover a cluster path, since the
@@ -194,7 +193,7 @@ the standard set on top of a per-component model makes it weaker, not stronger.
 ## Not yet assessed
 
 The remaining app namespaces, roughly in order of difficulty: the other CNPG
-namespaces (`immich`, `n8n`, `multica`, `cantus`),
+namespaces (`immich`, `n8n`, `cantus`),
 anything that fetches from the internet by design (`karakeep`, `paperless-ngx`,
 `searxng`, `glance`, `gethomepage`, `ollama`, `jdownloader`, the `media`
 namespace), and `slskd`, whose egress already goes through gluetun's tunnel.

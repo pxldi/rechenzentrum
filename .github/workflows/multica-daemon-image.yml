@@ -1,4 +1,8 @@
 ---
+# Builds the agent toolchain image. Multica was deleted from this repository
+# on 2026-09-15 and claudebox is now the only consumer; the workflow and
+# images/multica-daemon/ keep the old name because renaming a published
+# package is its own change.
 # Build the Multica daemon's toolchain image.
 #
 # It builds on pull requests too, and pushes from them, which is deliberate.

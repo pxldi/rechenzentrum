@@ -50,9 +50,6 @@ Authentik outpost needs them to complete a login, and they serve nothing else.
 | nextcloud | `cloud.pxldi.de` | public | nextcloud-headers |
 | nextcloud | `cloud.pxldi.de (Path(`/.well-known/carddav`) \|\| Path(`/.well-known/caldav` | public | nextcloud-wellknown-dav |
 | nextcloud | `cloud.pxldi.de PathPrefix(`/remote.php/dav`)` | public | nextcloud-headers,nextcloud-dav-no-compress |
-| multica | `code.pxldi.de` | public | none |
-| multica | `code.pxldi.de (PathPrefix(`/api`) \|\| PathPrefix(`/ws`) \|\| PathPrefix(`` | public | none |
-| multica | `code.pxldi.de (PathPrefix(`/auth/callback`) \|\| PathPrefix(`/auth/hg-sso/` | public | none |
 | jdownloader | `download.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | excalidraw | `draw.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | sure | `finance.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |

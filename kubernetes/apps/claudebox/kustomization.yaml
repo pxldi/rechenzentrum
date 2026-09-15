@@ -26,7 +26,7 @@ resources:
 components:
   # No ingress of any kind: the servers dial out to the Anthropic API and serve
   # nothing. No allow-from-traefik, no Service, no IngressRoute — same shape as
-  # multica-daemon.
+  # the multica daemon, which this repository no longer deploys.
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-from-monitoring
 

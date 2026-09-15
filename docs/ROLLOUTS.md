@@ -60,9 +60,6 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | media | Deployment/sonarr | Recreate | sonarr-config-pvc, downloads-pvc, media-pvc | yes |
 | minecraft | Deployment/minecraft | Recreate | minecraft-data | yes |
 | monitoring | Deployment/uptime-kuma | Recreate | uptime-kuma-pvc | yes |
-| multica | Deployment/multica-backend | Recreate | multica-backend-uploads | yes |
-| multica | Deployment/multica-frontend | RollingUpdate | none | no |
-| multica-daemon | Deployment/multica-daemon | Recreate | multica-daemon-data-pvc | no |
 | n8n | Deployment/n8n | Recreate | n8n-data-pvc | yes |
 | nextcloud | Deployment/nextcloud | Recreate | nextcloud-nextcloud, nextcloud-data-pvc | no |
 | nextcloud | StatefulSet/nextcloud-postgresql | RollingUpdate | none | yes |

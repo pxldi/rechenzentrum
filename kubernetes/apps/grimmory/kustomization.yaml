@@ -8,6 +8,14 @@ resources:
   - helmrelease.yaml
   - ingress.yaml
 components:
+  # Egress. The app reaches its MariaDB by Service name in this namespace, so
+  # the intra-namespace twin is required; the ingress-only component next to it
+  # does not permit a pod to open a connection. The internet rule is for the
+  # book metadata it looks up, which no hostname rule can express.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-intra-namespace-egress
+  - ../../../components/allow-internet-egress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

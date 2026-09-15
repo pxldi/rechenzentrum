@@ -76,14 +76,22 @@ spec:
               - name: OVERLEAF_EMAIL_SMTP_PORT
                 value: "587"
               - name: OVERLEAF_EMAIL_SMTP_USER
-                value: "leopold.sappler@gmail.com"
+                valueFrom:
+                  secretKeyRef:
+                    name: overleaf-credentials
+                    key: SMTP_USER
               - name: OVERLEAF_EMAIL_SMTP_PASS
                 valueFrom:
                   secretKeyRef:
                     name: overleaf-credentials
                     key: SMTP_PASSWORD
+              # Same mailbox as the SMTP user, and kept out of this file for the
+              # same reason: the repository is public.
               - name: OVERLEAF_EMAIL_FROM_ADDRESS
-                value: "leopold.sappler@gmail.com"
+                valueFrom:
+                  secretKeyRef:
+                    name: overleaf-credentials
+                    key: SMTP_USER
               - name: OVERLEAF_SITE_URL
                 value: "https://latex.pxldi.de"
 

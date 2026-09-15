@@ -16,15 +16,27 @@
 # the rule sees either way. `kubectl get endpoints kubernetes` is the check if
 # the cluster ever moves.
 #
-# Only for namespaces that need it. An ordinary application should not be able
-# to reach the API server at all, which is also why every default ServiceAccount
-# here carries automountServiceAccountToken: false.
+# The podSelector is the instance pods and nothing else. Every other component
+# in this set uses an empty selector, which is right for them: DNS and a
+# namespace's own traffic are wanted by everything in it. Reaching the API
+# server is not. With an empty selector here the application pod in the same
+# namespace got it too, measured in tandoor on 2026-09-15; it could do little
+# with it, since its default ServiceAccount carries
+# automountServiceAccountToken: false, but the rule should match what the
+# comment above claims.
+#
+# CNPG stamps `cnpg.io/cluster` on every instance pod with the cluster's name,
+# so matching on the label existing covers any number of clusters in a namespace
+# without naming them.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-egress-to-apiserver
 spec:
-  podSelector: {}
+  podSelector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: Exists
   policyTypes:
     - Egress
   egress:

@@ -118,8 +118,13 @@ spec:
                 secretKeyRef:
                   name: ryot-secret
                   key: OIDC_CLIENT_SECRET
+            # The application's slug in authentik is ryot-oidc, not ryot, and the
+            # issuer is built from the slug. Against the old value authentik
+            # answered 404 to the discovery request, so the login could never
+            # start. Verified: the discovery document at this URL returns 200
+            # and its own `issuer` field is this exact string.
             - name: SERVER_OIDC_ISSUER_URL
-              value: "https://auth.pxldi.de/application/o/ryot/"
+              value: "https://auth.pxldi.de/application/o/ryot-oidc/"
             - name: MOVIES_AND_SHOWS_TMDB_ACCESS_TOKEN
               valueFrom:
                 secretKeyRef:

@@ -159,10 +159,10 @@ spec:
     requests:
       storage: 500Gi
 ---
-# Where a browser upload waits while Cantus checks it arrived whole, before it
+# Where a browser upload waits while Schall checks it arrived whole, before it
 # is filed into the music volume. Deliberately its own claim rather than a
 # subdirectory of cantus-music-pvc: a scan of /music would walk into one of
-# those and index a half-written upload as music the library holds, and Cantus
+# those and index a half-written upload as music the library holds, and Schall
 # refuses to start if its staging path is inside a music folder. Sized for a few
 # lossless releases in flight at once, not for keeping them.
 apiVersion: v1

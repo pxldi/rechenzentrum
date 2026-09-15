@@ -5,13 +5,13 @@ metadata:
   name: image-automation
   namespace: flux-system
 spec:
-  # Suspended, not deleted. Cantus is the only image this automation ever
+  # Suspended, not deleted. Schall is the only image this automation ever
   # updated, and it now follows a mutable tag while it is under active
   # development; left running, this would keep rewriting that line back to a
   # pinned tag every five minutes and quietly undo it.
   #
   # Unsuspend, and restore the setter marker on the cantus deployment, when
-  # Cantus is versioned and the manifest should record what is running again.
+  # Schall is versioned and the manifest should record what is running again.
   suspend: true
   interval: 5m
   sourceRef:

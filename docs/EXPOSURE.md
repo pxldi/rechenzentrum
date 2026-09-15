@@ -19,8 +19,8 @@ Authentik outpost needs them to complete a login, and they serve nothing else.
 
 - **Karakeep** (`links.pxldi.de`) stays Authentik-only. It is shared with someone
   who has an account but no device on the tailnet.
-- **Cantus's API route** (`cantus.pxldi.de` with a Bearer header) stays public so
-  a client that cannot follow a login redirect works away from home. Cantus
+- **Schall's API route** (`cantus.pxldi.de` with a Bearer header) stays public so
+  a client that cannot follow a login redirect works away from home. Schall
   validates the token and answers 401 to anything it did not mint. No proxy key
   applies there, so identity headers on those requests are never believed.
 

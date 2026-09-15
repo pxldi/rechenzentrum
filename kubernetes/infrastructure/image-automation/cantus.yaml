@@ -5,7 +5,7 @@ metadata:
   name: cantus
   namespace: flux-system
 spec:
-  image: ghcr.io/pxldi-labs/cantus
+  image: ghcr.io/pxldi/schall
   interval: 5m
 ---
 apiVersion: image.toolkit.fluxcd.io/v1
@@ -16,7 +16,7 @@ metadata:
 spec:
   imageRepositoryRef:
     name: cantus
-  # Cantus CI publishes main-<commit timestamp>-<short sha>. Ordering on the
+  # Schall CI publishes main-<commit timestamp>-<short sha>. Ordering on the
   # extracted timestamp makes "newest build" unambiguous, and the pattern
   # ignores anything that is not a main build.
   filterTags:

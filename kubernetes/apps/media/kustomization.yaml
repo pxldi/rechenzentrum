@@ -18,7 +18,7 @@ components:
   # apps to prowlarr and sabnzbd, seerr to jellyfin, cantus to its own Postgres.
   # The internet rule is for indexers, usenet and metadata; the API server for
   # the cantus CNPG instance. networkpolicy-egress-slskd.yaml adds slskd, which
-  # left this namespace but is still Cantus's download path.
+  # left this namespace but is still Schall's download path.
   - ../../../components/default-deny-egress
   - ../../../components/allow-dns
   - ../../../components/allow-intra-namespace-egress

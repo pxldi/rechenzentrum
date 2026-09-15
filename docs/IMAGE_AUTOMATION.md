@@ -1,7 +1,7 @@
 # Image automation
 
 Flux image automation remains suspended. Its push branch is `automation/images`;
-`main` requires a PR and passing CI. Cantus still uses its existing development tag.
+`main` requires a PR and passing CI. Schall still uses its existing development tag.
 
 To activate selected images:
 
@@ -16,6 +16,6 @@ To activate selected images:
 The PR workflow does not execute branch code. Its dedicated user/App token lets
 PR creation trigger CI; creating a PR with `GITHUB_TOKEN` would suppress that event.
 
-Cantus release-image changes belong in its software repository as well.
+Schall release-image changes belong in its software repository as well.
 References: [Flux](https://fluxcd.io/flux/guides/image-update/),
 [GitHub events](https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-when-your-workflow-runs/triggering-a-workflow).

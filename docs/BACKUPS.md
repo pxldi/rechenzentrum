@@ -121,6 +121,7 @@ data carries the reason alongside it.
 | `ollama-models` | 2.6 GB | Pulled from the registry on demand |
 | `soundcloud-music-pvc` | 0.5 GB | Downloaded audio; Navidrome reindexes from the files |
 | Cantus audio | 59 GB | Re-downloadable, and the database records what exists |
+| `slskd-config` | 6.2 GB on 2026-09-15 | Partial downloads, a search cache and transfer history; the configuration is a sops Secret, not on the volume |
 
 To exclude a new claim, add `backup.rechenzentrum.dev/reproducible: "true"` to its
 labels and add a row above. Only use it where a loss costs time rather than

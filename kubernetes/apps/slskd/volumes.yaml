@@ -115,6 +115,18 @@ kind: PersistentVolumeClaim
 metadata:
   name: slskd-config
   namespace: slskd
+  labels:
+    # 6.2 GB measured 2026-09-15, and none of it is information. 4.7 GB is
+    # `incomplete`, the partial downloads of transfers that have not finished;
+    # 1.4 GB is `data/search.db`, a cache of search results; the rest is the
+    # transfer and event history. slskd's configuration is not here at all, it
+    # is mounted over `/app/slskd.yml` from the sops-encrypted `slskd-config`
+    # Secret, so a full loss costs the download history and the Soulseek share
+    # index, which slskd rebuilds by rescanning.
+    #
+    # Velero skips whole volumes only, so keeping the history would have meant
+    # backing up the search cache and the partial downloads with it.
+    backup.rechenzentrum.dev/reproducible: "true"
 spec:
   accessModes:
     - ReadWriteOnce

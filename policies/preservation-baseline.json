@@ -131,15 +131,6 @@
   "apps/v1/Deployment/sure/sure-worker": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/wardrowbe/wardrowbe-backend": {
-    "kind": "Deployment"
-  },
-  "apps/v1/Deployment/wardrowbe/wardrowbe-frontend": {
-    "kind": "Deployment"
-  },
-  "apps/v1/Deployment/wardrowbe/wardrowbe-worker": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/whisper-cpp/whisper-cpp": {
     "kind": "Deployment"
   },
@@ -159,9 +150,6 @@
     "kind": "StatefulSet"
   },
   "apps/v1/StatefulSet/sure/sure-redis": {
-    "kind": "StatefulSet"
-  },
-  "apps/v1/StatefulSet/wardrowbe/wardrowbe-redis": {
     "kind": "StatefulSet"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/arc-runners/homelab-runners": {
@@ -287,10 +275,6 @@
   "postgresql.cnpg.io/v1/Cluster/tandoor/tandoor-postgresql": {
     "kind": "Cluster",
     "spec_sha256": "b679dbe2d9ffbf480ddf7ba682cb6562894c38e9b2b35ee90de5db302b5ff9de"
-  },
-  "postgresql.cnpg.io/v1/Cluster/wardrowbe/wardrowbe-postgresql": {
-    "kind": "Cluster",
-    "spec_sha256": "d9efcaf1b29c8b0d390c4c4f147713db852c597f8d10878e9296ee2482dbec43"
   },
   "v1/Namespace//adventurelog": {
     "kind": "Namespace"
@@ -422,9 +406,6 @@
     "kind": "Namespace"
   },
   "v1/Namespace//velero": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//wardrowbe": {
     "kind": "Namespace"
   },
   "v1/Namespace//whisper-cpp": {
@@ -629,10 +610,6 @@
   "v1/PersistentVolumeClaim/tandoor/tandoor-media-pvc": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "733cb5e48806feb3ec25ed06f1630d0f5159f42d6c1ebcf215948c3a31a31c4b"
-  },
-  "v1/PersistentVolumeClaim/wardrowbe/wardrowbe-uploads": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "eebe9bb88a2cb4d66748e587222cad199b9e934ad6034974e56eadb9c1230139"
   },
   "v1/PersistentVolumeClaim/whisper-cpp/whisper-cpp-models": {
     "kind": "PersistentVolumeClaim",

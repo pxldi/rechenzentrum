@@ -31,7 +31,6 @@ resources:
   - multica
   - multica-daemon
   - claudebox
-  - wardrowbe
   - minecraft
   - actions-runner
   - excalidraw

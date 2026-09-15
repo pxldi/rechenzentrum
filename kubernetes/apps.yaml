@@ -18,7 +18,6 @@ spec:
     - name: infrastructure
     - name: infrastructure-config
     - name: database-cantus
-    - name: database-wardrowbe
     - name: database-multica
     - name: database-immich
     - name: database-n8n

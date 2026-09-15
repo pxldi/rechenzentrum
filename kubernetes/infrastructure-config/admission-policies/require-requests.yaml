@@ -30,8 +30,8 @@ spec:
         resources: ["deployments", "statefulsets", "daemonsets"]
   variables:
     # Regular containers only. initContainers are deliberately excluded:
-    # requiring requests on them pulls in fourteen workloads across nextcloud,
-    # sure, wardrowbe, home-assistant, multica-daemon and velero's plugin init
+    # requiring requests on them pulls in workloads across nextcloud, sure,
+    # home-assistant, multica-daemon and velero's plugin init
     # -- third-party chart surgery for containers that live seconds and are not
     # what the scheduler packs the node with.
     - name: containers

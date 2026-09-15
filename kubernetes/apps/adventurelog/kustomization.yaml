@@ -19,6 +19,13 @@ components:
   - ../../../components/allow-dns
   - ../../../components/allow-intra-namespace-egress
   - ../../../components/allow-internet-egress
+  # PUBLIC_URL and FRONTEND_URL point at this app's own public names. Those
+  # are identity settings rather than something it fetches, so this is a
+  # precaution: if the backend ever does call one of them, a pxldi.de name
+  # resolves to the node or to the public address depending on which
+  # upstream CoreDNS last asked, and only the second falls inside
+  # allow-internet-egress. Without this the failure would be intermittent.
+  - ../../../components/allow-egress-to-ingress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

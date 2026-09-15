@@ -34,7 +34,7 @@ spec:
           main:
             image:
               repository: sharelatex/sharelatex
-              tag: "6.2.2"
+              tag: "6.3.0"
               pullPolicy: IfNotPresent
 
             env:

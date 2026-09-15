@@ -31,6 +31,7 @@ if you only ever test a name that does not exist.
 | `adventurelog` | DNS, its own namespace, the internet outside the house, Traefik | Frontend calls the backend and the backend calls the database, both by Service name here. The backend geocodes against OpenStreetMap |
 | `grimmory` | DNS, its own namespace, the internet | Reaches its MariaDB by Service name; looks up book metadata |
 | `sure` | DNS, its own namespace, the internet | `sure-web` and `sure-worker` reach `sure-db` and `sure-redis` by Service name; fetches market data |
+| `tandoor` | DNS, its own namespace, the internet, the API server | App reaches `tandoor-postgresql-rw`; recipe import fetches pasted URLs; the barman sidecar ships WAL to B2; the CNPG instance manager watches its own Cluster |
 | `overleaf` | DNS, its own namespace, the internet, Traefik | Reaches `overleaf-mongo` and `overleaf-redis` by Service name; sends invite mail through an external SMTP relay |
 | `sparkyfitness` | DNS, plus whatever its chart already allowed | The chart ships a per-component model; only the database was missing a policy |
 | `ryot` | DNS, its own namespace, the internet, Traefik | Reaches `ryot-postgres` by Service name; queries metadata providers; and points `SERVER_OIDC_ISSUER_URL` at a `pxldi.de` name |
@@ -44,6 +45,7 @@ if you only ever test a name that does not exist.
 | `allow-intra-namespace-egress` | Any pod in the same namespace. The egress twin of the ingress-only `allow-intra-namespace` |
 | `allow-internet-egress` | `0.0.0.0/0` except the pod and service networks, every RFC1918 range, the tailnet and link-local |
 | `allow-egress-to-ingress` | The Traefik pod on 8443. For an app that calls another service here by its public hostname |
+| `allow-egress-to-apiserver` | The node on 6443. Only for a namespace holding a CNPG cluster |
 
 `allow-internet-egress` is a compromise worth being explicit about. NetworkPolicy
 has no notion of a hostname, so "only this one geocoder" cannot be written here.
@@ -82,6 +84,29 @@ described below and the same reason it needs both.
 None of this touches the seven namespaces locked so far: none of them appears in
 the caller column. Being in the *target* column is harmless, because that is
 someone else's ingress and these components only restrict egress.
+
+## A namespace with a CNPG cluster needs one more thing
+
+The instance pod's manager keeps a connection to the Kubernetes API open for its
+whole life: it watches its own Cluster resource, publishes status and takes part
+in failover. Measured in the tandoor instance pod on 2026-09-15, that was the
+*only* outbound socket it held; everything else in `/proc/net/tcp` was the
+application connecting in to 5432.
+
+Nothing in the standard set covers it. `allow-internet-egress` excludes the
+service network, and no selector can match the API server, because it runs in
+the host's network namespace and has no pod. Hence
+`allow-egress-to-apiserver`, and here an `ipBlock` is the right tool rather
+than the wrong one: a request to the API service address is rewritten to the
+node on 6443, so that is what the rule sees whichever address the client used.
+
+Backups are covered by the internet rule. The barman-cloud plugin runs as a
+native sidecar *inside* the instance pod, not as a separate deployment, so WAL
+and base backups leave from there straight to B2.
+
+Do not hand this component to an ordinary application. Nothing else here should
+reach the API server, which is the same reasoning behind
+`automountServiceAccountToken: false` on every default ServiceAccount.
 
 ## When a chart already did it
 
@@ -164,8 +189,8 @@ the standard set on top of a per-component model makes it weaker, not stronger.
 
 ## Not yet assessed
 
-The remaining app namespaces, roughly in order of difficulty: anything with a CNPG
-cluster in its own namespace (`immich`, `n8n`, `tandoor`, `multica`, `cantus`),
+The remaining app namespaces, roughly in order of difficulty: the other CNPG
+namespaces (`immich`, `n8n`, `multica`, `cantus`),
 anything that fetches from the internet by design (`karakeep`, `paperless-ngx`,
 `searxng`, `glance`, `gethomepage`, `ollama`, `jdownloader`, the `media`
 namespace), and `slskd`, whose egress already goes through gluetun's tunnel.

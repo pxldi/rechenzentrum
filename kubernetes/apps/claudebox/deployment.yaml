@@ -264,8 +264,14 @@ spec:
               value: /home/pxldi/.luna-runs
             - name: GIT_AUTHOR_NAME
               value: "pxldi"
+            # Out of this file because the repository is public. Git stamps it
+            # on every commit an agent makes in here, so it has to be the real
+            # mailbox rather than a noreply address.
             - name: GIT_AUTHOR_EMAIL
-              value: "leopold.sappler@gmail.com"
+              valueFrom:
+                secretKeyRef:
+                  name: claudebox-secrets
+                  key: GIT_AUTHOR_EMAIL
             # Read by `gh`, and therefore by git via the credential helper the
             # entrypoint installs, so sessions can clone and push private
             # repos. Empty is a supported state: public repos still work.

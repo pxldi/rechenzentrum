@@ -1,0 +1,36 @@
+---
+# For a namespace holding a CNPG cluster. The instance pod's manager keeps a
+# connection open to the Kubernetes API for its whole life: it watches its own
+# Cluster resource, publishes status, and takes part in failover. Measured in
+# the tandoor instance pod on 2026-09-15, the only outbound socket it held was
+# to the API service on 443; everything else on the list was the application
+# connecting in to 5432.
+#
+# Nothing else in the standard set covers it. `allow-internet-egress` excludes
+# the service network, and no selector can match the API server because it runs
+# in the host's network namespace and has no pod.
+#
+# The address is the node's, on the API port. Unlike the Traefik case in
+# `allow-egress-to-ingress`, an ipBlock is right here: a request to the API
+# service address is rewritten to this same host address and port, so it is what
+# the rule sees either way. `kubectl get endpoints kubernetes` is the check if
+# the cluster ever moves.
+#
+# Only for namespaces that need it. An ordinary application should not be able
+# to reach the API server at all, which is also why every default ServiceAccount
+# here carries automountServiceAccountToken: false.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-apiserver
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.8.226/32
+      ports:
+        - protocol: TCP
+          port: 6443

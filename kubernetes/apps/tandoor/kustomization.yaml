@@ -7,6 +7,18 @@ resources:
   - pvc.yaml
   - ingress.yaml
 components:
+  # Egress. The web container reaches tandoor-postgresql-rw by Service name
+  # here, so the intra-namespace twin is required. The internet rule is for
+  # recipe import, which fetches a URL the user pastes, and for the barman
+  # sidecar in the Postgres pod, which ships WAL and base backups to B2.
+  # allow-egress-to-apiserver is for the CNPG instance manager: it holds a
+  # connection to the API server for its whole life and nothing else in the set
+  # covers it.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-intra-namespace-egress
+  - ../../../components/allow-internet-egress
+  - ../../../components/allow-egress-to-apiserver
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik

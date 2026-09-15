@@ -110,7 +110,10 @@ spec:
                   name: adventurelog-secret
                   key: DJANGO_ADMIN_PASSWORD
             - name: DJANGO_ADMIN_EMAIL
-              value: admin@pxldi.de
+              valueFrom:
+                secretKeyRef:
+                  name: adventurelog-secret
+                  key: DJANGO_ADMIN_EMAIL
             - name: PUBLIC_URL
               value: https://travel.pxldi.de
             - name: FRONTEND_URL

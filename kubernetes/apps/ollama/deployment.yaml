@@ -20,7 +20,7 @@ spec:
       priorityClassName: rechenzentrum-bulk
       containers:
         - name: ollama
-          image: ollama/ollama:0.34.0
+          image: ollama/ollama:0.34.1
           ports:
             - containerPort: 11434
               name: http

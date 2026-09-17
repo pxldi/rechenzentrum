@@ -385,7 +385,7 @@
   },
   "v1/PersistentVolumeClaim/chatops/zeroclaw-data": {
     "kind": "PersistentVolumeClaim",
-    "spec_sha256": "ce2c37c453ae3ade80d5acc4b3eea4b23734d3112658823cb8d08663dc4e2947"
+    "spec_sha256": "080fc65af7b8c09a79d9dc57d30a5b1afdd62c66aa9c10a1e5cd2223d120a8ec"
   },
   "v1/PersistentVolumeClaim/claudebox/claudebox-data-pvc": {
     "kind": "PersistentVolumeClaim",

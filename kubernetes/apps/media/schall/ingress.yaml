@@ -9,7 +9,7 @@ spec:
     - websecure
   routes:
     - kind: Rule
-      match: "Host(`cantus.pxldi.de`)"
+      match: "Host(`schall.pxldi.de`)"
       middlewares:
         - name: internal-only
           namespace: traefik
@@ -23,7 +23,7 @@ spec:
         - name: schall
           port: 8080
     - kind: Rule
-      match: "Host(`cantus.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`)"
+      match: "Host(`schall.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`)"
       priority: 15
       services:
         - name: authentik-server
@@ -35,7 +35,7 @@ spec:
     # Bearer value it did not mint. No proxy key here, so identity headers on
     # these requests are never believed.
     - kind: Rule
-      match: "Host(`cantus.pxldi.de`) && PathPrefix(`/api/`) && HeaderRegexp(`Authorization`, `^Bearer `)"
+      match: "Host(`schall.pxldi.de`) && PathPrefix(`/api/`) && HeaderRegexp(`Authorization`, `^Bearer `)"
       priority: 20
       services:
         - name: schall

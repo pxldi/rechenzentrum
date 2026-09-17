@@ -47,9 +47,9 @@ locals {
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/soulsync.png"
       description = "Music Discovery / Media Management & Soulseek Downloads"
     }
-    cantus = {
+    schall = {
       name        = "Schall"
-      host        = "cantus.${var.domain}"
+      host        = "schall.${var.domain}"
       icon        = ""
       description = "Music Collection Manager"
     }

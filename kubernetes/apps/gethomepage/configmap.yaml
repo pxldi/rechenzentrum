@@ -138,7 +138,7 @@ data:
               token: "{{HOMEPAGE_VAR_NAVIDROME_TOKEN}}"
               salt: "{{HOMEPAGE_VAR_NAVIDROME_SALT}}"
         - Schall:
-            href: https://cantus.pxldi.de
+            href: https://schall.pxldi.de
             icon: "mdi-music-box-#bfa3e8"
             description: Music library
             siteMonitor: http://schall.media.svc.cluster.local:8080

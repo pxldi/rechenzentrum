@@ -11,6 +11,11 @@ spec:
     - kind: Rule
       match: Host(`latex.pxldi.de`)
       priority: 10
+      middlewares:
+        - name: internal-only
+          namespace: traefik
+        - name: authentik-forward-auth
+          namespace: traefik
       services:
         - name: main
           port: 80

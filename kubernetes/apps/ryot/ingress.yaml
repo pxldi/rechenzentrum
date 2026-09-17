@@ -10,6 +10,9 @@ spec:
     - kind: Rule
       match: Host(`track.pxldi.de`)
       priority: 10
+      middlewares:
+        - name: internal-only
+          namespace: traefik
       services:
         - name: ryot
           port: 8000

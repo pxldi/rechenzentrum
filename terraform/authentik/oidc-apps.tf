@@ -69,10 +69,14 @@ resource "authentik_provider_oauth2" "karakeep" {
 
   # next-auth builds the callback from the provider id, and Karakeep registers
   # its OIDC provider as `custom` (apps/web/server/auth.ts). Hence the path.
+  # redirect_uri_type is what authentik already stores. Leaving it out made every
+  # plan want to rewrite both URIs, because the provider sends the object without
+  # it and reads it back set.
   allowed_redirect_uris = [
     {
-      matching_mode = "strict"
-      url           = "https://links.${var.domain}/api/auth/callback/custom"
+      matching_mode     = "strict"
+      redirect_uri_type = "authorization"
+      url               = "https://links.${var.domain}/api/auth/callback/custom"
     },
   ]
 
@@ -168,10 +172,14 @@ resource "authentik_provider_oauth2" "ryot" {
   # it does the redirect and refreshes.
   grant_types = ["authorization_code", "refresh_token"]
 
+  # redirect_uri_type is what authentik already stores. Leaving it out made every
+  # plan want to rewrite both URIs, because the provider sends the object without
+  # it and reads it back set.
   allowed_redirect_uris = [
     {
-      matching_mode = "strict"
-      url           = "https://track.${var.domain}/api/auth/callback/oidc"
+      matching_mode     = "strict"
+      redirect_uri_type = "authorization"
+      url               = "https://track.${var.domain}/api/auth/callback/oidc"
     },
   ]
 

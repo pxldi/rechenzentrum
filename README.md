@@ -44,5 +44,6 @@ Terraform state and kubeconfigs are excluded.
 - [Exposure inventory](docs/EXPOSURE.md)
 - [Rollout inventory](docs/ROLLOUTS.md)
 - [Internal Actions runners](docs/ACTIONS_RUNNER.md)
+- [ChatOps: the Telegram agent](docs/CHATOPS.md)
 - [Host power settings](docs/QUIET_MODE.md)
 - [Masterplan and open work](docs/MASTERPLAN.md)

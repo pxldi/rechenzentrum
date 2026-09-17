@@ -1,0 +1,100 @@
+# Three pods, three different sets of destinations, so these are written per
+# pod rather than pulled from the namespace-wide components. The `app` label
+# is the pod's own; the app.kubernetes.io labels stop at the Deployment.
+#
+# Ingress: nothing reaches the agent, and the two MCP servers accept only the
+# agent, on their one port. The MCP servers run with DNS-rebinding protection
+# off and no bearer token, which these two rules are the reason for.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mcp-from-zeroclaw
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: ["homelab-mcp", "tandoor-mcp"]
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: zeroclaw
+      ports:
+        - protocol: TCP
+          port: 8000
+---
+# The agent dials out to api.telegram.org and api.anthropic.com, and to its
+# two MCP servers next door. Nothing else.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zeroclaw-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: zeroclaw
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values: ["homelab-mcp", "tandoor-mcp"]
+      ports:
+        - protocol: TCP
+          port: 8000
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+      ports:
+        - protocol: TCP
+          port: 443
+---
+# The cluster view talks to the API server and nothing else. Same address as
+# the claudebox and CNPG rules: the node, on the API port.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: homelab-mcp-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: homelab-mcp
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.8.226/32
+      ports:
+        - protocol: TCP
+          port: 6443
+---
+# The recipe server reaches Tandoor by its Service name and nothing else;
+# the matching ingress rule lives in kubernetes/apps/tandoor.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tandoor-mcp-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: tandoor-mcp
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: tandoor

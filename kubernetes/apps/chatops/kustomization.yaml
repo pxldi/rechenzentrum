@@ -1,0 +1,40 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: chatops
+
+# Generated so the name carries a content hash: an edit to config.toml or to
+# the identity files rolls the ZeroClaw pod, and nothing in this cluster
+# reloads a pod on a ConfigMap change otherwise.
+configMapGenerator:
+  - name: zeroclaw-config
+    files:
+      - config.toml=zeroclaw/config.toml
+      - SOUL.md=zeroclaw/SOUL.md
+      - AGENTS.md=zeroclaw/AGENTS.md
+
+resources:
+  - secret.yaml
+  - zeroclaw/pvc.yaml
+  - zeroclaw/deployment.yaml
+  - mcp/rbac.yaml
+  - mcp/homelab-mcp.yaml
+  - mcp/tandoor-mcp.yaml
+  - networkpolicy.yaml
+
+# Egress and ingress are hand-written in networkpolicy.yaml because the three
+# pods need three different destinations and the shared components open a
+# whole namespace. Only the two defaults and DNS are shared.
+components:
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../infrastructure-config/networkpolicies/default-deny-ingress
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: chatops
+      app.kubernetes.io/instance: chatops
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

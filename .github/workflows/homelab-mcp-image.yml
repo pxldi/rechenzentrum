@@ -8,6 +8,9 @@
 name: Homelab MCP Image
 
 on:
+  # So a build can be started by hand once ENABLE_IMAGE_PUBLISH is set,
+  # without a commit to trigger it.
+  workflow_dispatch:
   pull_request:
     branches: ["main"]
     paths:

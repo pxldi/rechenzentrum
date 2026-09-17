@@ -8,6 +8,9 @@ Three states:
 - **LAN/tailnet + Authentik** — the `internal-only` middleware refuses any source
   address outside the house LAN and the tailnet, and an Authentik login follows.
   Unreachable from the internet.
+- **LAN/tailnet** — the `internal-only` middleware alone. The application's own
+  login follows; used where that login is already Authentik (OIDC) and a second
+  forward-auth prompt would only add a redirect.
 - **Authentik** — reachable from the internet, gated by an Authentik login.
 - **public** — reachable from the internet, protected only by whatever the
   application itself enforces.
@@ -23,6 +26,37 @@ Authentik outpost needs them to complete a login, and they serve nothing else.
   a client that cannot follow a login redirect works away from home. Schall
   validates the token and answers 401 to anything it did not mint. No proxy key
   applies there, so identity headers on those requests are never believed.
+
+- **Authentik itself** (`auth.pxldi.de`) and **branding** (`branding.pxldi.de`)
+  stay public. The login page is what every other gate redirects to, and it
+  loads its logo, wallpaper and fonts from branding; gating either breaks every
+  login from outside the house.
+
+## Second pass, 2026-09-18
+
+The 2026-09-13 rollout gated everything that had no login of its own. The
+question for what was left is not whether the app has a login but whether
+anything off the tailnet, or anyone but the operator, talks to it. Three were
+clear and are gated now: **Fredy**, **Overleaf** and **Ryot** are browser-only
+and single-user. The rest each have a client that cannot follow a login
+redirect or a person without a tailnet device, and stay public until that is
+decided per app:
+
+| Route | Off-tailnet consumer |
+| --- | --- |
+| `cloud.pxldi.de` | Nextcloud phone sync, CalDAV/CardDAV, share links |
+| `photos.pxldi.de` | Immich phone backup, shared albums |
+| `jellyfin.pxldi.de`, `music.pxldi.de`, `request.pxldi.de` | Media clients on TVs and phones, possibly other people's |
+| `home.pxldi.de` | Home Assistant companion app and external integrations |
+| `gotify.pxldi.de` | Phones hold a push socket to it |
+| `paperless.pxldi.de` | Phone scanner app |
+| `recipes.pxldi.de` | Tandoor, shared with the household |
+| `books.pxldi.de` | An e-reader cannot join a tailnet |
+| `fit.pxldi.de`, `obsidian.pxldi.de`, `travel.pxldi.de` | Phone apps that sync |
+| `links.pxldi.de` | Decided above |
+
+The phone on the tailnet is not always connected to it, so "gate it, the phone
+is on Tailscale" is not an answer on its own.
 
 ## Known issues
 
@@ -59,9 +93,9 @@ Authentik outpost needs them to complete a login, and they serve nothing else.
 | observability | `grafana.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | observability | `grafana.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
 | home-assistant | `home.pxldi.de` | public | none |
-| fredy | `immo.pxldi.de` | public | none |
+| fredy | `immo.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `jellyfin.pxldi.de` | public | none |
-| overleaf | `latex.pxldi.de` | public | none |
+| overleaf | `latex.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | karakeep | `links.pxldi.de` | public | none |
 | media | `music.pxldi.de` | public | none |
 | obsidian-sync | `obsidian.pxldi.de` | public | none |
@@ -76,7 +110,7 @@ Authentik outpost needs them to complete a login, and they serve nothing else.
 | searxng | `search.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | slskd | `slskd.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `sonarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| ryot | `track.pxldi.de` | public | none |
+| ryot | `track.pxldi.de` | LAN/tailnet | internal-only |
 | traefik | `traefik.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | adventurelog | `travel-admin.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | adventurelog | `travel.pxldi.de` | public | none |

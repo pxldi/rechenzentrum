@@ -119,6 +119,18 @@ locals {
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/excalidraw.png"
       description = "Whiteboard & Diagrams"
     }
+    fredy = {
+      name        = "Fredy"
+      host        = "immo.${var.domain}"
+      icon        = ""
+      description = "Property listing scraper"
+    }
+    overleaf = {
+      name        = "Overleaf"
+      host        = "latex.${var.domain}"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/overleaf.png"
+      description = "LaTeX Editor"
+    }
   }
 }
 

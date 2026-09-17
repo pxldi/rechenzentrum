@@ -17,5 +17,5 @@ spec:
         - name: authentik-forward-auth
           namespace: traefik
       services:
-        - name: main
+        - name: overleaf
           port: 80

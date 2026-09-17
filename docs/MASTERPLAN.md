@@ -82,7 +82,7 @@ Configured does not mean live or restore-tested.
 | Admission | Existing policies retained; additional Pod checks in Audit/Warn |
 | Exposure | Decided and applied 2026-09-13: 19 routes require LAN or tailnet plus Authentik, see [EXPOSURE.md](EXPOSURE.md). Karakeep and the Schall API stay public on purpose |
 | Backups | CNPG and Velero restores verified 2026-09-12, see [BACKUPS.md](BACKUPS.md); Schall audio files are deliberately excluded, see [BACKUPS.md](BACKUPS.md#cantus) |
-| Image automation | PR workflow configured; writer credential needed; suspended |
+| Image automation | Retired 2026-09-18. Renovate covers image tags; Schall follows a mutable development tag on purpose |
 | Schall namespace | slskd moved out 2026-09-13 and `media` is baseline; Schall stays, see [SCHALL_ISOLATION.md](SCHALL_ISOLATION.md) |
 | Edge/egress expansion | Done for every application namespace, see [EGRESS.md](EGRESS.md). `home-assistant` is hostNetwork so policy does not apply; `actions-runner` already had an equivalent rule |
 | ZeroClaw/MCP | Not deployed; provider/bot setup, software and scoped credentials needed |

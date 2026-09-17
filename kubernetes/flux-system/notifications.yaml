@@ -27,10 +27,6 @@ spec:
 # Kustomization unready — watching Kustomizations alone would reproduce exactly
 # the gap this is meant to close.
 #
-# ImageUpdateAutomation and ImagePolicy are here for the same reason: branding's
-# git-sync credentials broke during the org migration and failed quietly for
-# days, which is the same class of problem seen from another angle.
-#
 # Omitting `namespace` matches the kind cluster-wide, which is what is wanted —
 # the 25 HelmReleases live in 25 different namespaces and a list would go stale
 # the first time an app is added.
@@ -53,10 +49,4 @@ spec:
     - kind: OCIRepository
       name: "*"
     - kind: HelmRepository
-      name: "*"
-    - kind: ImageRepository
-      name: "*"
-    - kind: ImagePolicy
-      name: "*"
-    - kind: ImageUpdateAutomation
       name: "*"

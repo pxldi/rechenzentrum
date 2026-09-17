@@ -24,8 +24,6 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | device-plugins | DaemonSet/generic-device-plugin | RollingUpdate | none | no |
 | excalidraw | Deployment/excalidraw | RollingUpdate | none | yes |
 | flux-system | Deployment/helm-controller | RollingUpdate | none | yes |
-| flux-system | Deployment/image-automation-controller | RollingUpdate | none | yes |
-| flux-system | Deployment/image-reflector-controller | RollingUpdate | none | yes |
 | flux-system | Deployment/kustomize-controller | RollingUpdate | none | yes |
 | flux-system | Deployment/notification-controller | RollingUpdate | none | yes |
 | flux-system | Deployment/source-controller | Recreate | none | yes |

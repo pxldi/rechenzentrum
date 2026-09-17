@@ -26,12 +26,6 @@
   "apps/v1/Deployment/flux-system/helm-controller": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/flux-system/image-automation-controller": {
-    "kind": "Deployment"
-  },
-  "apps/v1/Deployment/flux-system/image-reflector-controller": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/flux-system/kustomize-controller": {
     "kind": "Deployment"
   },

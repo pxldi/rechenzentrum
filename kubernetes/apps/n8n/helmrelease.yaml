@@ -112,9 +112,14 @@ spec:
           http:
             port: 5678
 
+    # Off on purpose. The route lives in ingress.yaml as an IngressRoute so it
+    # can carry the internal-only and forward-auth middlewares. The chart's
+    # Ingress for the same host carried neither, and because Traefik ranks an
+    # Ingress router by rule length and the IngressRoute is pinned at 10, the
+    # bare Ingress won every request and the gate never ran. Found 2026-09-18.
     ingress:
       main:
-        enabled: true
+        enabled: false
         className: "traefik"
         hosts:
           - host: automation.pxldi.de

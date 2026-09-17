@@ -60,6 +60,16 @@ is on Tailscale" is not an answer on its own.
 
 ## Known issues
 
+- **A chart-generated Ingress shadows the IngressRoute.** Overleaf and n8n are
+  app-template charts, and each chart also rendered a plain `Ingress` for the
+  same host with no middleware. Traefik gives an `Ingress` router a priority
+  equal to its rule length, and the IngressRoutes here are pinned at 10, so the
+  bare router won every request and neither `internal-only` nor forward-auth
+  ever ran: `automation.pxldi.de` answered 200 to an anonymous request and
+  `latex.pxldi.de` went straight to Overleaf's own login. Both chart ingresses
+  were switched off on 2026-09-18. This inventory lists IngressRoutes; check
+  `kubectl get ingress -A` too, because the table cannot see a shadow.
+
 - **The apex depends on one AdGuard rewrite.** It is the only name still proxied
   by Cloudflare in public DNS; every subdomain points straight at the house. So
   an apex request that is not rewritten locally arrives wearing Cloudflare's

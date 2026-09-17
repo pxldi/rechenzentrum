@@ -43,7 +43,6 @@ Terraform state and kubeconfigs are excluded.
 - [Schall isolation design](docs/SCHALL_ISOLATION.md)
 - [Exposure inventory](docs/EXPOSURE.md)
 - [Rollout inventory](docs/ROLLOUTS.md)
-- [Image automation](docs/IMAGE_AUTOMATION.md)
 - [Internal Actions runners](docs/ACTIONS_RUNNER.md)
 - [Host power settings](docs/QUIET_MODE.md)
 - [Masterplan and open work](docs/MASTERPLAN.md)

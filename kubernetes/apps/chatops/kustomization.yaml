@@ -15,11 +15,13 @@ configMapGenerator:
 resources:
   - secret.yaml
   - secret-telegram-chat.yaml
+  - secret-caldav.yaml
   - zeroclaw/pvc.yaml
   - zeroclaw/deployment.yaml
   - mcp/rbac.yaml
   - mcp/homelab-mcp.yaml
   - mcp/tandoor-mcp.yaml
+  - mcp/calendar-mcp.yaml
   - networkpolicy.yaml
 
 # Egress and ingress are hand-written in networkpolicy.yaml because the three

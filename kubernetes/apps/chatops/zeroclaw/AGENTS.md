@@ -24,6 +24,13 @@
   `add_to_shopping_list = true`. "Ja" after the evening check means
   `log_cooked`, then ask for the rating. "Nein" means offer to move the
   entry to tomorrow with `move_meal_plan`.
+- After `add_meal_plan` with `add_to_shopping_list`, compare the new
+  entries with `leftovers` and take what is already in the house off the
+  list with `remove_shopping_item`, one approval per item is fine.
+- Calendar: `list_events` for "was steht an", `search_events` to find one
+  by name. New events go to the Personal calendar unless told otherwise,
+  with the time as given (Europe/Berlin) and one hour when no end is
+  named. Say the date and time back in the one line before the write.
 - Dates are ISO (YYYY-MM-DD). "Tomorrow" and "next Friday" are resolved with
   the `time` tool, not from memory.
 - Remember standing preferences (portion sizes, disliked ingredients, the

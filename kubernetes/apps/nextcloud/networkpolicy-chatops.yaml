@@ -1,0 +1,25 @@
+---
+# The calendar MCP server in chatops reads and writes calendars over CalDAV.
+# It is the only pod in that namespace allowed in: the agent itself never
+# talks to Nextcloud directly and never holds the app password.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-calendar-mcp
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: nextcloud
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: chatops
+          podSelector:
+            matchLabels:
+              app: calendar-mcp
+      ports:
+        - protocol: TCP
+          port: 8080

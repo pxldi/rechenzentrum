@@ -65,16 +65,16 @@ spec:
         # MCP pod still answers, and ZeroClaw then registers its stale tool
         # list (or a dead session) until someone restarts it. This runs the
         # MCP image itself and waits until both Services report its own
-        # build, so the three image references below must move together.
+        # build, so every homelab-mcp image reference in this directory must move together.
         # After two minutes it starts the bot anyway, with a warning: a bot
         # with old tools beats no bot.
         - name: wait-for-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-8367ff5e35aa9d54f1d559edee18c99eaa3bdcda
+          image: ghcr.io/pxldi/homelab-mcp:sha-e5382336d06b03f82fb67edfeccfe4f2d3d08609
           imagePullPolicy: IfNotPresent
           command: ["python", "/app/src/wait_for_mcp.py"]
           env:
             - name: MCP_URLS
-              value: http://homelab-mcp.chatops.svc.cluster.local:8000,http://tandoor-mcp.chatops.svc.cluster.local:8000
+              value: http://homelab-mcp.chatops.svc.cluster.local:8000,http://tandoor-mcp.chatops.svc.cluster.local:8000,http://calendar-mcp.chatops.svc.cluster.local:8000
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534

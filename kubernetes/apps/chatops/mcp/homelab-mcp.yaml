@@ -28,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: homelab-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-f6938732e97d8f58f62c84e67cb2bb578504dab0
+          image: ghcr.io/pxldi/homelab-mcp:sha-a05f28453764dbf3af2adc164b054dece3e4520a
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "homelab_mcp"]
           ports:

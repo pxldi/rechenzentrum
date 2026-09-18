@@ -24,8 +24,8 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 
 | Server | Tools | Approval |
 | --- | --- | --- |
-| tandoor | `search_recipes`, `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan` | runs on its own |
-| tandoor | `create_recipe`, `update_recipe`, `add_meal_plan` | approve/deny keyboard in the chat first |
+| tandoor | `search_recipes`, `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `leftovers`, `recipes_for_leftovers` | runs on its own |
+| tandoor | `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size` | approve/deny keyboard in the chat first |
 | homelab | `list_services`, `list_workloads`, `workload_status`, `pod_logs`, `events`, `flux_status`, `backups` | runs on its own |
 
 There is no restart, scale, reconcile or "run kubectl" tool, and the

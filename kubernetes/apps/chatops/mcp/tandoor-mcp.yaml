@@ -25,7 +25,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: tandoor-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-960aefe3bc19517331463ac1c5be25e272c16318
+          image: ghcr.io/pxldi/homelab-mcp:sha-f6938732e97d8f58f62c84e67cb2bb578504dab0
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "tandoor_mcp"]
           ports:

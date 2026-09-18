@@ -261,8 +261,10 @@ async def add_meal_plan(
     title: str = Field("", description="Free-text entry, used when no recipe is given."),
     servings: int = Field(2, ge=1),
     note: str = "",
+    add_to_shopping_list: bool = Field(False, description="Also put the recipe's ingredients on the shopping list, linked to this entry."),
 ) -> dict:
-    """Put a recipe (or a free-text title) on the meal plan for a date and meal type."""
+    """Put a recipe (or a free-text title) on the meal plan for a date and meal type.
+    With add_to_shopping_list the ingredients land on the shopping list too."""
     types = await list_meal_types()
     match = next((t for t in types if t["name"].lower() == meal_type.lower()), None)
     if match is None:
@@ -273,6 +275,7 @@ async def add_meal_plan(
         "servings": servings,
         "note": note,
         "title": title,
+        "addshopping": bool(add_to_shopping_list and recipe_id is not None),
     }
     if recipe_id is not None:
         recipe = await _get(f"/recipe/{recipe_id}/")
@@ -281,7 +284,7 @@ async def add_meal_plan(
     elif not title:
         raise RuntimeError("either recipe_id or title is required")
     r = await _send("POST", "/meal-plan/", body)
-    return {"id": r.get("id"), "date": date, "meal_type": match["name"], "title": r.get("title")}
+    return {"id": r.get("id"), "date": date, "meal_type": match["name"], "title": r.get("title"), "on_shopping_list": bool(r.get("shopping"))}
 
 
 @mcp.tool()

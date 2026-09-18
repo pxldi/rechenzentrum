@@ -59,6 +59,42 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /zeroclaw-data
+        # ZeroClaw connects to its MCP servers once, at startup, and runs
+        # without their tools if that fails; it does not retry. On a fresh
+        # pod the first connects were refused (the pod's NetworkPolicy rules
+        # or the Services' endpoints not in place yet), so the bot came up
+        # with no Tandoor or homelab tools. This waits until both answer
+        # /health from this pod's own IP and labels. It gives up after about
+        # two minutes so a dead MCP server leaves a bot without tools rather
+        # than no bot at all.
+        - name: wait-for-mcp
+          image: alpine:3.24
+          command:
+            - sh
+            - -c
+            - >-
+              for i in $(seq 1 40); do
+              wget -q -O /dev/null -T 3 http://homelab-mcp.chatops.svc.cluster.local:8000/health &&
+              wget -q -O /dev/null -T 3 http://tandoor-mcp.chatops.svc.cluster.local:8000/health &&
+              echo "MCP servers reachable after $i attempt(s)" && exit 0;
+              sleep 3;
+              done;
+              echo "MCP servers still unreachable, starting without them" >&2
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
       containers:
         - name: zeroclaw
           image: ghcr.io/zeroclaw-labs/zeroclaw:v0.8.5@sha256:ba9c76b9287c125ec9cc9a8270654f2c0efbd610eef3e00eece3cd11f6c083e0

@@ -294,10 +294,14 @@ async def log_cooked(
     rating: int | None = Field(None, ge=1, le=5, description="1 (never again) to 5 (loved it). Omit when not rated."),
     servings: int | None = Field(None, ge=1),
     comment: str = "",
+    cooked_on: str | None = Field(None, description="YYYY-MM-DD when it was not today, e.g. 'das hab ich Dienstag gekocht'."),
 ) -> dict:
-    """Record that a recipe was cooked today (a Tandoor cook log entry). leftovers()
-    then treats what it needed as used up. Call again later to add a rating."""
+    """Record that a recipe was cooked (a Tandoor cook log entry), today or on
+    cooked_on. leftovers() then treats what it needed as used up. Call again
+    later to add a rating."""
     body: dict[str, Any] = {"recipe": recipe_id, "comment": comment}
+    if cooked_on:
+        body["created_at"] = f"{cooked_on}T19:00:00"
     if rating is not None:
         body["rating"] = rating
     if servings is not None:

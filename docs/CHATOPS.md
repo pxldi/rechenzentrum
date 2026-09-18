@@ -97,9 +97,14 @@ the pod shows the synced jobs; `zeroclaw cron run <id>` fires one by hand.
 
 The image tag is the commit that produced it (`sha-<commit>`), and the
 workflow only pushes from `main`. So a change to `images/homelab-mcp/` is two
-PRs: the code, then the tag bump in the two Deployments once the build on
-`main` has published it. `ENABLE_IMAGE_PUBLISH` must be `true` in the
-repository variables or the workflow does not run at all.
+PRs: the code, then the tag bump once the build on `main` has published
+it. The tag appears three times under `kubernetes/apps/chatops/`: the two
+MCP Deployments and ZeroClaw's `wait-for-mcp` init container, which runs
+the same image and waits until both Services report its own build (see
+`/health`). Bump all three with one `sed`; a lone bump leaves the init
+container waiting two minutes and then starting the bot with a warning.
+`ENABLE_IMAGE_PUBLISH` must be `true` in the repository variables or the
+workflow does not run at all.
 
 The masterplan says MCP software gets its own repository, like Schall. It is
 in `images/` here for now because a new public repository is a decision, not

@@ -60,26 +60,21 @@ spec:
             - name: data
               mountPath: /zeroclaw-data
         # ZeroClaw connects to its MCP servers once, at startup, and runs
-        # without their tools if that fails; it does not retry. On a fresh
-        # pod the first connects were refused (the pod's NetworkPolicy rules
-        # or the Services' endpoints not in place yet), so the bot came up
-        # with no Tandoor or homelab tools. This waits until both answer
-        # /health from this pod's own IP and labels. It gives up after about
-        # two minutes so a dead MCP server leaves a bot without tools rather
-        # than no bot at all.
+        # without their tools if that fails; it does not retry. A plain
+        # /health check is not enough: during a tag bump the terminating old
+        # MCP pod still answers, and ZeroClaw then registers its stale tool
+        # list (or a dead session) until someone restarts it. This runs the
+        # MCP image itself and waits until both Services report its own
+        # build, so the three image references below must move together.
+        # After two minutes it starts the bot anyway, with a warning: a bot
+        # with old tools beats no bot.
         - name: wait-for-mcp
-          image: alpine:3.24
-          command:
-            - sh
-            - -c
-            - >-
-              for i in $(seq 1 40); do
-              wget -q -O /dev/null -T 3 http://homelab-mcp.chatops.svc.cluster.local:8000/health &&
-              wget -q -O /dev/null -T 3 http://tandoor-mcp.chatops.svc.cluster.local:8000/health &&
-              echo "MCP servers reachable after $i attempt(s)" && exit 0;
-              sleep 3;
-              done;
-              echo "MCP servers still unreachable, starting without them" >&2
+          image: ghcr.io/pxldi/homelab-mcp:sha-8367ff5e35aa9d54f1d559edee18c99eaa3bdcda
+          imagePullPolicy: IfNotPresent
+          command: ["python", "/app/src/wait_for_mcp.py"]
+          env:
+            - name: MCP_URLS
+              value: http://homelab-mcp.chatops.svc.cluster.local:8000,http://tandoor-mcp.chatops.svc.cluster.local:8000
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534
@@ -94,7 +89,7 @@ spec:
           resources:
             requests:
               cpu: 10m
-              memory: 16Mi
+              memory: 32Mi
         # The cron nudges need the Telegram chat id in `[cron.<alias>].delivery.to`,
         # and ZeroClaw's env-override grammar stops at the `cron` map (it
         # rejects ZEROCLAW_cron__<alias>__delivery__to as an unknown property).

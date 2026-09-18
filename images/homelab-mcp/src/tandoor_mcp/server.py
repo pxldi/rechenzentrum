@@ -284,6 +284,43 @@ async def add_meal_plan(
     return {"id": r.get("id"), "date": date, "meal_type": match["name"], "title": r.get("title")}
 
 
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def log_cooked(
+    recipe_id: int,
+    rating: int | None = Field(None, ge=1, le=5, description="1 (never again) to 5 (loved it). Omit when not rated."),
+    servings: int | None = Field(None, ge=1),
+    comment: str = "",
+) -> dict:
+    """Record that a recipe was cooked today (a Tandoor cook log entry). leftovers()
+    then treats what it needed as used up. Call again later to add a rating."""
+    body: dict[str, Any] = {"recipe": recipe_id, "comment": comment}
+    if rating is not None:
+        body["rating"] = rating
+    if servings is not None:
+        body["servings"] = servings
+    r = await _send("POST", "/cook-log/", body)
+    return {"id": r.get("id"), "recipe_id": recipe_id, "rating": r.get("rating"), "created_at": (r.get("created_at") or "")[:10]}
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def move_meal_plan(
+    entry_id: int = Field(..., description="Meal plan entry id (see list_meal_plan)."),
+    to_date: str = Field(..., description="New day, YYYY-MM-DD. The time of day stays as it was."),
+) -> dict:
+    """Move a meal plan entry to another day."""
+    e = await _get(f"/meal-plan/{entry_id}/")
+    old = e.get("from_date") or ""
+    time_part = old[10:] if len(old) > 10 else ""
+    when = f"{to_date}{time_part}"
+    # The serializer's update reads servings unconditionally when the entry
+    # has a shopping list attached, so it goes along with the dates.
+    body = {"from_date": when, "to_date": when, "servings": e.get("servings") or 1}
+    r = await _send("PATCH", f"/meal-plan/{entry_id}/", body)
+    return {"id": r.get("id"), "title": r.get("title") or (r.get("recipe") or {}).get("name"), "from": old[:10], "to": to_date}
+
+
 # --- leftovers -------------------------------------------------------------
 
 

@@ -1,4 +1,6 @@
+import asyncio
 import os
+from datetime import date, timedelta
 from typing import Any
 
 import httpx
@@ -6,6 +8,7 @@ from mcp.server import MCPServer
 from pydantic import BaseModel, Field
 
 from serve import guarded
+from tandoor_mcp import leftovers as lo
 
 mcp = MCPServer("tandoor")
 
@@ -29,6 +32,21 @@ async def _get(path: str, **params: Any) -> Any:
         r = await c.get(path, params={k: v for k, v in params.items() if v is not None})
         r.raise_for_status()
         return r.json()
+
+
+async def _get_all(path: str, **params: Any) -> list[dict]:
+    """Every page of a paginated list endpoint."""
+    params = {"page_size": 200, **params}
+    data = await _get(path, **params)
+    if not isinstance(data, dict):
+        return list(data)
+    items = list(data.get("results", []))
+    page = 1
+    while data.get("next") and page < 50:
+        page += 1
+        data = await _get(path, **params, page=page)
+        items += data.get("results", [])
+    return items
 
 
 async def _send(method: str, path: str, body: dict) -> Any:
@@ -264,3 +282,112 @@ async def add_meal_plan(
         raise RuntimeError("either recipe_id or title is required")
     r = await _send("POST", "/meal-plan/", body)
     return {"id": r.get("id"), "date": date, "meal_type": match["name"], "title": r.get("title")}
+
+
+# --- leftovers -------------------------------------------------------------
+
+
+async def _cooked(today: date) -> dict[int, list[date]]:
+    logs, plans = await asyncio.gather(
+        _get_all("/cook-log/"),
+        _get("/meal-plan/", from_date=(today - timedelta(days=60)).isoformat(), to_date=today.isoformat()),
+    )
+    plans = plans.get("results", plans) if isinstance(plans, dict) else plans
+    return lo.cooked_dates(logs, plans, today)
+
+
+async def _leftovers(today: date) -> tuple[list[dict], dict[int, list[date]], int]:
+    entries, conversions, cooked, prefs = await asyncio.gather(
+        _get_all("/shopping-list-entry/"),
+        _get_all("/unit-conversion/", query=lo.PACK_UNIT),
+        _cooked(today),
+        _get("/user-preference/"),
+    )
+    prefs = prefs[0] if isinstance(prefs, list) and prefs else prefs
+    window = min(int((prefs or {}).get("shopping_recent_days") or 7), 14)
+    items = lo.compute_leftovers(entries, lo.pack_sizes_from_conversions(conversions), cooked, today)
+    return items, cooked, window
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def leftovers() -> dict:
+    """What is probably still in the kitchen, from checked shopping list entries.
+
+    Bought = what the recipes needed, rounded up to whole packs, plus items bought
+    off-list. Cooked recipes (cook log, or a meal plan day that has passed) are
+    subtracted; recipes still on the list show up as reserved_for. Each item
+    decays by a shelf life from its supermarket category (produce and dairy in
+    days, dry goods in months). `estimate` is true when the pack size came from a
+    built-in German default rather than a UnitConversion in Tandoor; `pack.source`
+    'unknown' means neither existed, ask for it and store it with set_pack_size.
+    Only the last `window_days` of purchases are visible (Tandoor's shopping
+    history setting, at most 14).
+    """
+    today = date.today()
+    items, _, window = await _leftovers(today)
+    return {"as_of": today.isoformat(), "window_days": window, "items": items}
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def recipes_for_leftovers(
+    limit: int = Field(5, ge=1, le=15),
+    skip_cooked_within_days: int = Field(14, ge=0, le=90),
+) -> dict:
+    """Recipes ranked by how many current leftovers they use, perishables that run
+    out soon weighted highest. Recipes cooked recently are skipped. `missing` lists
+    the ingredients the leftovers do not cover."""
+    today = date.today()
+    items, cooked, _ = await _leftovers(today)
+    if not items:
+        return {"as_of": today.isoformat(), "leftovers": 0, "recipes": []}
+    summaries = await _get_all("/recipe/")
+    sem = asyncio.Semaphore(6)
+
+    async def full(rid: int) -> dict:
+        async with sem:
+            return await _get(f"/recipe/{rid}/")
+
+    recipes = await asyncio.gather(*(full(r["id"]) for r in summaries))
+    ranked = lo.rank_recipes(list(recipes), items, cooked, today, skip_cooked_within_days, limit)
+    return {"as_of": today.isoformat(), "leftovers": len(items), "recipes": ranked}
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def set_pack_size(
+    food: str = Field(..., description="Food name as it appears in Tandoor, e.g. 'Feta'."),
+    amount: float = Field(..., gt=0, description="Content of one pack, e.g. 200."),
+    unit: str = Field(..., description="Unit of that content: g, kg, ml or l."),
+) -> dict:
+    """Store how big one pack of a food is (1 Packung Feta = 200 g) as a Tandoor
+    UnitConversion, so leftovers() stops estimating it. Replaces an earlier value."""
+    fam, _ = lo.unit_family(unit)
+    if fam not in ("mass", "volume"):
+        raise RuntimeError(f"unit must be g, kg, ml or l, not {unit!r}")
+    wanted = lo.normalise_food_name(food)
+    foods = await _get_all("/food/", query=food)
+    match = next((f for f in foods if lo.normalise_food_name(f["name"]) == wanted), None)
+    if match is None:
+        names = [f["name"] for f in foods[:10]]
+        raise RuntimeError(f"no food named {food!r} in Tandoor; close matches: {names}")
+    existing = [
+        c
+        for c in await _get_all("/unit-conversion/", food_id=match["id"])
+        if ((c.get("base_unit") or {}).get("name") or "").lower() == lo.PACK_UNIT.lower()
+    ]
+    body = {
+        "base_amount": 1,
+        "base_unit": {"name": lo.PACK_UNIT},
+        "converted_amount": amount,
+        "converted_unit": {"name": unit},
+        "food": {"id": match["id"], "name": match["name"]},
+    }
+    if existing:
+        # POST would hand back the existing row unchanged (the serializer
+        # dedups on food and units), so an update has to be a PATCH.
+        r = await _send("PATCH", f"/unit-conversion/{existing[0]['id']}/", body)
+    else:
+        r = await _send("POST", "/unit-conversion/", body)
+    return {"id": r.get("id"), "food": match["name"], "pack": f"1 {lo.PACK_UNIT} = {amount:g} {unit}"}

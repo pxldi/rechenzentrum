@@ -36,7 +36,9 @@ spec:
         # The bridge reads a JSON config that has to contain the CouchDB
         # credentials and the vault's E2EE passphrase in clear. It is
         # rendered from the Secret into a memory-backed emptyDir, so the
-        # passphrase is never on the volume.
+        # passphrase is never on the volume. The same step creates the
+        # mirror directory: the bridge stats its baseDir at start and exits
+        # when it is missing, and a subPath mount only creates the subPath.
         - name: render-config
           image: alpine:3.24
           command:
@@ -48,7 +50,8 @@ spec:
               -e "s|@VAULT_PASSPHRASE@|${VAULT_PASSPHRASE}|g"
               /config-src/config.json > /rendered/config.json &&
               ! grep -q '@' /rendered/config.json &&
-              ! grep -q 'REPLACE_ME' /rendered/config.json
+              ! grep -q 'REPLACE_ME' /rendered/config.json &&
+              mkdir -p /data/vault-root/vault /data/bridge-state
           env:
             - name: COUCHDB_USER
               valueFrom:
@@ -81,9 +84,11 @@ spec:
               readOnly: true
             - name: rendered
               mountPath: /rendered
+            - name: data
+              mountPath: /data
       containers:
         - name: bridge
-          image: ghcr.io/pxldi/livesync-bridge:sha-30d134b9e442a96c4ddc4a7abe7a73359b3fa6ec
+          image: ghcr.io/pxldi/livesync-bridge:sha-00d9b6cbf891d01a5225a1ad8bea5006ba8458bd
           imagePullPolicy: IfNotPresent
           env:
             - name: LSB_CONFIG

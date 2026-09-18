@@ -3,17 +3,25 @@
 #
 # Secrets are not in here. They arrive as environment variables from the
 # chatops-credentials Secret using ZeroClaw's schema-mirror grammar
-# (ZEROCLAW_<path with __ separators>): the Telegram bot token, the Anthropic
-# key and the list of Telegram user ids allowed to talk to the bot.
+# (ZEROCLAW_<path with __ separators>): the Telegram bot token and the list of
+# Telegram user ids allowed to talk to the bot.
 schema_version = 3
 
-[providers.models.anthropic.default]
-model = "claude-opus-5"
-context_window = 1000000
+# The model runs on the operator's ChatGPT subscription through the Codex
+# backend, not a metered API key. requires_openai_auth reads ZeroClaw's own
+# `openai-codex` auth profile, which lives encrypted on the PVC and is created
+# once by hand with a device-code login (docs/CHATOPS.md). It is a separate
+# login from claudebox's: Codex refresh tokens rotate and allow one owner, so
+# sharing one would make the two log each other out. The model must be an
+# exact ID served by the Codex backend.
+[providers.models.openai.default]
+model = "gpt-5.4"
+wire_api = "responses"
+requires_openai_auth = true
 
 [agents.haus]
 enabled = true
-model_provider = "anthropic.default"
+model_provider = "openai.default"
 risk_profile = "haus"
 runtime_profile = "default"
 channels = ["telegram.home"]
@@ -83,6 +91,8 @@ port = 42617
 require_pairing = true
 check_updates = false
 
+# The subscription path is recorded at $0 per call (ZeroClaw cannot see the
+# plan's allowance), so these caps only bite on a metered provider.
 [cost]
 enabled = true
 daily_limit_usd = 3.0

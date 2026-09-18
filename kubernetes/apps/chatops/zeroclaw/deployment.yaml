@@ -72,8 +72,9 @@ spec:
             - name: HOME
               value: /zeroclaw-data
             # ZeroClaw resolves its install root from the config dir first, so
-            # sessions, state and the agent workspace all land under this
-            # directory on the PVC. config.toml is a read-only file inside it.
+            # sessions, state, the agent workspace and the encrypted Codex auth
+            # profile (with the .secret_key that decrypts it) all land under
+            # this directory on the PVC. config.toml is a read-only file inside it.
             - name: ZEROCLAW_CONFIG_DIR
               value: /zeroclaw-data/zeroclaw
             - name: ZEROCLAW_DATA_DIR
@@ -88,11 +89,6 @@ spec:
                 secretKeyRef:
                   name: chatops-credentials
                   key: TELEGRAM_PEERS
-            - name: ZEROCLAW_providers__models__anthropic__default__api_key
-              valueFrom:
-                secretKeyRef:
-                  name: chatops-credentials
-                  key: ANTHROPIC_API_KEY
           securityContext:
             # The image runs as nobody and has no shell to chown with.
             runAsNonRoot: true

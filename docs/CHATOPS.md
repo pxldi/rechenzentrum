@@ -10,9 +10,10 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 
 - **zeroclaw** is [ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw), a
   Rust agent runtime, pinned by digest. It long-polls Telegram, so it needs no
-  inbound route, and calls Claude through the Anthropic API. It holds the
-  Telegram token and the Anthropic key and nothing else; it never sees a
-  Tandoor token or a cluster credential.
+  inbound route, and calls GPT-5.x through the Codex backend on the
+  operator's ChatGPT subscription. It holds the Telegram token and its own
+  Codex login and nothing else; it never sees a Tandoor token or a cluster
+  credential.
 - **tandoor-mcp** and **homelab-mcp** are two small Python MCP servers built
   from `images/homelab-mcp/` into one image. Each holds the one credential
   its tools need. They speak Streamable HTTP on port 8000 and accept
@@ -48,14 +49,31 @@ ZeroClaw as environment variables in its schema-mirror grammar
 | --- | --- | --- |
 | `TELEGRAM_BOT_TOKEN` | zeroclaw | @BotFather, `/newbot` |
 | `TELEGRAM_PEERS` | zeroclaw | A JSON list of numeric Telegram user ids, e.g. `'["123456789"]'`. Message the bot once with the placeholder in place and it replies with your id |
-| `ANTHROPIC_API_KEY` | zeroclaw | console.anthropic.com |
 | `TANDOOR_TOKEN` | tandoor-mcp | Tandoor, Settings, API, new token with scope `read write` |
 
 The peer list is non-empty on purpose: with it set, ZeroClaw never issues a
 one-time `/bind` code, and never tries to write the paired id into a
 `config.toml` that is mounted read-only.
 
-Spend is capped in `[cost]` (daily and monthly, USD). ZeroClaw's own memory
+The model login is not in the Secret. ZeroClaw keeps it as an encrypted
+auth profile on the `zeroclaw-data` PVC, next to the `.secret_key` that
+decrypts it, and refreshes it there. Create it once after the first deploy:
+
+```sh
+kubectl -n chatops exec -it deploy/zeroclaw -- \
+  zeroclaw auth login --model-provider openai-codex --device-code
+kubectl -n chatops exec deploy/zeroclaw -- zeroclaw auth status
+kubectl -n chatops rollout restart deploy/zeroclaw
+```
+
+Open the printed URL, sign in with the ChatGPT account and enter the code.
+This is a login of its own, not an import of claudebox's `~/.codex`: Codex
+refresh tokens rotate and allow one owner, so two consumers of one login log
+each other out. The profile does not survive losing the PVC; log in again.
+Usage draws on the plan's included Codex allowance, which ZeroClaw cannot
+see; it records these calls at $0, so `[cost]` does not cap them.
+
+Spend on metered providers is capped in `[cost]` (daily and monthly, USD). ZeroClaw's own memory
 lives on the `zeroclaw-data` PVC, so what the bot is told to remember survives
 a restart; the pod is `Recreate` because of it.
 

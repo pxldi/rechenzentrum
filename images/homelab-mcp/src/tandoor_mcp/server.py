@@ -328,6 +328,55 @@ async def move_meal_plan(
     return {"id": r.get("id"), "title": r.get("title") or (r.get("recipe") or {}).get("name"), "from": old[:10], "to": to_date}
 
 
+# --- shopping list ---------------------------------------------------------
+
+
+def _entry_summary(e: dict) -> dict:
+    lr = e.get("list_recipe_data") or {}
+    return {
+        "id": e["id"],
+        "food": (e.get("food") or {}).get("name"),
+        "amount": e.get("amount"),
+        "unit": (e.get("unit") or {}).get("name"),
+        "checked": bool(e.get("checked")),
+        "recipe": ((lr.get("recipe_data") or {}).get("name")) if lr else None,
+        "meal_plan_id": lr.get("mealplan") if lr else None,
+    }
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def list_shopping_list(include_checked: bool = Field(False, description="Also return recently checked entries.")) -> list[dict]:
+    """The shopping list: open entries with id, food, amount, unit and the recipe they came from."""
+    entries = await _get_all("/shopping-list-entry/")
+    return [_entry_summary(e) for e in entries if include_checked or not e.get("checked")]
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def add_shopping_item(
+    food: str = Field(..., description="Food name; created in Tandoor if new."),
+    amount: float = Field(1, ge=0),
+    unit: str = Field("", description="Unit name, e.g. 'g'. Empty for pieces."),
+) -> dict:
+    """Put one item on the shopping list."""
+    body: dict[str, Any] = {"food": {"name": food}, "amount": amount, "unit": {"name": unit} if unit else None}
+    r = await _send("POST", "/shopping-list-entry/", body)
+    return _entry_summary(r)
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def remove_shopping_item(entry_id: int = Field(..., description="Entry id from list_shopping_list.")) -> dict:
+    """Take one entry off the shopping list (deleted, not checked). Use it to drop what
+    is already in the house after add_meal_plan put a whole recipe on the list."""
+    async with _client() as c:
+        r = await c.delete(f"/shopping-list-entry/{entry_id}/")
+        if r.status_code >= 400:
+            raise RuntimeError(f"Tandoor answered {r.status_code}: {r.text[:300]}")
+    return {"removed": entry_id}
+
+
 # --- leftovers -------------------------------------------------------------
 
 

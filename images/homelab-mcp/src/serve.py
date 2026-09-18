@@ -67,7 +67,7 @@ def serve(mcp: MCPServer) -> None:
 
     @mcp.custom_route("/health", methods=["GET"])
     async def health(_: Request) -> Response:
-        return JSONResponse({"status": "ok", "server": mcp.name})
+        return JSONResponse({"status": "ok", "server": mcp.name, "build": os.environ.get("IMAGE_SHA", "")})
 
     app = mcp.streamable_http_app(
         transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),

@@ -18,6 +18,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 ENV PYTHONPATH=/app/src
 
+# The commit this image was built from, reported by /health as "build".
+# ZeroClaw's wait-for-mcp init container runs this same image and waits until
+# both Services answer with its own build, so a rollout cannot hand ZeroClaw
+# the terminating pod's tool list.
+ARG GIT_SHA=dev
+ENV IMAGE_SHA=$GIT_SHA
+
 # Nothing here needs root, and the deployment runs it as 1000 with a
 # read-only root filesystem; the servers write nothing to disk.
 USER 1000:1000

@@ -61,6 +61,8 @@ jobs:
         with:
           context: images/homelab-mcp
           platforms: linux/amd64
+          build-args: |
+            GIT_SHA=${{ env.SHA }}
           push: ${{ github.event_name != 'pull_request' }}
           load: ${{ github.event_name == 'pull_request' }}
           tags: |

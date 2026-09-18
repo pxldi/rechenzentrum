@@ -1,11 +1,12 @@
 # ChatOps
 
-A Telegram bot that can read the cluster and manage recipes, built from three
-pods in the `chatops` namespace:
+A Telegram bot that can read the cluster, manage recipes and the calendar,
+built from four pods in the `chatops` namespace:
 
 ```text
-Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, meal plan)
-              (agent)  └▶ homelab-mcp ──▶ API server (read-only)
+Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, meal plan, shopping list)
+              (agent)  ├▶ homelab-mcp ──▶ API server (read-only)
+                       └▶ calendar-mcp ─▶ nextcloud (CalDAV)
 ```
 
 - **zeroclaw** is [ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw), a
@@ -14,8 +15,9 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
   operator's ChatGPT subscription. It holds the Telegram token and its own
   Codex login and nothing else; it never sees a Tandoor token or a cluster
   credential.
-- **tandoor-mcp** and **homelab-mcp** are two small Python MCP servers built
-  from `images/homelab-mcp/` into one image. Each holds the one credential
+- **tandoor-mcp**, **homelab-mcp** and **calendar-mcp** are small Python MCP
+  servers built from `images/homelab-mcp/` into one image (a fourth,
+  `vault_mcp`, is in the image but not deployed yet). Each holds the one credential
   its tools need. They speak Streamable HTTP on port 8000 and accept
   connections only from the zeroclaw pod (NetworkPolicy), which is why they
   carry no bearer token of their own.
@@ -24,8 +26,10 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 
 | Server | Tools | Approval |
 | --- | --- | --- |
-| tandoor | `search_recipes`, `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `leftovers`, `recipes_for_leftovers`, `log_cooked` | runs on its own |
-| tandoor | `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size`, `move_meal_plan` | approve/deny keyboard in the chat first |
+| tandoor | `search_recipes`, `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `leftovers`, `recipes_for_leftovers`, `log_cooked`, `list_shopping_list` | runs on its own |
+| tandoor | `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size`, `move_meal_plan`, `add_shopping_item`, `remove_shopping_item` | approve/deny keyboard in the chat first |
+| calendar | `list_calendars`, `list_events`, `search_events` | runs on its own |
+| calendar | `create_event`, `move_event`, `delete_event` | approve/deny keyboard in the chat first |
 | homelab | `list_services`, `list_workloads`, `workload_status`, `pod_logs`, `events`, `flux_status`, `backups` | runs on its own |
 
 There is no restart, scale, reconcile or "run kubectl" tool, and the
@@ -50,6 +54,7 @@ ZeroClaw as environment variables in its schema-mirror grammar
 | `TELEGRAM_BOT_TOKEN` | zeroclaw | @BotFather, `/newbot` |
 | `TELEGRAM_PEERS` | zeroclaw | A JSON list of numeric Telegram user ids, e.g. `'["123456789"]'`. Message the bot once with the placeholder in place and it replies with your id |
 | `TANDOOR_TOKEN` | tandoor-mcp | Tandoor, Settings, API, new token with scope `read write` |
+| `CALDAV_PASSWORD` (in `secret-caldav.yaml`) | calendar-mcp | A Nextcloud app password: `occ user:auth-tokens:add <user> --name clanky-calendar -n` in the nextcloud pod. Account-wide, not calendar-scoped; revoke under Settings, Security |
 
 The peer list is non-empty on purpose: with it set, ZeroClaw never issues a
 one-time `/bind` code, and never tries to write the paired id into a

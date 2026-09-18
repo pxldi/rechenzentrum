@@ -35,7 +35,7 @@ cron_jobs = ["planning_nudge", "evening_check"]
 # into it from the ConfigMap.
 path = "/zeroclaw-data/zeroclaw/agents/haus/workspace"
 
-# Supervised: reads run on their own, the Tandoor writes put an approve/deny
+# Supervised: reads run on their own, the Tandoor and calendar writes put an approve/deny
 # keyboard in the Telegram chat first. log_cooked is the one write that
 # runs on its own: it records a fact and is cheap to undo. allowed_tools pins the
 # built-ins to memory and the clock; MCP tools are admitted by the SDK's
@@ -48,12 +48,16 @@ auto_approve = [
   "tandoor__search_recipes", "tandoor__get_recipe", "tandoor__list_meal_plan",
   "tandoor__list_meal_types", "tandoor__list_keywords",
   "tandoor__leftovers", "tandoor__recipes_for_leftovers", "tandoor__log_cooked",
+  "tandoor__list_shopping_list",
+  "calendar__list_calendars", "calendar__list_events", "calendar__search_events",
   "homelab__list_services", "homelab__list_workloads", "homelab__workload_status",
   "homelab__pod_logs", "homelab__events", "homelab__flux_status", "homelab__backups",
 ]
 always_ask = [
   "tandoor__create_recipe", "tandoor__update_recipe", "tandoor__add_meal_plan",
   "tandoor__set_pack_size", "tandoor__move_meal_plan",
+  "tandoor__add_shopping_item", "tandoor__remove_shopping_item",
+  "calendar__create_event", "calendar__move_event", "calendar__delete_event",
 ]
 
 # The image is distroless: no sh anywhere. ZeroClaw's native runtime still
@@ -125,8 +129,13 @@ name = "homelab"
 transport = "http"
 url = "http://homelab-mcp.chatops.svc.cluster.local:8000/mcp"
 
+[[mcp.servers]]
+name = "calendar"
+transport = "http"
+url = "http://calendar-mcp.chatops.svc.cluster.local:8000/mcp"
+
 [mcp_bundles.homelab]
-servers = ["tandoor", "homelab"]
+servers = ["tandoor", "homelab", "calendar"]
 
 # The dashboard stays on the pod's loopback. Nothing routes to it, and the
 # liveness probe uses `zeroclaw status` rather than an HTTP port.

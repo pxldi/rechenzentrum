@@ -2,19 +2,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: tandoor-mcp
+  name: calendar-mcp
   namespace: chatops
   labels:
-    app: tandoor-mcp
+    app: calendar-mcp
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: tandoor-mcp
+      app: calendar-mcp
   template:
     metadata:
       labels:
-        app: tandoor-mcp
+        app: calendar-mcp
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -24,21 +24,29 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: tandoor-mcp
+        - name: calendar-mcp
           image: ghcr.io/pxldi/homelab-mcp:sha-e5382336d06b03f82fb67edfeccfe4f2d3d08609
           imagePullPolicy: IfNotPresent
-          args: ["python", "-m", "tandoor_mcp"]
+          args: ["python", "-m", "calendar_mcp"]
           ports:
             - name: http
               containerPort: 8000
           env:
-            - name: TANDOOR_URL
-              value: http://tandoor.tandoor.svc.cluster.local
-            - name: TANDOOR_TOKEN
+            - name: CALDAV_URL
+              value: http://nextcloud.nextcloud.svc.cluster.local:8080/remote.php/dav/
+            # Nextcloud answers only to its trusted_domains, so the public name
+            # goes out as the Host header; traffic still stays in the cluster.
+            - name: CALDAV_HOST
+              value: cloud.pxldi.de
+            - name: CALDAV_USER
+              value: leopold
+            - name: CALDAV_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: chatops-credentials
-                  key: TANDOOR_TOKEN
+                  name: chatops-caldav
+                  key: CALDAV_PASSWORD
+            - name: TZ
+              value: Europe/Berlin
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -73,11 +81,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: tandoor-mcp
+  name: calendar-mcp
   namespace: chatops
 spec:
   selector:
-    app: tandoor-mcp
+    app: calendar-mcp
   ports:
     - name: http
       port: 8000

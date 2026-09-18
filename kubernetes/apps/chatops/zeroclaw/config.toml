@@ -28,14 +28,16 @@ risk_profile = "haus"
 runtime_profile = "default"
 channels = ["telegram.home"]
 mcp_bundles = ["homelab"]
+cron_jobs = ["planning_nudge", "evening_check"]
 
 [agents.haus.workspace]
 # On the PVC, so memory survives a restart. SOUL.md and AGENTS.md are mounted
 # into it from the ConfigMap.
 path = "/zeroclaw-data/zeroclaw/agents/haus/workspace"
 
-# Supervised: reads run on their own, the four Tandoor writes put an
-# approve/deny keyboard in the Telegram chat first. allowed_tools pins the
+# Supervised: reads run on their own, the Tandoor writes put an approve/deny
+# keyboard in the Telegram chat first. log_cooked is the one write that
+# runs on its own: it records a fact and is cheap to undo. allowed_tools pins the
 # built-ins to memory and the clock; MCP tools are admitted by the SDK's
 # `<server>__<tool>` rule, so shell, file, http and browser tools are out.
 [risk_profiles.haus]
@@ -45,13 +47,13 @@ auto_approve = [
   "memory_recall", "memory_store", "memory_search", "time",
   "tandoor__search_recipes", "tandoor__get_recipe", "tandoor__list_meal_plan",
   "tandoor__list_meal_types", "tandoor__list_keywords",
-  "tandoor__leftovers", "tandoor__recipes_for_leftovers",
+  "tandoor__leftovers", "tandoor__recipes_for_leftovers", "tandoor__log_cooked",
   "homelab__list_services", "homelab__list_workloads", "homelab__workload_status",
   "homelab__pod_logs", "homelab__events", "homelab__flux_status", "homelab__backups",
 ]
 always_ask = [
   "tandoor__create_recipe", "tandoor__update_recipe", "tandoor__add_meal_plan",
-  "tandoor__set_pack_size",
+  "tandoor__set_pack_size", "tandoor__move_meal_plan",
 ]
 
 # The image is distroless: no sh anywhere. ZeroClaw's native runtime still
@@ -76,6 +78,34 @@ agents = ["haus"]
 # list of numeric Telegram user ids. Non-empty, so the one-time /bind pairing
 # flow (which would try to rewrite this read-only file) never runs.
 external_peers = []
+
+# The two proactive nudges. Declared here rather than with `zeroclaw cron
+# add` so they live in git; the scheduler syncs them into its database at
+# startup and config wins over the database copy. `delivery.to` is the chat
+# id; the env-override grammar cannot reach into `[cron.<alias>]`, so the
+# render-config init container substitutes the placeholder from a Secret
+# before ZeroClaw reads this file. Announce mode delivers whatever the agent answers, and an empty answer
+# becomes "agent job executed", so each prompt says to answer exactly
+# NO_REPLY when there is nothing to say; that sentinel is the only thing
+# the scheduler suppresses. session_target = "main" keeps the nudge in the
+# conversation, so a reply like "1" or "ja" is understood.
+[cron.planning_nudge]
+name = "Kochplanung"
+job_type = "agent"
+schedule = { kind = "cron", expr = "0 16 * * 0,2,4", tz = "Europe/Berlin" }
+session_target = "main"
+prompt = """Es ist Nachmittag. Prüfe mit tandoor__list_meal_plan, ob für heute und die nächsten zwei Tage schon ein Essen geplant ist. Wenn für heute oder morgen etwas geplant ist, antworte mit exakt NO_REPLY und sonst nichts.
+Wenn nicht: hole tandoor__leftovers und tandoor__recipes_for_leftovers und schlage 2 bis 3 Rezepte vor, nummeriert. Reste zuerst, besonders was bald abläuft; kürzlich Gekochtes auslassen. Pro Vorschlag eine Zeile: Name, Portionen, was fehlt. Höchstens 8 Zeilen insgesamt, keine Einleitung. Schließe mit einem Satz: Antworte mit der Nummer, dann plane ich es für heute Abend ein und setze das Fehlende auf die Einkaufsliste."""
+delivery = { mode = "announce", channel = "telegram.home", to = "@TELEGRAM_CHAT_ID@", best_effort = true }
+
+[cron.evening_check]
+name = "Abendcheck"
+job_type = "agent"
+schedule = { kind = "cron", expr = "0 20 * * *", tz = "Europe/Berlin" }
+session_target = "main"
+prompt = """Es ist Abend. Prüfe mit tandoor__list_meal_plan, was für heute geplant war. Wenn für heute nichts geplant ist, antworte mit exakt NO_REPLY und sonst nichts.
+Wenn etwas geplant ist, frage in einem Satz: Hast du <Titel> gekocht? Keine Einleitung, keine Erklärung, nichts weiter."""
+delivery = { mode = "announce", channel = "telegram.home", to = "@TELEGRAM_CHAT_ID@", best_effort = true }
 
 [memory]
 # No embedding provider is configured, so keyword search rather than a hybrid

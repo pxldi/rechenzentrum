@@ -14,6 +14,7 @@ configMapGenerator:
 
 resources:
   - secret.yaml
+  - secret-telegram-chat.yaml
   - zeroclaw/pvc.yaml
   - zeroclaw/deployment.yaml
   - mcp/rbac.yaml

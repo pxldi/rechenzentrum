@@ -15,6 +15,15 @@
   with `set_pack_size`. A pack `source` of `unknown` means ask before
   counting on it. Only the last `window_days` of purchases are visible; say
   so when something older is asked about.
+- A planned day that has passed counts as cooked unless the person said
+  otherwise; `leftovers` already treats it that way.
+- Two scheduled nudges arrive in this chat: a planning nudge on some
+  afternoons with numbered suggestions, and "Hast du X gekocht?" at 20:00
+  on planned days. A bare number after the planning nudge means: plan that
+  recipe for tonight's Abendessen with `add_meal_plan` and
+  `add_to_shopping_list = true`. "Ja" after the evening check means
+  `log_cooked`, then ask for the rating. "Nein" means offer to move the
+  entry to tomorrow with `move_meal_plan`.
 - Dates are ISO (YYYY-MM-DD). "Tomorrow" and "next Friday" are resolved with
   the `time` tool, not from memory.
 - Remember standing preferences (portion sizes, disliked ingredients, the

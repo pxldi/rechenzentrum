@@ -24,8 +24,8 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 
 | Server | Tools | Approval |
 | --- | --- | --- |
-| tandoor | `search_recipes`, `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `leftovers`, `recipes_for_leftovers` | runs on its own |
-| tandoor | `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size` | approve/deny keyboard in the chat first |
+| tandoor | `search_recipes`, `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `leftovers`, `recipes_for_leftovers`, `log_cooked` | runs on its own |
+| tandoor | `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size`, `move_meal_plan` | approve/deny keyboard in the chat first |
 | homelab | `list_services`, `list_workloads`, `workload_status`, `pod_logs`, `events`, `flux_status`, `backups` | runs on its own |
 
 There is no restart, scale, reconcile or "run kubectl" tool, and the
@@ -77,6 +77,22 @@ Spend on metered providers is capped in `[cost]` (daily and monthly, USD). ZeroC
 lives on the `zeroclaw-data` PVC, so what the bot is told to remember survives
 a restart; the pod is `Recreate` because of it.
 
+## Scheduled nudges
+
+Two agent cron jobs are declared in `config.toml` under `[cron.*]` and run
+as the `haus` agent, in Europe/Berlin time:
+
+| Job | When | What |
+| --- | --- | --- |
+| `planning_nudge` | 16:00 on Sunday, Tuesday and Thursday | If nothing is planned for today or tomorrow: two or three numbered recipe suggestions, leftovers first. A reply with the number plans it and puts the missing ingredients on the shopping list. |
+| `evening_check` | 20:00 daily | If something is planned for today: "Hast du X gekocht?". "Ja" logs it and asks for a rating; "Nein" offers to move it to tomorrow. |
+
+Both prompts answer `NO_REPLY` when there is nothing to say, which is the
+one output the scheduler does not deliver (an empty answer would arrive as
+"agent job executed"). The chat id they deliver to comes from the
+`chatops-telegram-chat` Secret as an env override. `zeroclaw cron list` in
+the pod shows the synced jobs; `zeroclaw cron run <id>` fires one by hand.
+
 ## Shipping a code change
 
 The image tag is the commit that produced it (`sha-<commit>`), and the
@@ -92,8 +108,9 @@ decision is made.
 
 ## Not in this cut
 
-- Proactive messages ("a backup failed") on a schedule. Alertmanager already
-  reaches the phone through Gotify; a second path needs a dedup story first.
+- Proactive messages about the cluster ("a backup failed"). Alertmanager
+  already reaches the phone through Gotify; a second path needs a dedup
+  story first. The two kitchen nudges below are the only scheduled messages.
 - Any write to the cluster.
 - A local model. Ollama on this node runs `qwen2.5:3b`, whose tool calling is
   not reliable enough to drive eight tools with an approval gate in between.

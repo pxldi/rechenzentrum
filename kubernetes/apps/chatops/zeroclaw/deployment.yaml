@@ -95,6 +95,48 @@ spec:
             requests:
               cpu: 10m
               memory: 16Mi
+        # The cron nudges need the Telegram chat id in `[cron.<alias>].delivery.to`,
+        # and ZeroClaw's env-override grammar stops at the `cron` map (it
+        # rejects ZEROCLAW_cron__<alias>__delivery__to as an unknown property).
+        # So the committed config.toml carries a placeholder and this renders
+        # the real file into an emptyDir; the id never lands on the PVC or in
+        # git. The ConfigMap still rolls the pod, since its hashed name is
+        # what the volume references.
+        - name: render-config
+          image: alpine:3.24
+          command:
+            - sh
+            - -c
+            - >-
+              sed "s/@TELEGRAM_CHAT_ID@/${TELEGRAM_CHAT_ID}/g" /config-src/config.toml > /rendered/config.toml &&
+              ! grep -q '@TELEGRAM_CHAT_ID@' /rendered/config.toml
+          env:
+            - name: TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: chatops-telegram-chat
+                  key: TELEGRAM_CHAT_ID
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+          volumeMounts:
+            - name: config
+              mountPath: /config-src
+              readOnly: true
+            - name: rendered
+              mountPath: /rendered
       containers:
         - name: zeroclaw
           image: ghcr.io/zeroclaw-labs/zeroclaw:v0.8.5@sha256:ba9c76b9287c125ec9cc9a8270654f2c0efbd610eef3e00eece3cd11f6c083e0
@@ -138,7 +180,7 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /zeroclaw-data
-            - name: config
+            - name: rendered
               mountPath: /zeroclaw-data/zeroclaw/config.toml
               subPath: config.toml
               readOnly: true
@@ -178,5 +220,8 @@ spec:
         - name: config
           configMap:
             name: zeroclaw-config
+        - name: rendered
+          emptyDir:
+            medium: Memory
         - name: tmp
           emptyDir: {}

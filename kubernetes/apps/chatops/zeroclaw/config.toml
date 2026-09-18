@@ -48,6 +48,15 @@ auto_approve = [
 ]
 always_ask = ["tandoor__create_recipe", "tandoor__update_recipe", "tandoor__add_meal_plan"]
 
+# The image is distroless: no sh anywhere. ZeroClaw's native runtime still
+# resolves runtime.shell at startup and, when it is missing, fails the whole
+# channels component ("runtime.shell \"sh\" was not found on PATH"), so
+# Telegram never starts. The check only wants an executable file, and the
+# shell tool is not in allowed_tools, so point it at the ZeroClaw binary:
+# anything that did try to run a shell command would fail rather than run.
+[runtime]
+shell = "/usr/local/bin/zeroclaw"
+
 [runtime_profiles.default]
 
 [channels.telegram.home]

@@ -11,17 +11,26 @@ configMapGenerator:
       - config.toml=zeroclaw/config.toml
       - SOUL.md=zeroclaw/SOUL.md
       - AGENTS.md=zeroclaw/AGENTS.md
+  # livesync-bridge's config with placeholders; the vault pod's init container
+  # fills in the credentials and the passphrase from the chatops-vault Secret.
+  - name: vault-bridge-config
+    files:
+      - config.json=vault/bridge-config.json
 
 resources:
   - secret.yaml
   - secret-telegram-chat.yaml
   - secret-caldav.yaml
+  - secret-vault.yaml
   - zeroclaw/pvc.yaml
   - zeroclaw/deployment.yaml
   - mcp/rbac.yaml
   - mcp/homelab-mcp.yaml
   - mcp/tandoor-mcp.yaml
   - mcp/calendar-mcp.yaml
+  - vault/pvc.yaml
+  - vault/deployment.yaml
+  - vault/service.yaml
   - networkpolicy.yaml
 
 # Egress and ingress are hand-written in networkpolicy.yaml because the three

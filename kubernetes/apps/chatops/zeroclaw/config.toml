@@ -36,8 +36,9 @@ cron_jobs = ["planning_nudge", "evening_check"]
 path = "/zeroclaw-data/zeroclaw/agents/haus/workspace"
 
 # Supervised: reads run on their own, the Tandoor and calendar writes put an approve/deny
-# keyboard in the Telegram chat first. log_cooked is the one write that
-# runs on its own: it records a fact and is cheap to undo. allowed_tools pins the
+# keyboard in the Telegram chat first. log_cooked, append_note and
+# log_learned run on their own: they record a fact and are cheap to undo,
+# and the vault keeps history. write_note replaces a whole note, so it asks. allowed_tools pins the
 # built-ins to memory and the clock; MCP tools are admitted by the SDK's
 # `<server>__<tool>` rule, so shell, file, http and browser tools are out.
 [risk_profiles.haus]
@@ -50,6 +51,8 @@ auto_approve = [
   "tandoor__leftovers", "tandoor__recipes_for_leftovers", "tandoor__log_cooked",
   "tandoor__list_shopping_list",
   "calendar__list_calendars", "calendar__list_events", "calendar__search_events",
+  "vault__list_notes", "vault__read_note", "vault__search_notes",
+  "vault__append_note", "vault__log_learned",
   "homelab__list_services", "homelab__list_workloads", "homelab__workload_status",
   "homelab__pod_logs", "homelab__events", "homelab__flux_status", "homelab__backups",
 ]
@@ -58,6 +61,7 @@ always_ask = [
   "tandoor__set_pack_size", "tandoor__move_meal_plan",
   "tandoor__add_shopping_item", "tandoor__remove_shopping_item",
   "calendar__create_event", "calendar__move_event", "calendar__delete_event",
+  "vault__write_note",
 ]
 
 # The image is distroless: no sh anywhere. ZeroClaw's native runtime still
@@ -134,8 +138,13 @@ name = "calendar"
 transport = "http"
 url = "http://calendar-mcp.chatops.svc.cluster.local:8000/mcp"
 
+[[mcp.servers]]
+name = "vault"
+transport = "http"
+url = "http://vault-mcp.chatops.svc.cluster.local:8000/mcp"
+
 [mcp_bundles.homelab]
-servers = ["tandoor", "homelab", "calendar"]
+servers = ["tandoor", "homelab", "calendar", "vault"]
 
 # The dashboard stays on the pod's loopback. Nothing routes to it, and the
 # liveness probe uses `zeroclaw status` rather than an HTTP port.

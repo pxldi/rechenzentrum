@@ -1,4 +1,4 @@
-# Four pods, four different sets of destinations, so these are written per
+# Five pods, five different sets of destinations, so these are written per
 # pod rather than pulled from the namespace-wide components. The `app` label
 # is the pod's own; the app.kubernetes.io labels stop at the Deployment.
 #
@@ -15,7 +15,7 @@ spec:
     matchExpressions:
       - key: app
         operator: In
-        values: ["homelab-mcp", "tandoor-mcp", "calendar-mcp"]
+        values: ["homelab-mcp", "tandoor-mcp", "calendar-mcp", "vault-mcp"]
   policyTypes:
     - Ingress
   ingress:
@@ -46,7 +46,7 @@ spec:
             matchExpressions:
               - key: app
                 operator: In
-                values: ["homelab-mcp", "tandoor-mcp", "calendar-mcp"]
+                values: ["homelab-mcp", "tandoor-mcp", "calendar-mcp", "vault-mcp"]
       ports:
         - protocol: TCP
           port: 8000
@@ -123,3 +123,27 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+---
+# The vault pod's bridge replicates with CouchDB in obsidian-sync and nothing
+# else; the matching ingress rule lives in kubernetes/apps/obsidian.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vault-mcp-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: vault-mcp
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: obsidian-sync
+          podSelector:
+            matchLabels:
+              app: obsidian-sync
+      ports:
+        - protocol: TCP
+          port: 5984

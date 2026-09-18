@@ -1,0 +1,164 @@
+---
+# One pod, two jobs: livesync-bridge keeps /data/vault in step with the
+# vault's CouchDB database in both directions, and vault-mcp serves that
+# directory to the agent. They share the volume, so they share the pod.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault-mcp
+  namespace: chatops
+  labels:
+    app: vault-mcp
+spec:
+  replicas: 1
+  # RWO volume with the bridge's scan state in it: one pod at a time.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vault-mcp
+  template:
+    metadata:
+      labels:
+        app: vault-mcp
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        # deno's uid in the bridge image; the MCP server runs as it too so
+        # both can write the mirrored files.
+        runAsNonRoot: true
+        runAsUser: 1993
+        runAsGroup: 1993
+        fsGroup: 1993
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # The bridge reads a JSON config that has to contain the CouchDB
+        # credentials and the vault's E2EE passphrase in clear. It is
+        # rendered from the Secret into a memory-backed emptyDir, so the
+        # passphrase is never on the volume.
+        - name: render-config
+          image: alpine:3.24
+          command:
+            - sh
+            - -c
+            - >-
+              sed -e "s|@COUCHDB_USER@|${COUCHDB_USER}|g"
+              -e "s|@COUCHDB_PASSWORD@|${COUCHDB_PASSWORD}|g"
+              -e "s|@VAULT_PASSPHRASE@|${VAULT_PASSPHRASE}|g"
+              /config-src/config.json > /rendered/config.json &&
+              ! grep -q '@' /rendered/config.json &&
+              ! grep -q 'REPLACE_ME' /rendered/config.json
+          env:
+            - name: COUCHDB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: chatops-vault
+                  key: COUCHDB_USER
+            - name: COUCHDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: chatops-vault
+                  key: COUCHDB_PASSWORD
+            - name: VAULT_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: chatops-vault
+                  key: VAULT_PASSPHRASE
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+          volumeMounts:
+            - name: config
+              mountPath: /config-src
+              readOnly: true
+            - name: rendered
+              mountPath: /rendered
+      containers:
+        - name: bridge
+          image: ghcr.io/pxldi/livesync-bridge:sha-30d134b9e442a96c4ddc4a7abe7a73359b3fa6ec
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: LSB_CONFIG
+              value: /app/dat/config.json
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: rendered
+              mountPath: /app/dat
+              readOnly: true
+            - name: data
+              mountPath: /app/data
+              subPath: vault-root
+            # Deno localStorage: which files the offline scan already knows.
+            - name: data
+              mountPath: /deno-dir/location_data
+              subPath: bridge-state
+          resources:
+            requests:
+              cpu: 20m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+        - name: vault-mcp
+          image: ghcr.io/pxldi/homelab-mcp:sha-e5382336d06b03f82fb67edfeccfe4f2d3d08609
+          imagePullPolicy: IfNotPresent
+          args: ["python", "-m", "vault_mcp"]
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: VAULT_ROOT
+              value: /data/vault
+            - name: TZ
+              value: Europe/Berlin
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              subPath: vault-root
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: vault-data
+        - name: config
+          configMap:
+            name: vault-bridge-config
+        - name: rendered
+          emptyDir:
+            medium: Memory
+        - name: tmp
+          emptyDir: {}

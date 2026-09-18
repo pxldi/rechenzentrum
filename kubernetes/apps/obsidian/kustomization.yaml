@@ -9,6 +9,7 @@ resources:
   - statefulset.yaml
   - service.yaml
   - ingress.yaml
+  - networkpolicy-chatops.yaml
 components:
   # Egress: this pod opens no outbound connection of its own. Checked in the
   # live pod before locking it, /proc/net/tcp held no established socket

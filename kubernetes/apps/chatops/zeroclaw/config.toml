@@ -13,9 +13,11 @@ schema_version = 3
 # once by hand with a device-code login (docs/CHATOPS.md). It is a separate
 # login from claudebox's: Codex refresh tokens rotate and allow one owner, so
 # sharing one would make the two log each other out. The model must be an
-# exact ID served by the Codex backend.
+# exact ID the Codex backend serves to a ChatGPT account, and that list moves
+# (gpt-5.4 was dropped): ~/.codex/models_cache.json on any machine with the
+# Codex CLI shows the current slugs.
 [providers.models.openai.default]
-model = "gpt-5.4"
+model = "gpt-5.6-sol"
 wire_api = "responses"
 requires_openai_auth = true
 

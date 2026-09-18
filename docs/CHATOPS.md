@@ -1,12 +1,14 @@
 # ChatOps
 
 A Telegram bot that can read the cluster, manage recipes and the calendar,
-built from four pods in the `chatops` namespace:
+and read and write the Obsidian vault, built from five pods in the
+`chatops` namespace:
 
 ```text
 Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, meal plan, shopping list)
               (agent)  ├▶ homelab-mcp ──▶ API server (read-only)
-                       └▶ calendar-mcp ─▶ nextcloud (CalDAV)
+                       ├▶ calendar-mcp ─▶ nextcloud (CalDAV)
+                       └▶ vault-mcp ────▶ /data/vault ◀─ livesync-bridge ─▶ obsidian-sync (CouchDB)
 ```
 
 - **zeroclaw** is [ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw), a
@@ -15,9 +17,8 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
   operator's ChatGPT subscription. It holds the Telegram token and its own
   Codex login and nothing else; it never sees a Tandoor token or a cluster
   credential.
-- **tandoor-mcp**, **homelab-mcp** and **calendar-mcp** are small Python MCP
-  servers built from `images/homelab-mcp/` into one image (a fourth,
-  `vault_mcp`, is in the image but not deployed yet). Each holds the one credential
+- **tandoor-mcp**, **homelab-mcp**, **calendar-mcp** and **vault-mcp** are
+  small Python MCP servers built from `images/homelab-mcp/` into one image. Each holds the one credential
   its tools need. They speak Streamable HTTP on port 8000 and accept
   connections only from the zeroclaw pod (NetworkPolicy), which is why they
   carry no bearer token of their own.
@@ -30,6 +31,8 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 | tandoor | `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size`, `move_meal_plan`, `add_shopping_item`, `remove_shopping_item` | approve/deny keyboard in the chat first |
 | calendar | `list_calendars`, `list_events`, `search_events` | runs on its own |
 | calendar | `create_event`, `move_event`, `delete_event` | approve/deny keyboard in the chat first |
+| vault | `list_notes`, `read_note`, `search_notes`, `append_note`, `log_learned` | runs on its own |
+| vault | `write_note` (replaces a whole note) | approve/deny keyboard in the chat first |
 | homelab | `list_services`, `list_workloads`, `workload_status`, `pod_logs`, `events`, `flux_status`, `backups` | runs on its own |
 
 There is no restart, scale, reconcile or "run kubectl" tool, and the
@@ -54,6 +57,7 @@ ZeroClaw as environment variables in its schema-mirror grammar
 | `TELEGRAM_BOT_TOKEN` | zeroclaw | @BotFather, `/newbot` |
 | `TELEGRAM_PEERS` | zeroclaw | A JSON list of numeric Telegram user ids, e.g. `'["123456789"]'`. Message the bot once with the placeholder in place and it replies with your id |
 | `TANDOOR_TOKEN` | tandoor-mcp | Tandoor, Settings, API, new token with scope `read write` |
+| `COUCHDB_USER`, `COUCHDB_PASSWORD`, `VAULT_PASSPHRASE` (in `secret-vault.yaml`) | vault-mcp pod (bridge) | The obsidian-sync admin, and the vault's LiveSync E2EE passphrase. The passphrase reads the whole vault; set it with `sops set` on the CLI, see the comment in the file |
 | `CALDAV_PASSWORD` (in `secret-caldav.yaml`) | calendar-mcp | A Nextcloud app password: `occ user:auth-tokens:add <user> --name clanky-calendar -n` in the nextcloud pod. Account-wide, not calendar-scoped; revoke under Settings, Security |
 
 The peer list is non-empty on purpose: with it set, ZeroClaw never issues a
@@ -81,6 +85,18 @@ see; it records these calls at $0, so `[cost]` does not cap them.
 Spend on metered providers is capped in `[cost]` (daily and monthly, USD). ZeroClaw's own memory
 lives on the `zeroclaw-data` PVC, so what the bot is told to remember survives
 a restart; the pod is `Recreate` because of it.
+
+## The vault mirror
+
+`vault-mcp` is a pod of two containers on one volume: [livesync-bridge]
+(https://github.com/vrtmrz/livesync-bridge) (`images/livesync-bridge/`)
+replicates the `second_brain` LiveSync database with `/data/vault` in both
+directions, decrypting with the vault passphrase, and the MCP server reads
+and writes that directory. A note the bot appends shows up in Obsidian
+through the normal sync, and the vault keeps the history. The bridge config
+(`vault/bridge-config.json`) carries placeholders that the pod's init
+container fills from the Secret into memory. Deno's scan state is on the
+volume under `bridge-state`; delete it to force a full rescan.
 
 ## Scheduled nudges
 

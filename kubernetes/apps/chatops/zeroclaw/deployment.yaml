@@ -74,7 +74,7 @@ spec:
           command: ["python", "/app/src/wait_for_mcp.py"]
           env:
             - name: MCP_URLS
-              value: http://homelab-mcp.chatops.svc.cluster.local:8000,http://tandoor-mcp.chatops.svc.cluster.local:8000,http://calendar-mcp.chatops.svc.cluster.local:8000
+              value: http://homelab-mcp.chatops.svc.cluster.local:8000,http://tandoor-mcp.chatops.svc.cluster.local:8000,http://calendar-mcp.chatops.svc.cluster.local:8000,http://vault-mcp.chatops.svc.cluster.local:8000
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534

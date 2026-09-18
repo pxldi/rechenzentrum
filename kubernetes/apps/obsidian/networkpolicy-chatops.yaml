@@ -1,0 +1,24 @@
+---
+# The bot's vault pod in chatops replicates the second_brain database through
+# livesync-bridge. It is the only pod in that namespace allowed in.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-vault-mcp
+spec:
+  podSelector:
+    matchLabels:
+      app: obsidian-sync
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: chatops
+          podSelector:
+            matchLabels:
+              app: vault-mcp
+      ports:
+        - protocol: TCP
+          port: 5984

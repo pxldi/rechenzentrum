@@ -1,0 +1,16 @@
+---
+# The mirrored Obsidian vault plus livesync-bridge's scan state. The vault
+# itself lives in CouchDB (obsidian-sync) and on the user's machines; this
+# copy is rebuilt from the database, so it is not backed up.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vault-data
+  namespace: chatops
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 5Gi

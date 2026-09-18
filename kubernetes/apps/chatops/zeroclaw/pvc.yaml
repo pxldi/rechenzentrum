@@ -1,0 +1,16 @@
+---
+# Sessions, the agent's memory database and the cost ledger. Small, and
+# nothing in it is irreplaceable, but losing the memory on every restart would
+# make the "remember that" half of the agent pointless.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zeroclaw-data
+  namespace: chatops
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 2Gi

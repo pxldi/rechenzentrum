@@ -1,0 +1,146 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zeroclaw
+  namespace: chatops
+  labels:
+    app: zeroclaw
+spec:
+  replicas: 1
+  # Holds the RWO data claim with SQLite databases in it: one pod at a time.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: zeroclaw
+  template:
+    metadata:
+      labels:
+        app: zeroclaw
+      annotations:
+        backup.velero.io/backup-volumes: data
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      # config.toml, SOUL.md and AGENTS.md are subPath-mounted into
+      # directories on the PVC that do not exist on first start. The runtime
+      # creates those parents as root, after fsGroup has run, and ZeroClaw
+      # (uid 65534, distroless, no shell) then cannot write state, sessions or
+      # memory next to them. Same shape as karakeep's fix-run: one init
+      # container that owns the tree to 65534 and exits.
+      initContainers:
+        - name: own-data
+          image: alpine:3.24
+          command:
+            - sh
+            - -c
+            - >-
+              mkdir -p /zeroclaw-data/zeroclaw/agents/haus/workspace &&
+              chown -R 65534:65534 /zeroclaw-data/zeroclaw
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - CHOWN
+                - DAC_OVERRIDE
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+          volumeMounts:
+            - name: data
+              mountPath: /zeroclaw-data
+      containers:
+        - name: zeroclaw
+          image: ghcr.io/zeroclaw-labs/zeroclaw:v0.8.5@sha256:ba9c76b9287c125ec9cc9a8270654f2c0efbd610eef3e00eece3cd11f6c083e0
+          imagePullPolicy: IfNotPresent
+          args: ["daemon"]
+          env:
+            - name: LANG
+              value: C.UTF-8
+            - name: TZ
+              value: Europe/Berlin
+            - name: HOME
+              value: /zeroclaw-data
+            # ZeroClaw resolves its install root from the config dir first, so
+            # sessions, state, the agent workspace and the encrypted Codex auth
+            # profile (with the .secret_key that decrypts it) all land under
+            # this directory on the PVC. config.toml is a read-only file inside it.
+            - name: ZEROCLAW_CONFIG_DIR
+              value: /zeroclaw-data/zeroclaw
+            - name: ZEROCLAW_DATA_DIR
+              value: /zeroclaw-data/zeroclaw
+            - name: ZEROCLAW_channels__telegram__home__bot_token
+              valueFrom:
+                secretKeyRef:
+                  name: chatops-credentials
+                  key: TELEGRAM_BOT_TOKEN
+            - name: ZEROCLAW_peer_groups__telegram_home__external_peers
+              valueFrom:
+                secretKeyRef:
+                  name: chatops-credentials
+                  key: TELEGRAM_PEERS
+          securityContext:
+            # The image runs as nobody and has no shell to chown with.
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /zeroclaw-data
+            - name: config
+              mountPath: /zeroclaw-data/zeroclaw/config.toml
+              subPath: config.toml
+              readOnly: true
+            - name: config
+              mountPath: /zeroclaw-data/zeroclaw/agents/haus/workspace/SOUL.md
+              subPath: SOUL.md
+              readOnly: true
+            - name: config
+              mountPath: /zeroclaw-data/zeroclaw/agents/haus/workspace/AGENTS.md
+              subPath: AGENTS.md
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          # The image's own HEALTHCHECK. Telegram is long-polled outbound, so
+          # there is no port a probe could ask, and the dashboard is loopback.
+          startupProbe:
+            exec:
+              command: ["zeroclaw", "status", "--format=exit-code"]
+            periodSeconds: 10
+            failureThreshold: 12
+          livenessProbe:
+            exec:
+              command: ["zeroclaw", "status", "--format=exit-code"]
+            periodSeconds: 60
+            timeoutSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: zeroclaw-data
+        - name: config
+          configMap:
+            name: zeroclaw-config
+        - name: tmp
+          emptyDir: {}

@@ -6,6 +6,7 @@ resources:
   - helmrelease.yaml
   - pvc.yaml
   - ingress.yaml
+  - networkpolicy-chatops.yaml
 components:
   # Egress. The web container reaches tandoor-postgresql-rw by Service name
   # here, so the intra-namespace twin is required. The internet rule is for

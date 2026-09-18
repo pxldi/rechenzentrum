@@ -1,0 +1,84 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tandoor-mcp
+  namespace: chatops
+  labels:
+    app: tandoor-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tandoor-mcp
+  template:
+    metadata:
+      labels:
+        app: tandoor-mcp
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: tandoor-mcp
+          image: ghcr.io/pxldi/homelab-mcp:sha-f6938732e97d8f58f62c84e67cb2bb578504dab0
+          imagePullPolicy: IfNotPresent
+          args: ["python", "-m", "tandoor_mcp"]
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: TANDOOR_URL
+              value: http://tandoor.tandoor.svc.cluster.local
+            - name: TANDOOR_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: chatops-credentials
+                  key: TANDOOR_TOKEN
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          # The kubernetes client writes certificate material to a temp file
+          # when it loads a config, and a read-only root has nowhere for it.
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tandoor-mcp
+  namespace: chatops
+spec:
+  selector:
+    app: tandoor-mcp
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

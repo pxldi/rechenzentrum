@@ -1,0 +1,100 @@
+# ZeroClaw, the Telegram agent. Validated against v0.8.5 with
+# `zeroclaw config list` and `zeroclaw doctor` before it was committed.
+#
+# Secrets are not in here. They arrive as environment variables from the
+# chatops-credentials Secret using ZeroClaw's schema-mirror grammar
+# (ZEROCLAW_<path with __ separators>): the Telegram bot token and the list of
+# Telegram user ids allowed to talk to the bot.
+schema_version = 3
+
+# The model runs on the operator's ChatGPT subscription through the Codex
+# backend, not a metered API key. requires_openai_auth reads ZeroClaw's own
+# `openai-codex` auth profile, which lives encrypted on the PVC and is created
+# once by hand with a device-code login (docs/CHATOPS.md). It is a separate
+# login from claudebox's: Codex refresh tokens rotate and allow one owner, so
+# sharing one would make the two log each other out. The model must be an
+# exact ID served by the Codex backend.
+[providers.models.openai.default]
+model = "gpt-5.4"
+wire_api = "responses"
+requires_openai_auth = true
+
+[agents.haus]
+enabled = true
+model_provider = "openai.default"
+risk_profile = "haus"
+runtime_profile = "default"
+channels = ["telegram.home"]
+mcp_bundles = ["homelab"]
+
+[agents.haus.workspace]
+# On the PVC, so memory survives a restart. SOUL.md and AGENTS.md are mounted
+# into it from the ConfigMap.
+path = "/zeroclaw-data/zeroclaw/agents/haus/workspace"
+
+# Supervised: reads run on their own, the three Tandoor writes put an
+# approve/deny keyboard in the Telegram chat first. allowed_tools pins the
+# built-ins to memory and the clock; MCP tools are admitted by the SDK's
+# `<server>__<tool>` rule, so shell, file, http and browser tools are out.
+[risk_profiles.haus]
+level = "supervised"
+allowed_tools = ["memory_recall", "memory_store", "memory_search", "time"]
+auto_approve = [
+  "memory_recall", "memory_store", "memory_search", "time",
+  "tandoor__search_recipes", "tandoor__get_recipe", "tandoor__list_meal_plan",
+  "tandoor__list_meal_types", "tandoor__list_keywords",
+  "homelab__list_services", "homelab__list_workloads", "homelab__workload_status",
+  "homelab__pod_logs", "homelab__events", "homelab__flux_status", "homelab__backups",
+]
+always_ask = ["tandoor__create_recipe", "tandoor__update_recipe", "tandoor__add_meal_plan"]
+
+[runtime_profiles.default]
+
+[channels.telegram.home]
+enabled = true
+# bot_token: ZEROCLAW_channels__telegram__home__bot_token
+
+[peer_groups.telegram_home]
+channel = "telegram.home"
+agents = ["haus"]
+# external_peers: ZEROCLAW_peer_groups__telegram_home__external_peers, a JSON
+# list of numeric Telegram user ids. Non-empty, so the one-time /bind pairing
+# flow (which would try to rewrite this read-only file) never runs.
+external_peers = []
+
+[memory]
+# No embedding provider is configured, so keyword search rather than a hybrid
+# that silently degrades to it.
+search_mode = "bm25"
+
+[mcp]
+enabled = true
+
+[[mcp.servers]]
+name = "tandoor"
+transport = "http"
+url = "http://tandoor-mcp.chatops.svc.cluster.local:8000/mcp"
+
+[[mcp.servers]]
+name = "homelab"
+transport = "http"
+url = "http://homelab-mcp.chatops.svc.cluster.local:8000/mcp"
+
+[mcp_bundles.homelab]
+servers = ["tandoor", "homelab"]
+
+# The dashboard stays on the pod's loopback. Nothing routes to it, and the
+# liveness probe uses `zeroclaw status` rather than an HTTP port.
+[gateway]
+host = "127.0.0.1"
+port = 42617
+require_pairing = true
+check_updates = false
+
+# The subscription path is recorded at $0 per call (ZeroClaw cannot see the
+# plan's allowance), so these caps only bite on a metered provider.
+[cost]
+enabled = true
+daily_limit_usd = 3.0
+monthly_limit_usd = 30.0
+warn_at_percent = 80

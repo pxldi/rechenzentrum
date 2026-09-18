@@ -27,6 +27,7 @@ Every application namespace except the two at the end of this section.
 
 | Namespace | Beyond DNS | Why |
 | --- | --- | --- |
+| `chatops` | per pod: the agent gets internet on 443 and its two MCP pods; homelab-mcp gets the API server; tandoor-mcp gets `tandoor` | Three pods with three jobs, see [CHATOPS.md](CHATOPS.md) |
 | `claudebox` | internet, API server | Clones repositories and drives this cluster; it carries a ServiceAccount token and RBAC |
 | `excalidraw` | nothing | The pilot |
 | `fredy` | own namespace, internet | Scrapes property listings |

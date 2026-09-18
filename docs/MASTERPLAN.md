@@ -85,4 +85,4 @@ Configured does not mean live or restore-tested.
 | Image automation | Retired 2026-09-18. Renovate covers image tags; Schall follows a mutable development tag on purpose |
 | Schall namespace | slskd moved out 2026-09-13 and `media` is baseline; Schall stays, see [SCHALL_ISOLATION.md](SCHALL_ISOLATION.md) |
 | Edge/egress expansion | Done for every application namespace, see [EGRESS.md](EGRESS.md). `home-assistant` is hostNetwork so policy does not apply; `actions-runner` already had an equivalent rule |
-| ZeroClaw/MCP | Not deployed; provider/bot setup, software and scoped credentials needed |
+| ZeroClaw/MCP | Deployed 2026-09-18, see [CHATOPS.md](CHATOPS.md): ZeroClaw on Telegram with a Tandoor MCP server and a read-only homelab MCP server. Needs its four credentials in `chatops-credentials` to come alive |

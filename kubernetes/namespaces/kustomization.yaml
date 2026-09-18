@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - actions-runner.yaml
   - adventurelog.yaml
+  - chatops.yaml
   - claudebox.yaml
   - excalidraw.yaml
   - fredy.yaml

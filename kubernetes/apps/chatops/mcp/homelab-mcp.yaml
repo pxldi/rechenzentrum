@@ -1,0 +1,79 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homelab-mcp
+  namespace: chatops
+  labels:
+    app: homelab-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homelab-mcp
+  template:
+    metadata:
+      labels:
+        app: homelab-mcp
+    spec:
+      # The one pod in this namespace that carries a token, and the reason the
+      # cluster view is a separate Deployment from the agent.
+      serviceAccountName: homelab-mcp
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: homelab-mcp
+          image: ghcr.io/pxldi/homelab-mcp:sha-f6938732e97d8f58f62c84e67cb2bb578504dab0
+          imagePullPolicy: IfNotPresent
+          args: ["python", "-m", "homelab_mcp"]
+          ports:
+            - name: http
+              containerPort: 8000
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          # The kubernetes client writes certificate material to a temp file
+          # when it loads a config, and a read-only root has nowhere for it.
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 20m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homelab-mcp
+  namespace: chatops
+spec:
+  selector:
+    app: homelab-mcp
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

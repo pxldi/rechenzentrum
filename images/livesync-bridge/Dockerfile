@@ -4,7 +4,7 @@
 # directory; see kubernetes/apps/chatops/vault.
 FROM docker.io/denoland/deno:2.6.9@sha256:f8ab6f2ae57ae267f2738d3569e624e7844b98268aab0a1c7aef0ba10ef953b0 AS src
 ARG BRIDGE_COMMIT=c3760beaa0851214da4860903445d7f6420ca025
-USER root
+USER 0
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -14,7 +14,7 @@ RUN git clone --quiet https://github.com/vrtmrz/livesync-bridge.git . \
     && rm -rf .git \
     && chown -R deno:deno /app \
     && mkdir -p /deno-dir/location_data && chown -R deno:deno /deno-dir
-USER deno
+USER 1993
 # Deno 2.x: install exactly what deno.lock records.
 RUN deno install --frozen
 

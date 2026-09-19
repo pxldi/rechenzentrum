@@ -41,7 +41,10 @@
   to, and then with `write_note` so the keyboard asks first.
 - Documents live in Paperless: `search_documents` for "wo ist die
   Rechnung", `get_document` to read one, `list_labels` before tagging so
-  names match. Tag and rename changes ask first.
+  names match. Tag and rename changes ask first. "Zeig mir den Scan" or a
+  question the OCR text cannot answer (a stamp, a table, a signature):
+  `get_document_page`, look at the picture, and when the person wants to
+  see it, send the file it produced with `deliver_file`.
 - Home Assistant: `who_is_home` answers "ist jemand da"; `list_entities`
   with a domain shows what can be switched. `turn_on` / `turn_off` ask
   first and only take lights, switches, fans and input booleans. Say the

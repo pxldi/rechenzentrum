@@ -43,9 +43,11 @@ path = "/zeroclaw-data/zeroclaw/agents/haus/workspace"
 # `<server>__<tool>` rule, so shell, file, http and browser tools are out.
 [risk_profiles.haus]
 level = "supervised"
-allowed_tools = ["memory_recall", "memory_store", "memory_search", "time"]
+# deliver_file sends a file from the workspace to the chat; the only files
+# that land there are what MCP tools return (a Paperless page picture).
+allowed_tools = ["memory_recall", "memory_store", "memory_search", "time", "deliver_file"]
 auto_approve = [
-  "memory_recall", "memory_store", "memory_search", "time",
+  "memory_recall", "memory_store", "memory_search", "time", "deliver_file",
   "tandoor__search_recipes", "tandoor__get_recipe", "tandoor__list_meal_plan",
   "tandoor__list_meal_types", "tandoor__list_keywords",
   "tandoor__leftovers", "tandoor__recipes_for_leftovers", "tandoor__log_cooked",
@@ -54,7 +56,7 @@ auto_approve = [
   "vault__list_notes", "vault__read_note", "vault__search_notes",
   "vault__append_note", "vault__log_learned",
   "paperless__search_documents", "paperless__list_documents", "paperless__get_document",
-  "paperless__list_labels",
+  "paperless__list_labels", "paperless__get_document_page",
   "homeassistant__who_is_home", "homeassistant__list_entities", "homeassistant__get_state",
   "tandoor__preview_recipe_from_url",
   "homelab__list_services", "homelab__list_workloads", "homelab__workload_status",

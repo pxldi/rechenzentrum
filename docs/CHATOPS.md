@@ -37,13 +37,15 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 | calendar | `create_event`, `move_event`, `delete_event` | approve/deny keyboard in the chat first |
 | vault | `list_notes`, `read_note`, `search_notes`, `append_note`, `log_learned` | runs on its own |
 | vault | `write_note` (replaces a whole note) | approve/deny keyboard in the chat first |
-| paperless | `search_documents`, `list_documents`, `get_document`, `list_labels` | runs on its own |
+| paperless | `search_documents`, `list_documents`, `get_document`, `get_document_page` (a page as a picture), `list_labels` | runs on its own |
 | paperless | `update_document`, `create_tag` | approve/deny keyboard in the chat first |
 | homeassistant | `who_is_home`, `list_entities`, `get_state` | runs on its own |
 | homeassistant | `turn_on`, `turn_off` (light, switch, fan, input_boolean only) | approve/deny keyboard in the chat first |
 | homelab | `list_services`, `list_workloads`, `workload_status`, `pod_logs`, `events`, `flux_status`, `backups` | runs on its own |
 
-There is no restart, scale, reconcile or "run kubectl" tool, and the
+The built-in `deliver_file` is on so a page picture from Paperless can be
+sent into the chat; the only files in the workspace are what MCP tools
+return. There is no restart, scale, reconcile or "run kubectl" tool, and the
 homelab ServiceAccount cannot read Secrets or ConfigMaps. The masterplan's
 "later allowlisted actions" are still later. The agent's built-in shell, file,
 HTTP and browser tools are switched off by `risk_profiles.haus.allowed_tools`.

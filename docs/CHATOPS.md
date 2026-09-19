@@ -10,7 +10,8 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
                        ├▶ calendar-mcp ─▶ nextcloud (CalDAV)
                        ├▶ vault-mcp ────▶ /data/vault ◀─ livesync-bridge ─▶ obsidian-sync (CouchDB)
                        ├▶ paperless-mcp ▶ paperless (documents)
-                       └▶ homeassistant-mcp ▶ home-assistant (states, switches)
+                       ├▶ homeassistant-mcp ▶ home-assistant (states, switches)
+                       └▶ files-mcp (sidecar) ▶ the workspace: what people send the bot
 ```
 
 - **zeroclaw** is [ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw), a
@@ -41,9 +42,13 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 | paperless | `update_document`, `create_tag` | approve/deny keyboard in the chat first |
 | homeassistant | `who_is_home`, `list_entities`, `get_state` | runs on its own |
 | homeassistant | `turn_on`, `turn_off` (light, switch, fan, input_boolean only) | approve/deny keyboard in the chat first |
+| files | `list_received_files`, `read_pdf_text`, `render_page` | runs on its own |
+| files | `send_to_paperless` | approve/deny keyboard in the chat first |
 | homelab | `list_services`, `list_workloads`, `workload_status`, `pod_logs`, `events`, `flux_status`, `backups` | runs on its own |
 
-The built-in `deliver_file` is on so a page picture from Paperless can be
+`files-mcp` is a native sidecar in the ZeroClaw pod, on the same volume,
+because Telegram attachments land in ZeroClaw's workspace and nowhere
+else; it listens on the pod's loopback. The built-in `deliver_file` is on so a page picture from Paperless can be
 sent into the chat; the only files in the workspace are what MCP tools
 return. There is no restart, scale, reconcile or "run kubectl" tool, and the
 homelab ServiceAccount cannot read Secrets or ConfigMaps. The masterplan's

@@ -66,7 +66,7 @@ spec:
         # loopback only, so no NetworkPolicy is involved. Same uid as ZeroClaw
         # because the files belong to it; the server never writes.
         - name: files-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-d81d9e722f7b7595ffeedc7520e61d8b1bb88514FILES_SHA
+          image: ghcr.io/pxldi/homelab-mcp:sha-d81d9e722f7b7595ffeedc7520e61d8b1bb88514
           imagePullPolicy: IfNotPresent
           restartPolicy: Always
           args: ["python", "-m", "files_mcp"]

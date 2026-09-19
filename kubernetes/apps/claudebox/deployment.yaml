@@ -124,9 +124,10 @@ spec:
         # cannot chown it itself. HOME must be writable — Claude Code enforces
         # 0700 on ~/.claude.
         #
-        # second_brain and .livesync-bridge are the bridge's two subPath mounts.
-        # The kubelet creates a missing subPath directory root-owned, so they
-        # are created here first, as uid 1000, or the bridge cannot write them.
+        # second_brain, .livesync-bridge/data and .livesync-bridge/deno are the
+        # bridge's three subPath mounts. The kubelet creates a missing subPath
+        # directory root-owned, so they are created here first, as uid 1000,
+        # or the bridge cannot write them.
         - name: fix-perms
           image: busybox:1.38
           command:
@@ -134,8 +135,10 @@ spec:
             - -c
             - |
               set -eu
-              mkdir -p /home/pxldi/projects /home/pxldi/second_brain /home/pxldi/.livesync-bridge
-              chown 1000:1000 /home/pxldi /home/pxldi/projects /home/pxldi/second_brain /home/pxldi/.livesync-bridge
+              mkdir -p /home/pxldi/projects /home/pxldi/second_brain \
+                /home/pxldi/.livesync-bridge/data /home/pxldi/.livesync-bridge/deno
+              chown 1000:1000 /home/pxldi /home/pxldi/projects /home/pxldi/second_brain \
+                /home/pxldi/.livesync-bridge /home/pxldi/.livesync-bridge/data /home/pxldi/.livesync-bridge/deno
               echo "chowned PVC roots to 1000:1000"
               # The kubelet creates the /tmp emptyDir as 0:1000 mode 2777 (the
               # pod's fsGroup, no sticky bit). Claude Code refuses to put its
@@ -396,14 +399,23 @@ spec:
         # the vault passphrase, the same as the chatops vault pod does for the
         # bot. What differs is the uid. The image runs as deno (1993) and owns
         # /app and /deno-dir; here the sessions are uid 1000 and both sides
-        # edit the same notes, so the bridge runs as 1000 too. /deno-dir is
-        # therefore replaced by a PVC subPath it can write: the image's cached
-        # jsr modules are hidden behind the mount and are downloaded again on
-        # the first start (the pod has internet egress), then kept on the
-        # volume. npm modules come from /app/node_modules in the image, which
-        # is readable by anyone. Deno's localStorage, the bridge's record of
-        # which files it has already scanned, lives in the same subPath; delete
-        # .livesync-bridge/location_data on the PVC to force a full rescan.
+        # edit the same notes, so the bridge runs as 1000 too. Every directory
+        # the bridge writes is therefore a PVC subPath owned by 1000:
+        #   /app/data        its local database and state (the chatops pod
+        #                    mounts its volume here for the same reason; with
+        #                    only /app/data/vault mounted the first start died
+        #                    with "PermissionDenied (os error 13)" on every
+        #                    CouchDB connect attempt, 2026-09-19)
+        #   /app/data/vault  the mirror, nested inside the one above
+        #   /deno-dir        DENO_DIR. The image's cached jsr modules are hidden
+        #                    behind the mount and are downloaded again on the
+        #                    first start (the pod has internet egress), then
+        #                    kept. npm modules come from /app/node_modules in
+        #                    the image, readable by anyone. Deno's localStorage,
+        #                    the bridge's record of which files it has already
+        #                    scanned, is location_data in here; delete
+        #                    .livesync-bridge/deno/location_data to force a
+        #                    full rescan.
         #
         # Only this container and render-bridge-config see the rendered config
         # with the passphrase. Do not mount bridge-rendered into claudebox.
@@ -432,11 +444,14 @@ spec:
               mountPath: /app/dat
               readOnly: true
             - name: data
+              mountPath: /app/data
+              subPath: .livesync-bridge/data
+            - name: data
               mountPath: /app/data/vault
               subPath: second_brain
             - name: data
               mountPath: /deno-dir
-              subPath: .livesync-bridge
+              subPath: .livesync-bridge/deno
           resources:
             requests:
               cpu: 20m

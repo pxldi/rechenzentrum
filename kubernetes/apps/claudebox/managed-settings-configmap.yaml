@@ -37,6 +37,17 @@
 # `Write(path)` rule matches nothing and Claude Code logs a warning about it on
 # every start. Edit rules already cover every file-editing tool, Write included.
 #
+# No Read() rule with a glob. `Read(**/age.key)` was here until 2026-09-19.
+# A Bash command that reads a whole directory (`grep -r`, `rg`, `cat dir/*`)
+# cannot be proven not to touch a file a Read() deny rule covers, so Claude
+# Code hands it to a person, in every permission mode, and a `**` glob covers
+# every directory there is. That was the prompt on every repository-wide grep
+# from the phone. The rule bought nothing: age.key is gitignored and has never
+# been on this volume, and `sops -d` is denied below regardless. The one
+# Read() rule left names an absolute path under ~/.claude, which no grep over
+# ~/projects overlaps. A project's own settings can reintroduce the problem
+# for that project; schall's .env rules do.
+#
 # `defaultMode` is read from the highest-ranked source only, so this value
 # wins over the `--permission-mode` flag the entrypoint passes as well; the
 # flag stays for anyone reading the entrypoint alone.
@@ -53,7 +64,7 @@
 #
 # `hooks.PreToolUse` denies one shape of Bash command: `cd <dir>` chained
 # with anything after it. Claude Code cannot resolve a relative path after a
-# cd inside one command, and as soon as any Read() deny rule exists (the two
+# cd inside one command, and as soon as any Read() deny rule exists (the one
 # below, or a project's .env rule) it must ask a person before running it,
 # even in auto mode. That prompt is what a phone session cannot answer, and it
 # was the 2026-09 complaint. The hook refuses the shape once with the
@@ -86,7 +97,6 @@ data:
           "Edit(//home/pxldi/.claude/**)",
           "Edit(//home/pxldi/.claude.json)",
           "Read(//home/pxldi/.claude/.credentials.json)",
-          "Read(**/age.key)",
           "Bash(sops -d:*)",
           "Bash(sops --decrypt:*)",
           "Bash(gh repo delete:*)"

@@ -116,7 +116,7 @@ spec:
             limits:
               memory: 512Mi
         - name: vault-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-e5382336d06b03f82fb67edfeccfe4f2d3d08609
+          image: ghcr.io/pxldi/homelab-mcp:sha-881eea7dc1825f0f473400fdff29c57412802638
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "vault_mcp"]
           ports:

@@ -124,8 +124,8 @@ spec:
         # cannot chown it itself. HOME must be writable — Claude Code enforces
         # 0700 on ~/.claude.
         #
-        # second_brain, .livesync-bridge/data and .livesync-bridge/deno are the
-        # bridge's three subPath mounts. The kubelet creates a missing subPath
+        # second_brain and the three .livesync-bridge/* directories are the
+        # bridge's subPath mounts. The kubelet creates a missing subPath
         # directory root-owned, so they are created here first, as uid 1000,
         # or the bridge cannot write them.
         - name: fix-perms
@@ -136,9 +136,11 @@ spec:
             - |
               set -eu
               mkdir -p /home/pxldi/projects /home/pxldi/second_brain \
-                /home/pxldi/.livesync-bridge/data /home/pxldi/.livesync-bridge/deno
+                /home/pxldi/.livesync-bridge/data /home/pxldi/.livesync-bridge/deno \
+                /home/pxldi/.livesync-bridge/location_data
               chown 1000:1000 /home/pxldi /home/pxldi/projects /home/pxldi/second_brain \
-                /home/pxldi/.livesync-bridge /home/pxldi/.livesync-bridge/data /home/pxldi/.livesync-bridge/deno
+                /home/pxldi/.livesync-bridge /home/pxldi/.livesync-bridge/data \
+                /home/pxldi/.livesync-bridge/deno /home/pxldi/.livesync-bridge/location_data
               echo "chowned PVC roots to 1000:1000"
               # The kubelet creates the /tmp emptyDir as 0:1000 mode 2777 (the
               # pod's fsGroup, no sticky bit). Claude Code refuses to put its
@@ -411,11 +413,21 @@ spec:
         #                    behind the mount and are downloaded again on the
         #                    first start (the pod has internet egress), then
         #                    kept. npm modules come from /app/node_modules in
-        #                    the image, readable by anyone. Deno's localStorage,
-        #                    the bridge's record of which files it has already
-        #                    scanned, is location_data in here; delete
-        #                    .livesync-bridge/deno/location_data to force a
-        #                    full rescan.
+        #                    the image, readable by anyone.
+        #   /deno-dir/location_data
+        #                    Deno's localStorage, the bridge's record of which
+        #                    files it has already scanned; delete
+        #                    .livesync-bridge/location_data to force a full
+        #                    rescan. Mounted on its own, although it lies inside
+        #                    the mount above, because the image declares it as a
+        #                    VOLUME and containerd honours image volumes the way
+        #                    Docker does: a VOLUME path no mount covers gets a
+        #                    fresh directory seeded from the image, owned by the
+        #                    image's uid 1993, and uid 1000 then fails every
+        #                    localStorage call with "PermissionDenied (os error
+        #                    13)". That was the 2026-09-19 failure after the
+        #                    /app/data mount was already right. The other two
+        #                    VOLUMEs, /app/dat and /app/data, are covered.
         #
         # Only this container and render-bridge-config see the rendered config
         # with the passphrase. Do not mount bridge-rendered into claudebox.
@@ -452,6 +464,9 @@ spec:
             - name: data
               mountPath: /deno-dir
               subPath: .livesync-bridge/deno
+            - name: data
+              mountPath: /deno-dir/location_data
+              subPath: .livesync-bridge/location_data
           resources:
             requests:
               cpu: 20m

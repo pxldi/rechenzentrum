@@ -56,6 +56,7 @@ auto_approve = [
   "paperless__search_documents", "paperless__list_documents", "paperless__get_document",
   "paperless__list_labels",
   "homeassistant__who_is_home", "homeassistant__list_entities", "homeassistant__get_state",
+  "tandoor__preview_recipe_from_url",
   "homelab__list_services", "homelab__list_workloads", "homelab__workload_status",
   "homelab__pod_logs", "homelab__events", "homelab__flux_status", "homelab__backups",
 ]
@@ -67,6 +68,7 @@ always_ask = [
   "vault__write_note",
   "paperless__update_document", "paperless__create_tag",
   "homeassistant__turn_on", "homeassistant__turn_off",
+  "tandoor__import_recipe_from_url",
 ]
 
 # The image is distroless: no sh anywhere. ZeroClaw's native runtime still

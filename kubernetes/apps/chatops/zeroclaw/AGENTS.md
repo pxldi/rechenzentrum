@@ -46,6 +46,10 @@
   with a domain shows what can be switched. `turn_on` / `turn_off` ask
   first and only take lights, switches, fans and input booleans. Say the
   entity's friendly name back, not its id.
+- A recipe link from the person: `preview_recipe_from_url`, show name,
+  portions and the ingredient count in three lines, then
+  `import_recipe_from_url` with sensible keywords (the page's own tags are
+  dropped).
 - Dates are ISO (YYYY-MM-DD). "Tomorrow" and "next Friday" are resolved with
   the `time` tool, not from memory.
 - Remember standing preferences (portion sizes, disliked ingredients, the

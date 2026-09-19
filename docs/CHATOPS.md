@@ -21,7 +21,8 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
   credential.
 - **tandoor-mcp**, **homelab-mcp**, **calendar-mcp**, **vault-mcp**,
   **paperless-mcp** and **homeassistant-mcp** are small Python MCP servers
-  built from `images/homelab-mcp/` into one image. Each holds the one credential
+  built from `images/homelab-mcp/` into one image (`immich_mcp` and
+  `karakeep_mcp` are in the image too, built and then not wanted). Each holds the one credential
   its tools need. They speak Streamable HTTP on port 8000 and accept
   connections only from the zeroclaw pod (NetworkPolicy), which is why they
   carry no bearer token of their own.
@@ -30,8 +31,8 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 
 | Server | Tools | Approval |
 | --- | --- | --- |
-| tandoor | `search_recipes`, `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `leftovers`, `recipes_for_leftovers`, `log_cooked`, `list_shopping_list` | runs on its own |
-| tandoor | `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size`, `move_meal_plan`, `add_shopping_item`, `remove_shopping_item` | approve/deny keyboard in the chat first |
+| tandoor | `search_recipes`, `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `leftovers`, `recipes_for_leftovers`, `log_cooked`, `list_shopping_list`, `preview_recipe_from_url` | runs on its own |
+| tandoor | `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size`, `move_meal_plan`, `add_shopping_item`, `remove_shopping_item`, `import_recipe_from_url` | approve/deny keyboard in the chat first |
 | calendar | `list_calendars`, `list_events`, `search_events` | runs on its own |
 | calendar | `create_event`, `move_event`, `delete_event` | approve/deny keyboard in the chat first |
 | vault | `list_notes`, `read_note`, `search_notes`, `append_note`, `log_learned` | runs on its own |

@@ -1,0 +1,24 @@
+{
+  "peers": [
+    {
+      "type": "couchdb",
+      "name": "second_brain",
+      "group": "vault",
+      "url": "http://obsidian-sync.obsidian-sync.svc.cluster.local:5984",
+      "database": "second_brain",
+      "username": "@COUCHDB_USER@",
+      "password": "@COUCHDB_PASSWORD@",
+      "passphrase": "@VAULT_PASSPHRASE@",
+      "obfuscatePassphrase": "",
+      "baseDir": "",
+      "useRemoteTweaks": true
+    },
+    {
+      "type": "storage",
+      "name": "mirror",
+      "group": "vault",
+      "baseDir": "/app/data/vault/",
+      "scanOfflineChanges": true
+    }
+  ]
+}

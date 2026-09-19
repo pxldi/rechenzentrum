@@ -1,11 +1,11 @@
 ---
 # The guardrails that survive the session they constrain.
 #
-# The server runs its sessions in bypassPermissions mode, which is the mode the
-# docs describe as being for "isolated environments like containers or VMs" —
-# this pod, in other words. It skips every prompt, including the protected-path
-# handling that normally guards `.git` and `.claude`. What it does NOT skip are
-# explicit `deny` and `ask` rules, and that is what this file is.
+# The servers spawn their sessions in auto mode, and this file pins that mode
+# for every session in the pod, including the ones an exec'd `claude` starts.
+# In auto mode a classifier reviews actions instead of a person; it skips
+# every prompt except explicit `ask` rules, and it can still be blocked by
+# explicit `deny` rules. Those two lists are what this file mostly is.
 #
 # It is delivered as managed settings — /etc/claude-code/managed-settings.json,
 # read-only, from a ConfigMap — rather than as ~/.claude/settings.json, because
@@ -36,6 +36,28 @@
 # Only `Edit(path)` rules are matched by the file permission checks; a
 # `Write(path)` rule matches nothing and Claude Code logs a warning about it on
 # every start. Edit rules already cover every file-editing tool, Write included.
+#
+# `defaultMode` is read from the highest-ranked source only, so this value
+# wins over the `--permission-mode` flag the entrypoint passes as well; the
+# flag stays for anyone reading the entrypoint alone.
+#
+# `additionalDirectories` is what stopped the prompts of 2026-09. A session's
+# working directory is the repo its server sits in. Everything else on the
+# volume — a sibling repo after a `cd`, a linked worktree under
+# .claude/worktrees that a subagent greps recursively, the vault, /tmp — was
+# "outside the working directories", and the first read outside them prompts
+# even in auto mode, per session, with the answer recorded nowhere a server can
+# reach. Listing the three roots here makes those reads ordinary. Directories
+# added this way grant file access only; they load no settings, skills or
+# CLAUDE.md of their own, which is the point.
+#
+# `hooks.SessionStart` is the vault's session-context hook, the same one the
+# workstation runs from ~/.claude/settings.json. It prints the matching project
+# spec and its open tasks from ~/second_brain/ops/ into every new session. It is
+# here and not in a user settings file for the same reason as the rules above:
+# the PVC is writable by the sessions, this ConfigMap is not. `sh` in front
+# because the bridge mirrors files as 0644 and the script is not executable on
+# the pod. The hook only prints; it changes nothing.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -45,6 +67,12 @@ data:
   managed-settings.json: |
     {
       "permissions": {
+        "defaultMode": "auto",
+        "additionalDirectories": [
+          "/home/pxldi/projects",
+          "/home/pxldi/second_brain",
+          "/tmp"
+        ],
         "deny": [
           "Edit(//home/pxldi/.claude/**)",
           "Edit(//home/pxldi/.claude.json)",
@@ -62,6 +90,20 @@ data:
           "Bash(git push origin main:*)",
           "Bash(git push origin HEAD:main:*)",
           "Bash(gh release delete:*)"
+        ]
+      },
+      "hooks": {
+        "SessionStart": [
+          {
+            "matcher": "startup|resume|clear",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "sh \"$HOME/second_brain/ops/bin/session-context.sh\"",
+                "timeout": 10
+              }
+            ]
+          }
         ]
       }
     }

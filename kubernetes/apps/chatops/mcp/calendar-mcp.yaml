@@ -25,7 +25,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: calendar-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-d81d9e722f7b7595ffeedc7520e61d8b1bb88514
+          image: ghcr.io/pxldi/homelab-mcp:sha-493610a48faf12aa180d9709519ea73d6477b6ba
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "calendar_mcp"]
           ports:

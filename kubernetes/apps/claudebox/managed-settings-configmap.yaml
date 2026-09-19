@@ -51,6 +51,15 @@
 # added this way grant file access only; they load no settings, skills or
 # CLAUDE.md of their own, which is the point.
 #
+# `hooks.PreToolUse` denies one shape of Bash command: `cd <dir>` chained
+# with anything after it. Claude Code cannot resolve a relative path after a
+# cd inside one command, and as soon as any Read() deny rule exists (the two
+# below, or a project's .env rule) it must ask a person before running it,
+# even in auto mode. That prompt is what a phone session cannot answer, and it
+# was the 2026-09 complaint. The hook refuses the shape once with the
+# alternative spelled out; the retry costs seconds, the prompt cost the
+# session. Same script the workstation runs.
+#
 # `hooks.SessionStart` is the vault's session-context hook, the same one the
 # workstation runs from ~/.claude/settings.json. It prints the matching project
 # spec and its open tasks from ~/second_brain/ops/ into every new session. It is
@@ -93,6 +102,18 @@ data:
         ]
       },
       "hooks": {
+        "PreToolUse": [
+          {
+            "matcher": "Bash",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "sh \"$HOME/second_brain/ops/bin/no-cd-compound.sh\"",
+                "timeout": 10
+              }
+            ]
+          }
+        ],
         "SessionStart": [
           {
             "matcher": "startup|resume|clear",

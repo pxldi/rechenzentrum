@@ -1,14 +1,16 @@
 # ChatOps
 
 A Telegram bot that can read the cluster, manage recipes and the calendar,
-and read and write the Obsidian vault, built from five pods in the
-`chatops` namespace:
+read and write the Obsidian vault, search documents and switch the lights,
+built from seven pods in the `chatops` namespace:
 
 ```text
 Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, meal plan, shopping list)
               (agent)  ├▶ homelab-mcp ──▶ API server (read-only)
                        ├▶ calendar-mcp ─▶ nextcloud (CalDAV)
-                       └▶ vault-mcp ────▶ /data/vault ◀─ livesync-bridge ─▶ obsidian-sync (CouchDB)
+                       ├▶ vault-mcp ────▶ /data/vault ◀─ livesync-bridge ─▶ obsidian-sync (CouchDB)
+                       ├▶ paperless-mcp ▶ paperless (documents)
+                       └▶ homeassistant-mcp ▶ home-assistant (states, switches)
 ```
 
 - **zeroclaw** is [ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw), a
@@ -17,8 +19,9 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
   operator's ChatGPT subscription. It holds the Telegram token and its own
   Codex login and nothing else; it never sees a Tandoor token or a cluster
   credential.
-- **tandoor-mcp**, **homelab-mcp**, **calendar-mcp** and **vault-mcp** are
-  small Python MCP servers built from `images/homelab-mcp/` into one image. Each holds the one credential
+- **tandoor-mcp**, **homelab-mcp**, **calendar-mcp**, **vault-mcp**,
+  **paperless-mcp** and **homeassistant-mcp** are small Python MCP servers
+  built from `images/homelab-mcp/` into one image. Each holds the one credential
   its tools need. They speak Streamable HTTP on port 8000 and accept
   connections only from the zeroclaw pod (NetworkPolicy), which is why they
   carry no bearer token of their own.
@@ -33,6 +36,10 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 | calendar | `create_event`, `move_event`, `delete_event` | approve/deny keyboard in the chat first |
 | vault | `list_notes`, `read_note`, `search_notes`, `append_note`, `log_learned` | runs on its own |
 | vault | `write_note` (replaces a whole note) | approve/deny keyboard in the chat first |
+| paperless | `search_documents`, `list_documents`, `get_document`, `list_labels` | runs on its own |
+| paperless | `update_document`, `create_tag` | approve/deny keyboard in the chat first |
+| homeassistant | `who_is_home`, `list_entities`, `get_state` | runs on its own |
+| homeassistant | `turn_on`, `turn_off` (light, switch, fan, input_boolean only) | approve/deny keyboard in the chat first |
 | homelab | `list_services`, `list_workloads`, `workload_status`, `pod_logs`, `events`, `flux_status`, `backups` | runs on its own |
 
 There is no restart, scale, reconcile or "run kubectl" tool, and the
@@ -58,6 +65,8 @@ ZeroClaw as environment variables in its schema-mirror grammar
 | `TELEGRAM_PEERS` | zeroclaw | A JSON list of numeric Telegram user ids, e.g. `'["123456789"]'`. Message the bot once with the placeholder in place and it replies with your id |
 | `TANDOOR_TOKEN` | tandoor-mcp | Tandoor, Settings, API, new token with scope `read write` |
 | `COUCHDB_USER`, `COUCHDB_PASSWORD`, `VAULT_PASSPHRASE` (in `secret-vault.yaml`) | vault-mcp pod (bridge) | The obsidian-sync admin, and the vault's LiveSync E2EE passphrase. The passphrase reads the whole vault; set it with `sops set` on the CLI, see the comment in the file |
+| `PAPERLESS_TOKEN` (in `secret-paperless.yaml`) | paperless-mcp | `manage.py drf_create_token admin` in the paperless pod; revoke in the Django admin under Auth Tokens |
+| `HASS_TOKEN` (in `secret-homeassistant.yaml`) | homeassistant-mcp | Home Assistant, user profile, Security, long-lived access token; set with `sops set`, see the comment in the file |
 | `CALDAV_PASSWORD` (in `secret-caldav.yaml`) | calendar-mcp | A Nextcloud app password: `occ user:auth-tokens:add <user> --name clanky-calendar -n` in the nextcloud pod. Account-wide, not calendar-scoped; revoke under Settings, Security |
 
 The peer list is non-empty on purpose: with it set, ZeroClaw never issues a

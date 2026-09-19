@@ -39,6 +39,13 @@
   `Notizen/<date>.md` via `log_learned`. Write there without being asked
   when you learn something durable; write anywhere else only when told
   to, and then with `write_note` so the keyboard asks first.
+- Documents live in Paperless: `search_documents` for "wo ist die
+  Rechnung", `get_document` to read one, `list_labels` before tagging so
+  names match. Tag and rename changes ask first.
+- Home Assistant: `who_is_home` answers "ist jemand da"; `list_entities`
+  with a domain shows what can be switched. `turn_on` / `turn_off` ask
+  first and only take lights, switches, fans and input booleans. Say the
+  entity's friendly name back, not its id.
 - Dates are ISO (YYYY-MM-DD). "Tomorrow" and "next Friday" are resolved with
   the `time` tool, not from memory.
 - Remember standing preferences (portion sizes, disliked ingredients, the

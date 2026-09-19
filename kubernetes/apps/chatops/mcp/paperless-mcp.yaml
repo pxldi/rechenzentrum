@@ -2,24 +2,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: homelab-mcp
+  name: paperless-mcp
   namespace: chatops
   labels:
-    app: homelab-mcp
+    app: paperless-mcp
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: homelab-mcp
+      app: paperless-mcp
   template:
     metadata:
       labels:
-        app: homelab-mcp
+        app: paperless-mcp
     spec:
-      # The one pod in this namespace that carries a token, and the reason the
-      # cluster view is a separate Deployment from the agent.
-      serviceAccountName: homelab-mcp
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -27,13 +24,23 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: homelab-mcp
+        - name: paperless-mcp
           image: ghcr.io/pxldi/homelab-mcp:sha-fc57e85d511f880a4c9f3a063e80601b703187b2
           imagePullPolicy: IfNotPresent
-          args: ["python", "-m", "homelab_mcp"]
+          args: ["python", "-m", "paperless_mcp"]
           ports:
             - name: http
               containerPort: 8000
+          env:
+            - name: PAPERLESS_URL
+              value: http://paperless.paperless.svc.cluster.local
+            - name: PAPERLESS_PUBLIC_URL
+              value: https://paperless.pxldi.de
+            - name: PAPERLESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: chatops-paperless
+                  key: PAPERLESS_TOKEN
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -58,7 +65,7 @@ spec:
           resources:
             requests:
               cpu: 20m
-              memory: 96Mi
+              memory: 64Mi
             limits:
               memory: 256Mi
       volumes:
@@ -68,11 +75,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: homelab-mcp
+  name: paperless-mcp
   namespace: chatops
 spec:
   selector:
-    app: homelab-mcp
+    app: paperless-mcp
   ports:
     - name: http
       port: 8000

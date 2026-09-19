@@ -61,6 +61,17 @@ spec:
       ports:
         - protocol: TCP
           port: 443
+    # The files sidecar in this pod uploads to Paperless.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: paperless
+          podSelector:
+            matchLabels:
+              app: paperless
+      ports:
+        - protocol: TCP
+          port: 8000
 ---
 # The cluster view talks to the API server and nothing else. Same address as
 # the claudebox and CNPG rules: the node, on the API port.

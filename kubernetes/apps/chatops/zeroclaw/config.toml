@@ -57,6 +57,7 @@ auto_approve = [
   "vault__append_note", "vault__log_learned",
   "paperless__search_documents", "paperless__list_documents", "paperless__get_document",
   "paperless__list_labels", "paperless__get_document_page",
+  "files__list_received_files", "files__read_pdf_text", "files__render_page",
   "homeassistant__who_is_home", "homeassistant__list_entities", "homeassistant__get_state",
   "tandoor__preview_recipe_from_url",
   "homelab__list_services", "homelab__list_workloads", "homelab__workload_status",
@@ -70,7 +71,7 @@ always_ask = [
   "vault__write_note",
   "paperless__update_document", "paperless__create_tag",
   "homeassistant__turn_on", "homeassistant__turn_off",
-  "tandoor__import_recipe_from_url",
+  "tandoor__import_recipe_from_url", "files__send_to_paperless",
 ]
 
 # The image is distroless: no sh anywhere. ZeroClaw's native runtime still
@@ -162,8 +163,14 @@ name = "homeassistant"
 transport = "http"
 url = "http://homeassistant-mcp.chatops.svc.cluster.local:8000/mcp"
 
+# The sidecar in this pod; see the Deployment.
+[[mcp.servers]]
+name = "files"
+transport = "http"
+url = "http://127.0.0.1:8001/mcp"
+
 [mcp_bundles.homelab]
-servers = ["tandoor", "homelab", "calendar", "vault", "paperless", "homeassistant"]
+servers = ["tandoor", "homelab", "calendar", "vault", "paperless", "homeassistant", "files"]
 
 # The dashboard stays on the pod's loopback. Nothing routes to it, and the
 # liveness probe uses `zeroclaw status` rather than an HTTP port.

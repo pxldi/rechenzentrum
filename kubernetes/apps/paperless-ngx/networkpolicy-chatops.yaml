@@ -1,7 +1,7 @@
 ---
-# The document MCP server in chatops reads and tags documents over the API.
-# It is the only pod in that namespace allowed in: the agent itself never
-# talks to Paperless directly and never holds the token.
+# The document MCP server in chatops reads and tags documents over the API,
+# and the files sidecar in the zeroclaw pod uploads what people send the bot.
+# Only those two pods are allowed in.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -18,8 +18,10 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: chatops
           podSelector:
-            matchLabels:
-              app: paperless-mcp
+            matchExpressions:
+              - key: app
+                operator: In
+                values: ["paperless-mcp", "zeroclaw"]
       ports:
         - protocol: TCP
           port: 8000

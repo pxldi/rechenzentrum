@@ -59,6 +59,54 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /zeroclaw-data
+        # The files server lives in this pod because it needs the workspace on
+        # the PVC, where ZeroClaw saves Telegram attachments. A native sidecar
+        # (restartPolicy Always) starts before the main container and keeps
+        # running, so it is up when ZeroClaw connects; it listens on the pod's
+        # loopback only, so no NetworkPolicy is involved. Same uid as ZeroClaw
+        # because the files belong to it; the server never writes.
+        - name: files-mcp
+          image: ghcr.io/pxldi/homelab-mcp:sha-d81d9e722f7b7595ffeedc7520e61d8b1bb88514FILES_SHA
+          imagePullPolicy: IfNotPresent
+          restartPolicy: Always
+          args: ["python", "-m", "files_mcp"]
+          env:
+            - name: PORT
+              value: "8001"
+            - name: HOST
+              value: 127.0.0.1
+            - name: FILES_ROOT
+              value: /zeroclaw-data/zeroclaw/agents/haus/workspace
+            - name: PAPERLESS_URL
+              value: http://paperless.paperless.svc.cluster.local
+            - name: PAPERLESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: chatops-paperless
+                  key: PAPERLESS_TOKEN
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: data
+              mountPath: /zeroclaw-data
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 20m
+              memory: 96Mi
+            limits:
+              memory: 512Mi
         # ZeroClaw connects to its MCP servers once, at startup, and runs
         # without their tools if that fails; it does not retry. A plain
         # /health check is not enough: during a tag bump the terminating old
@@ -69,12 +117,12 @@ spec:
         # After two minutes it starts the bot anyway, with a warning: a bot
         # with old tools beats no bot.
         - name: wait-for-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-21f0d074499bbdf6d6e794cb4ab9174ec0fa61b4
+          image: ghcr.io/pxldi/homelab-mcp:sha-d81d9e722f7b7595ffeedc7520e61d8b1bb88514
           imagePullPolicy: IfNotPresent
           command: ["python", "/app/src/wait_for_mcp.py"]
           env:
             - name: MCP_URLS
-              value: http://homelab-mcp.chatops.svc.cluster.local:8000,http://tandoor-mcp.chatops.svc.cluster.local:8000,http://calendar-mcp.chatops.svc.cluster.local:8000,http://vault-mcp.chatops.svc.cluster.local:8000,http://paperless-mcp.chatops.svc.cluster.local:8000,http://homeassistant-mcp.chatops.svc.cluster.local:8000
+              value: http://homelab-mcp.chatops.svc.cluster.local:8000,http://tandoor-mcp.chatops.svc.cluster.local:8000,http://calendar-mcp.chatops.svc.cluster.local:8000,http://vault-mcp.chatops.svc.cluster.local:8000,http://paperless-mcp.chatops.svc.cluster.local:8000,http://homeassistant-mcp.chatops.svc.cluster.local:8000,http://127.0.0.1:8001
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534

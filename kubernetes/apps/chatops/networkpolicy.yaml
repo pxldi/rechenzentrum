@@ -1,4 +1,4 @@
-# Five pods, five different sets of destinations, so these are written per
+# Seven pods, seven different sets of destinations, so these are written per
 # pod rather than pulled from the namespace-wide components. The `app` label
 # is the pod's own; the app.kubernetes.io labels stop at the Deployment.
 #
@@ -15,7 +15,7 @@ spec:
     matchExpressions:
       - key: app
         operator: In
-        values: ["homelab-mcp", "tandoor-mcp", "calendar-mcp", "vault-mcp"]
+        values: ["homelab-mcp", "tandoor-mcp", "calendar-mcp", "vault-mcp", "paperless-mcp", "homeassistant-mcp"]
   policyTypes:
     - Ingress
   ingress:
@@ -46,7 +46,7 @@ spec:
             matchExpressions:
               - key: app
                 operator: In
-                values: ["homelab-mcp", "tandoor-mcp", "calendar-mcp", "vault-mcp"]
+                values: ["homelab-mcp", "tandoor-mcp", "calendar-mcp", "vault-mcp", "paperless-mcp", "homeassistant-mcp"]
       ports:
         - protocol: TCP
           port: 8000
@@ -147,3 +147,48 @@ spec:
       ports:
         - protocol: TCP
           port: 5984
+---
+# The document server reaches Paperless by its Service name and nothing
+# else; the matching ingress rule lives in kubernetes/apps/paperless-ngx.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: paperless-mcp-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: paperless-mcp
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: paperless
+          podSelector:
+            matchLabels:
+              app: paperless
+      ports:
+        - protocol: TCP
+          port: 8000
+---
+# Home Assistant runs with hostNetwork, so its Service resolves to the node
+# itself and no NetworkPolicy on its side applies; the egress is pinned to
+# the node address and HA's port, the same shape as homelab-mcp's API access.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: homeassistant-mcp-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: homeassistant-mcp
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.8.226/32
+      ports:
+        - protocol: TCP
+          port: 8123

@@ -69,12 +69,12 @@ spec:
         # After two minutes it starts the bot anyway, with a warning: a bot
         # with old tools beats no bot.
         - name: wait-for-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-881eea7dc1825f0f473400fdff29c57412802638
+          image: ghcr.io/pxldi/homelab-mcp:sha-fc57e85d511f880a4c9f3a063e80601b703187b2
           imagePullPolicy: IfNotPresent
           command: ["python", "/app/src/wait_for_mcp.py"]
           env:
             - name: MCP_URLS
-              value: http://homelab-mcp.chatops.svc.cluster.local:8000,http://tandoor-mcp.chatops.svc.cluster.local:8000,http://calendar-mcp.chatops.svc.cluster.local:8000,http://vault-mcp.chatops.svc.cluster.local:8000
+              value: http://homelab-mcp.chatops.svc.cluster.local:8000,http://tandoor-mcp.chatops.svc.cluster.local:8000,http://calendar-mcp.chatops.svc.cluster.local:8000,http://vault-mcp.chatops.svc.cluster.local:8000,http://paperless-mcp.chatops.svc.cluster.local:8000,http://homeassistant-mcp.chatops.svc.cluster.local:8000
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534

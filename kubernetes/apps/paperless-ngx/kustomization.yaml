@@ -10,6 +10,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
+  - networkpolicy-chatops.yaml
 components:
   # Egress. Reaches its own Postgres, Redis and the Gotenberg and Tika sidecars
   # here; the internet rule is for OCR language data and update checks.

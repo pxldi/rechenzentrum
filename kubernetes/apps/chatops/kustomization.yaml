@@ -22,12 +22,16 @@ resources:
   - secret-telegram-chat.yaml
   - secret-caldav.yaml
   - secret-vault.yaml
+  - secret-paperless.yaml
+  - secret-homeassistant.yaml
   - zeroclaw/pvc.yaml
   - zeroclaw/deployment.yaml
   - mcp/rbac.yaml
   - mcp/homelab-mcp.yaml
   - mcp/tandoor-mcp.yaml
   - mcp/calendar-mcp.yaml
+  - mcp/paperless-mcp.yaml
+  - mcp/homeassistant-mcp.yaml
   - vault/pvc.yaml
   - vault/deployment.yaml
   - vault/service.yaml

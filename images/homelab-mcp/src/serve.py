@@ -69,7 +69,16 @@ def serve(mcp: MCPServer) -> None:
     async def health(_: Request) -> Response:
         return JSONResponse({"status": "ok", "server": mcp.name, "build": os.environ.get("IMAGE_SHA", "")})
 
+    # Stateless: every request gets a fresh transport and no session id is
+    # issued or checked. With sessions, the SDK terminates one that has been
+    # idle for 30 minutes and answers 404 to its next request; ZeroClaw holds
+    # one session per server from startup, does not replay a failed call,
+    # and so the first tool call after a quiet half hour failed with "MCP
+    # server failed during tool call; outcome unknown". Nothing here keeps
+    # state between calls, so sessions bought nothing.
     app = mcp.streamable_http_app(
+        stateless_http=True,
+        json_response=True,
         transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
     )
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8000")), log_level="info")  # noqa: S104

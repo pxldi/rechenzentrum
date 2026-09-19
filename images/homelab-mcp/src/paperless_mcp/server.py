@@ -4,7 +4,9 @@ import os
 from typing import Any
 
 import httpx
+import pymupdf
 from mcp.server import MCPServer
+from mcp.server.mcpserver import Image
 from pydantic import Field
 
 from serve import guarded
@@ -137,6 +139,29 @@ async def list_labels() -> dict:
         data = await _get(f"/{kind}/", page_size=200)
         out[kind] = [{"name": x["name"], "documents": x.get("document_count")} for x in data.get("results", [])]
     return out
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError, ValueError)
+async def get_document_page(
+    document_id: int,
+    page: int = Field(1, ge=1, description="1-based page number."),
+    dpi: int = Field(120, ge=60, le=250, description="Render resolution; 120 reads fine, 250 for small print."),
+) -> Image:
+    """One page of a document as a picture (JPEG), rendered from Paperless's PDF. For
+    reading a stamp, a table or a layout the OCR text does not carry, or to show
+    the person the scan itself."""
+    async with _client() as c:
+        r = await c.get(f"/documents/{document_id}/preview/")
+        if r.status_code == 404:
+            raise RuntimeError(f"no document {document_id}")
+        r.raise_for_status()
+        pdf = r.content
+    doc = pymupdf.open(stream=pdf, filetype="pdf")
+    if page > len(doc):
+        raise RuntimeError(f"document {document_id} has {len(doc)} page(s)")
+    pix = doc[page - 1].get_pixmap(dpi=dpi)
+    return Image(data=pix.tobytes("jpeg"), format="jpeg")
 
 
 # --- write tools -----------------------------------------------------------

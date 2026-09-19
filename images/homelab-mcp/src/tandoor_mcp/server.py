@@ -328,6 +328,85 @@ async def move_meal_plan(
     return {"id": r.get("id"), "title": r.get("title") or (r.get("recipe") or {}).get("name"), "from": old[:10], "to": to_date}
 
 
+# --- recipe import ---------------------------------------------------------
+
+
+async def _scrape(url: str) -> dict:
+    r = await _send("POST", "/recipe-from-source/", {"url": url, "data": ""})
+    if r.get("error") or not r.get("recipe"):
+        raise RuntimeError(f"Tandoor could not read that page: {r.get('msg') or 'no recipe found'}")
+    return r
+
+
+def _scraped_summary(rec: dict) -> dict:
+    ingredients = [
+        f"{i.get('amount') or ''} {(i.get('unit') or {}).get('name') or ''} {(i.get('food') or {}).get('name') or ''}".strip()
+        for st in rec.get("steps") or []
+        for i in st.get("ingredients") or []
+    ]
+    return {
+        "name": rec.get("name"),
+        "servings": rec.get("servings"),
+        "working_time_min": rec.get("working_time"),
+        "waiting_time_min": rec.get("waiting_time"),
+        "steps": len(rec.get("steps") or []),
+        "ingredients": ingredients,
+        "keywords": [k.get("name") for k in rec.get("keywords") or []][:12],
+        "has_image": bool(rec.get("image_url")),
+    }
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def preview_recipe_from_url(url: str = Field(..., description="A recipe page, e.g. from Chefkoch or BBC Good Food.")) -> dict:
+    """Read a recipe page with Tandoor's scraper and show what would be imported. Nothing is saved."""
+    r = await _scrape(url)
+    out = _scraped_summary(r["recipe"])
+    out["already_imported"] = [{"id": d.get("id"), "name": d.get("name")} for d in r.get("duplicates") or []]
+    return out
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def import_recipe_from_url(
+    url: str = Field(..., description="A recipe page. Use preview_recipe_from_url first and show the person the summary."),
+    keywords: list[str] = Field(default_factory=list, description="Keywords for the recipe, e.g. ['vegan', 'wochentag']. The page's own tags are not imported."),
+) -> dict:
+    """Scrape a recipe page and save it as a Tandoor recipe, with its image when the page has one."""
+    r = await _scrape(url)
+    rec = r["recipe"]
+    # Pages bring 20 tags of their own ("Autumn", "Dinner party", ...), which
+    # would swamp the keyword list; only what the person asked for is kept.
+    keyword_objs = [{"name": k} for k in keywords if k]
+    # The scraper leaves every order field null and the serializer rejects
+    # that, so number the steps and ingredients here.
+    steps = []
+    for si, st in enumerate(rec.get("steps") or []):
+        ingredients = [{**i, "order": ii} for ii, i in enumerate(st.get("ingredients") or [])]
+        steps.append({**st, "order": si, "ingredients": ingredients})
+    body = {
+        "name": rec.get("name"),
+        "description": rec.get("description") or "",
+        "servings": rec.get("servings") or 2,
+        "servings_text": rec.get("servings_text") or "",
+        "working_time": rec.get("working_time") or 0,
+        "waiting_time": rec.get("waiting_time") or 0,
+        "source_url": rec.get("source_url") or url,
+        "internal": True,
+        "keywords": keyword_objs,
+        "steps": steps,
+    }
+    created = await _send("POST", "/recipe/", body)
+    image = False
+    if rec.get("image_url"):
+        try:
+            await _send("PUT", f"/recipe/{created['id']}/image/", {"image_url": rec["image_url"]})
+            image = True
+        except RuntimeError:
+            image = False
+    return {"id": created.get("id"), "name": created.get("name"), "image": image, **_scraped_summary(rec)}
+
+
 # --- shopping list ---------------------------------------------------------
 
 

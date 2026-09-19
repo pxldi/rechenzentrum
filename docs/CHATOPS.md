@@ -36,8 +36,8 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 | tandoor | `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size`, `move_meal_plan`, `add_shopping_item`, `remove_shopping_item`, `import_recipe_from_url` | approve/deny keyboard in the chat first |
 | calendar | `list_calendars`, `list_events`, `search_events` | runs on its own |
 | calendar | `create_event`, `move_event`, `delete_event` | approve/deny keyboard in the chat first |
-| vault | `list_notes`, `read_note`, `search_notes`, `append_note`, `log_learned` | runs on its own |
-| vault | `write_note` (replaces a whole note) | approve/deny keyboard in the chat first |
+| vault | `list_notes`, `read_note`, `search_notes` (whole vault), `append_note`, `log_learned` (under `Clanky/` only) | runs on its own |
+| vault | `write_note` (replaces a whole note, under `Clanky/` only) | approve/deny keyboard in the chat first |
 | paperless | `search_documents`, `list_documents`, `get_document`, `get_document_page` (a page as a picture), `list_labels` | runs on its own |
 | paperless | `update_document`, `create_tag` | approve/deny keyboard in the chat first |
 | homeassistant | `who_is_home`, `list_entities`, `get_state` | runs on its own |
@@ -72,6 +72,7 @@ ZeroClaw as environment variables in its schema-mirror grammar
 | `TELEGRAM_BOT_TOKEN` | zeroclaw | @BotFather, `/newbot` |
 | `TELEGRAM_PEERS` | zeroclaw | A JSON list of numeric Telegram user ids, e.g. `'["123456789"]'`. Message the bot once with the placeholder in place and it replies with your id |
 | `TANDOOR_TOKEN` | tandoor-mcp | Tandoor, Settings, API, new token with scope `read write` |
+| `VAULT_WRITE_ROOT` (`Clanky`) | vault-mcp | The one subfolder the write tools may touch. Reads cover the whole mirror; unset, every write is refused |
 | `COUCHDB_USER`, `COUCHDB_PASSWORD`, `VAULT_PASSPHRASE` (in `secret-vault.yaml`) | vault-mcp pod (bridge) | The obsidian-sync admin, and the vault's LiveSync E2EE passphrase. The passphrase reads the whole vault; set it with `sops set` on the CLI, see the comment in the file |
 | `PAPERLESS_TOKEN` (in `secret-paperless.yaml`) | paperless-mcp | `manage.py drf_create_token admin` in the paperless pod; revoke in the Django admin under Auth Tokens |
 | `HASS_TOKEN` (in `secret-homeassistant.yaml`) | homeassistant-mcp | Home Assistant, user profile, Security, long-lived access token; set with `sops set`, see the comment in the file |

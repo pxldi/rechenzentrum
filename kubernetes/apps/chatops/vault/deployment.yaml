@@ -123,8 +123,15 @@ spec:
             - name: http
               containerPort: 8000
           env:
+            # The whole mirrored vault is readable. Writes stay under Clanky/:
+            # the bot reads Telegram and imported pages, and the rest of the
+            # vault (ops/CLAUDE.md, the skills, the project specs) is what
+            # Claude Code sessions load as instructions. Unset, the server
+            # refuses every write.
             - name: VAULT_ROOT
               value: /data/vault
+            - name: VAULT_WRITE_ROOT
+              value: Clanky
             - name: TZ
               value: Europe/Berlin
           securityContext:

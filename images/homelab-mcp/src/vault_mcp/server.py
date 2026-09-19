@@ -1,9 +1,11 @@
-"""Notes tools over one folder of an Obsidian vault.
+"""Notes tools over an Obsidian vault.
 
-The folder is whatever syncs into VAULT_ROOT (livesync-bridge mirrors the
-vault's Clanky/ folder there). Every path a tool takes is resolved and has to
-stay under that root; only Markdown files are read or written. Nothing here
-knows about the sync, so the same server works on any directory.
+VAULT_ROOT is the folder the tools read: whatever livesync-bridge mirrors
+there, the whole vault in the chatops pod. VAULT_WRITE_ROOT is the one
+subfolder the write tools may touch (Clanky/ there); unset, writes are
+refused. Every path a tool takes is resolved and has to stay under the root;
+only Markdown files are read or written. Nothing here knows about the sync,
+so the same server works on any directory. The rules live in paths.py.
 """
 
 import os
@@ -15,23 +17,28 @@ from mcp.server import MCPServer
 from pydantic import Field
 
 from serve import guarded
+from vault_mcp.paths import VaultPathError, check_writable, note_path, write_root
 
 mcp = MCPServer("vault")
 
 ROOT = Path(os.environ.get("VAULT_ROOT", "/vault")).resolve()
+WRITE_ROOT = write_root(ROOT, os.environ.get("VAULT_WRITE_ROOT"))
+if WRITE_ROOT is None:
+    WRITE_ROOT_REL = "(writes disabled)"
+elif WRITE_ROOT == ROOT:
+    WRITE_ROOT_REL = "."
+else:
+    WRITE_ROOT_REL = WRITE_ROOT.relative_to(ROOT).as_posix()
 MAX_NOTE_BYTES = 200_000
 
 
 def _resolve(rel: str) -> Path:
-    """The absolute path of a note inside the root, or a RuntimeError."""
-    rel = rel.strip().lstrip("/")
-    if not rel:
-        raise RuntimeError("path is empty")
-    if not rel.endswith(".md"):
-        rel += ".md"
-    p = (ROOT / rel).resolve()
-    if p != ROOT and ROOT not in p.parents:
-        raise RuntimeError(f"{rel!r} is outside the vault folder")
+    return note_path(ROOT, rel)
+
+
+def _resolve_writable(rel: str) -> Path:
+    p = note_path(ROOT, rel)
+    check_writable(ROOT, WRITE_ROOT, p)
     return p
 
 
@@ -49,9 +56,9 @@ def _notes() -> list[Path]:
 
 
 @mcp.tool()
-@guarded(RuntimeError, OSError)
-def list_notes(folder: str = Field("", description="Subfolder, e.g. 'Notizen'. Empty lists everything.")) -> list[dict]:
-    """The notes in the shared folder: path, size and last change."""
+@guarded(VaultPathError, RuntimeError, OSError)
+def list_notes(folder: str = Field("", description="Subfolder, e.g. 'Clanky/Notizen'. Empty lists everything.")) -> list[dict]:
+    """The notes in the vault: path, size and last change."""
     base = _resolve(folder + "/x").parent if folder else ROOT
     out = []
     for p in _notes():
@@ -62,8 +69,8 @@ def list_notes(folder: str = Field("", description="Subfolder, e.g. 'Notizen'. E
 
 
 @mcp.tool()
-@guarded(RuntimeError, OSError)
-def read_note(path: str = Field(..., description="Note path relative to the shared folder, e.g. 'Geschmack.md'.")) -> dict:
+@guarded(VaultPathError, RuntimeError, OSError)
+def read_note(path: str = Field(..., description="Note path relative to the vault, e.g. 'Clanky/Geschmack.md'.")) -> dict:
     """A note's full text."""
     p = _resolve(path)
     if not p.is_file():
@@ -73,7 +80,7 @@ def read_note(path: str = Field(..., description="Note path relative to the shar
 
 
 @mcp.tool()
-@guarded(RuntimeError, OSError)
+@guarded(VaultPathError, RuntimeError, OSError)
 def search_notes(query: str = Field(..., description="Case-insensitive text; matching lines are returned with their note.")) -> list[dict]:
     """Lines across all notes that contain the query."""
     q = query.strip().lower()
@@ -90,16 +97,19 @@ def search_notes(query: str = Field(..., description="Case-insensitive text; mat
 
 
 # --- write tools -----------------------------------------------------------
+#
+# Writes stay under WRITE_ROOT. The bot reads Telegram and imported pages, and
+# the rest of the vault holds notes other agents load as instructions.
 
 
 @mcp.tool()
-@guarded(RuntimeError, OSError)
+@guarded(VaultPathError, RuntimeError, OSError)
 def write_note(
-    path: str = Field(..., description="Note path relative to the shared folder. Created with its folders if new."),
+    path: str = Field(..., description=f"Note path relative to the vault, under '{WRITE_ROOT_REL}/'. Created with its folders if new."),
     text: str = Field(..., description="The whole note; replaces what was there."),
 ) -> dict:
-    """Create or replace a note."""
-    p = _resolve(path)
+    """Create or replace a note in the writable folder."""
+    p = _resolve_writable(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     existed = p.exists()
     p.write_text(text if text.endswith("\n") else text + "\n", encoding="utf-8")
@@ -107,13 +117,13 @@ def write_note(
 
 
 @mcp.tool()
-@guarded(RuntimeError, OSError)
+@guarded(VaultPathError, RuntimeError, OSError)
 def append_note(
-    path: str = Field(..., description="Note path relative to the shared folder. Created if new."),
+    path: str = Field(..., description=f"Note path relative to the vault, under '{WRITE_ROOT_REL}/'. Created if new."),
     text: str = Field(..., description="Text added at the end, on its own line."),
 ) -> dict:
-    """Add to the end of a note without touching the rest."""
-    p = _resolve(path)
+    """Add to the end of a note in the writable folder without touching the rest."""
+    p = _resolve_writable(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     old = p.read_text(encoding="utf-8", errors="replace") if p.exists() else ""
     sep = "" if not old or old.endswith("\n") else "\n"
@@ -122,11 +132,11 @@ def append_note(
 
 
 @mcp.tool()
-@guarded(RuntimeError, OSError)
+@guarded(VaultPathError, RuntimeError, OSError)
 def log_learned(text: str = Field(..., description="One thing learned today, a sentence or two.")) -> dict:
-    """Append to today's note under Notizen/ (Notizen/YYYY-MM-DD.md), creating it with a heading."""
+    """Append to today's note, <writable folder>/Notizen/YYYY-MM-DD.md, creating it with a heading."""
     today = date.today().isoformat()
-    p = _resolve(f"Notizen/{today}")
+    p = _resolve_writable(f"{WRITE_ROOT_REL}/Notizen/{today}")
     if not p.exists():
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(f"# {today}\n\n", encoding="utf-8")

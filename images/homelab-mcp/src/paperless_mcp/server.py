@@ -1,12 +1,13 @@
 """Document tools over the Paperless-ngx REST API (token auth)."""
 
+import base64
 import os
 from typing import Any
 
 import httpx
 import pymupdf
 from mcp.server import MCPServer
-from mcp.server.mcpserver import Image
+from mcp.types import BlobResourceContents, EmbeddedResource
 from pydantic import Field
 
 from serve import guarded
@@ -75,6 +76,17 @@ def _id_by_name(table: dict[int, str], name: str, kind: str) -> int:
         if n.lower() == wanted:
             return i
     raise RuntimeError(f"no {kind} named {name!r}; known: {sorted(table.values())}")
+
+
+def _page_resource(jpeg: bytes, name: str) -> EmbeddedResource:
+    # An embedded resource with a blob, not an image block: ZeroClaw writes
+    # the former to its workspace and hands the model an [IMAGE:path] marker
+    # that its vision route turns into a picture; an image block reaches the
+    # model as raw base64 text, which it cannot read.
+    return EmbeddedResource(
+        type="resource",
+        resource=BlobResourceContents(uri=f"file:///{name}", mimeType="image/jpeg", blob=base64.b64encode(jpeg).decode()),
+    )
 
 
 # --- read tools ------------------------------------------------------------
@@ -147,7 +159,7 @@ async def get_document_page(
     document_id: int,
     page: int = Field(1, ge=1, description="1-based page number."),
     dpi: int = Field(120, ge=60, le=250, description="Render resolution; 120 reads fine, 250 for small print."),
-) -> Image:
+) -> EmbeddedResource:
     """One page of a document as a picture (JPEG), rendered from Paperless's PDF. For
     reading a stamp, a table or a layout the OCR text does not carry, or to show
     the person the scan itself."""
@@ -161,7 +173,7 @@ async def get_document_page(
     if page > len(doc):
         raise RuntimeError(f"document {document_id} has {len(doc)} page(s)")
     pix = doc[page - 1].get_pixmap(dpi=dpi)
-    return Image(data=pix.tobytes("jpeg"), format="jpeg")
+    return _page_resource(pix.tobytes("jpeg"), f"paperless-{document_id}-p{page}.jpg")
 
 
 # --- write tools -----------------------------------------------------------

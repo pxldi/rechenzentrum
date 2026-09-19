@@ -7,6 +7,7 @@ such a file into text, into a page picture, or into a Paperless document.
 Every path must resolve under FILES_ROOT; nothing here writes to it.
 """
 
+import base64
 import os
 from datetime import datetime
 from pathlib import Path
@@ -14,7 +15,7 @@ from pathlib import Path
 import httpx
 import pymupdf
 from mcp.server import MCPServer
-from mcp.server.mcpserver import Image
+from mcp.types import BlobResourceContents, EmbeddedResource
 from pydantic import Field
 
 from serve import guarded
@@ -95,14 +96,18 @@ def render_page(
     path: str = Field(..., description="Path of a received PDF or image."),
     page: int = Field(1, ge=1),
     dpi: int = Field(120, ge=60, le=250, description="120 reads fine; 200 or more for small print."),
-) -> Image:
+) -> EmbeddedResource:
     """One page as a picture (JPEG), to read a scan, a table, a stamp or a chart that has no text layer."""
     p = _resolve(path)
     doc = _open(p)
     if page > len(doc):
         raise RuntimeError(f"{p.name} has {len(doc)} page(s)")
     pix = doc[page - 1].get_pixmap(dpi=dpi)
-    return Image(data=pix.tobytes("jpeg"), format="jpeg")
+    # Embedded resource, not an image block: see paperless_mcp._page_resource.
+    return EmbeddedResource(
+        type="resource",
+        resource=BlobResourceContents(uri=f"file:///{p.stem}-p{page}.jpg", mimeType="image/jpeg", blob=base64.b64encode(pix.tobytes("jpeg")).decode()),
+    )
 
 
 # --- write tools -----------------------------------------------------------

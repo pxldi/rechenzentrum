@@ -1,0 +1,25 @@
+---
+# The claudebox pod mirrors the second_brain database too, through its own
+# livesync-bridge sidecar, so Claude Code sessions there see the vault as
+# ~/second_brain the way the workstation does.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-claudebox
+spec:
+  podSelector:
+    matchLabels:
+      app: obsidian-sync
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: claudebox
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: claudebox
+      ports:
+        - protocol: TCP
+          port: 5984

@@ -14,9 +14,26 @@
 # container (7Gi limit, ~4.8Gi resident) and the Gradle and Kotlin daemons
 # beside it, which between them caused both OOM incidents and the memory.max
 # grind that took the apiserver down on 2026-08-19. Neither is here. What is
-# left is two Go repositories and the sessions that work on them, and the pod's
-# whole footprint is 512Mi requested against a 6Gi ceiling rather than 15Gi of
-# limits across two containers.
+# left is the repositories cloned under ~/projects and the sessions that work
+# on them, and the pod's whole footprint is 512Mi requested against a 6Gi
+# ceiling rather than 15Gi of limits across two containers.
+#
+# One Remote Control server per repository, discovered at boot. The entrypoint
+# starts a server in every git checkout directly under ~/projects, plus one in
+# ~/projects itself for work that belongs to no repo. No session exists until
+# one is created from claude.ai/code or the phone, and it is created in that
+# server's directory, so the vault's session-context hook sees the right
+# project. A new clone shows up as a server on the next pod restart. Nothing in
+# this manifest names a repository any more.
+#
+# The vault rides along. A livesync-bridge sidecar (the same image the chatops
+# vault pod runs) mirrors the second_brain LiveSync database into
+# ~/second_brain on the PVC, both directions, so sessions here find the vault
+# where the workstation keeps it: the global CLAUDE.md, the skills, the project
+# specs and the tasks in ~/second_brain/ops/, all through the same paths. The
+# entrypoint symlinks ~/.claude/skills and ~/.claude/CLAUDE.md into it. The
+# bridge runs as uid 1000, the same as the sessions, because both sides write
+# the same files; see the container below for what that costs.
 #
 # The image is the one built for the Multica daemon, unchanged. Multica itself
 # was deleted from this repository on 2026-09-15, so claudebox is now the only
@@ -32,17 +49,17 @@
 # about: stripping them means a second Dockerfile or a conditional stage, and
 # the node has 740GB free. Splitting the image is its own reviewed change.
 #
-# Sessions run in auto permission mode — see the entrypoint. The rules that
-# still bind them are in managed-settings-configmap.yaml, mounted read-only at
-# /etc/claude-code so that a session running without prompts cannot rewrite its
-# own restrictions.
+# Sessions run in auto permission mode, pinned by managed-settings-configmap.yaml
+# and repeated as a flag in the entrypoint. The rules that still bind them are
+# in that same file, mounted read-only at /etc/claude-code so that a session
+# running without prompts cannot rewrite its own restrictions.
 #
 # There are deliberately NO API keys. Claude Code authenticates with a
 # subscription login stored under HOME on the PVC, done once by hand:
 #   kubectl exec -it -n claudebox deploy/claudebox -- claude auth login
 # then open the URL it prints and paste the code back. The entrypoint waits for
-# the login, polling, and says so. Workspace trust for the roots below is
-# recorded by the entrypoint itself. The Codex CLI (for the luna MCP server)
+# the login, polling, and says so. Workspace trust for ~/projects and every
+# repository it discovers there is recorded by the entrypoint itself. The Codex CLI (for the luna MCP server)
 # signs in with `codex login --device-auth`, its own login, never a copy of
 # the workstation's auth.json (see the entrypoint for why). Both logins
 # persist on the volume.
@@ -106,6 +123,10 @@ spec:
         # group, not the owner, and the runtime drops ALL capabilities so it
         # cannot chown it itself. HOME must be writable — Claude Code enforces
         # 0700 on ~/.claude.
+        #
+        # second_brain and .livesync-bridge are the bridge's two subPath mounts.
+        # The kubelet creates a missing subPath directory root-owned, so they
+        # are created here first, as uid 1000, or the bridge cannot write them.
         - name: fix-perms
           image: busybox:1.38
           command:
@@ -113,8 +134,8 @@ spec:
             - -c
             - |
               set -eu
-              mkdir -p /home/pxldi/projects
-              chown 1000:1000 /home/pxldi /home/pxldi/projects
+              mkdir -p /home/pxldi/projects /home/pxldi/second_brain /home/pxldi/.livesync-bridge
+              chown 1000:1000 /home/pxldi /home/pxldi/projects /home/pxldi/second_brain /home/pxldi/.livesync-bridge
               echo "chowned PVC roots to 1000:1000"
               # The kubelet creates the /tmp emptyDir as 0:1000 mode 2777 (the
               # pod's fsGroup, no sticky bit). Claude Code refuses to put its
@@ -177,6 +198,58 @@ spec:
               mountPath: /toolbin
             - name: tmp
               mountPath: /tmp
+        # The bridge reads a JSON config that has to contain the CouchDB
+        # credentials and the vault's E2EE passphrase in clear. It is rendered
+        # from the Secret into a memory-backed emptyDir that only the bridge
+        # mounts, so the passphrase is never on the volume and never in a
+        # directory a session can read. Copied from the chatops vault pod.
+        - name: render-bridge-config
+          image: alpine:3.24
+          command:
+            - sh
+            - -c
+            - >-
+              sed -e "s|@COUCHDB_USER@|${COUCHDB_USER}|g"
+              -e "s|@COUCHDB_PASSWORD@|${COUCHDB_PASSWORD}|g"
+              -e "s|@VAULT_PASSPHRASE@|${VAULT_PASSPHRASE}|g"
+              /config-src/config.json > /rendered/config.json &&
+              ! grep -q '@' /rendered/config.json &&
+              ! grep -q 'REPLACE_ME' /rendered/config.json
+          env:
+            - name: COUCHDB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: claudebox-vault
+                  key: COUCHDB_USER
+            - name: COUCHDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: claudebox-vault
+                  key: COUCHDB_PASSWORD
+            - name: VAULT_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: claudebox-vault
+                  key: VAULT_PASSPHRASE
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+          volumeMounts:
+            - name: bridge-config
+              mountPath: /config-src
+              readOnly: true
+            - name: bridge-rendered
+              mountPath: /rendered
       containers:
         # Note the owner: pxldi-labs, not pxldi. The image workflow tags
         # ghcr.io/${github.repository_owner}/multica-daemon and this repo moved
@@ -215,33 +288,31 @@ spec:
             # here: its transcripts are already filed under the paths below.
             - name: HOME
               value: /home/pxldi
+            # Every git checkout directly under this directory gets a Remote
+            # Control server of its own at boot, and the directory itself gets
+            # one for work that belongs to no repo. The checkouts are NOT
+            # created by this manifest; they are clones on the PVC, made by hand
+            # or by a session, and a new one is picked up on the next restart.
+            #
+            # foscal must not be cloned here. It is the Android project, and
+            # building it here is what needed the JDK, the Gradle daemons and
+            # the emulator container that made this pod the largest consumer on
+            # a 32Gi node. It builds on the workstation.
             - name: CLAUDEBOX_PROJECTS_ROOT
               value: /home/pxldi/projects
-            # Repos that get one long-lived Claude Code session each, resumed on
-            # every restart rather than recreated. Space-separated; empty or
-            # unset means "just the ad-hoc server".
-            #
-            # foscal is gone from this list on purpose. It is the Android
-            # project, and building it here is what needed the JDK, the Gradle
-            # daemons and the emulator container that made this pod the largest
-            # consumer on a 32Gi node. It builds on the workstation.
-            #
-            # These directories are NOT created by this manifest. They are
-            # clones on the PVC, made by hand or by a session; a root that does
-            # not exist is logged and skipped at startup rather than being
-            # treated as a failure.
-            - name: CLAUDEBOX_REPO_ROOTS
-              value: >-
-                /home/pxldi/projects/rechenzentrum
-                /home/pxldi/projects/schall
-            # Concurrent sessions the ad-hoc server will hand out. It does not
-            # apply to the two repos above — those are one session each by
-            # definition. 2 rather than the old 3 because two long-lived
-            # sessions now always exist beside it. See entrypoint.sh for the
-            # measured memory numbers, and for why four cores rather than 6Gi is
-            # the limit that actually bites.
+            # Concurrent sessions each server will hand out. A cap, not a
+            # reservation. See entrypoint.sh for the measured memory numbers,
+            # and for why four cores rather than 6Gi is the limit that bites.
             - name: CLAUDEBOX_SESSION_CAPACITY
               value: "2"
+            # Idle servers cost ~165Mi each; more repositories than this get a
+            # log line instead of a server.
+            - name: CLAUDEBOX_MAX_REPO_SERVERS
+              value: "8"
+            # How long the entrypoint waits for the bridge to mirror the vault
+            # before starting servers without it. Only a fresh PVC waits at all.
+            - name: CLAUDEBOX_VAULT_WAIT_SECONDS
+              value: "120"
             # /toolbin/npm/bin for the CLI the init container fetches, then
             # /home/pxldi/go/bin so anything `go install`ed during a session is
             # reachable in the same session, then the system default. Every
@@ -249,10 +320,6 @@ spec:
             # depend on this value.
             - name: PATH
               value: /toolbin/npm/bin:/home/pxldi/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-            # Names the generated sessions after the machine rather than after
-            # the pod's random hostname: rechenzentrum-graceful-unicorn.
-            - name: CLAUDE_REMOTE_CONTROL_SESSION_NAME_PREFIX
-              value: rechenzentrum
             - name: npm_config_cache
               value: /home/pxldi/.npm
             # Where the luna MCP server keeps its per-run status and event
@@ -292,8 +359,8 @@ spec:
               cpu: "4"
               # 6Gi, down from 8. The 8 was sized so that a Gradle daemon, a
               # Kotlin daemon and three sessions could coexist; with no JVM in
-              # the picture the worst case is three servers, two resumed
-              # sessions and two ad-hoc ones, measured at roughly 2Gi. The
+              # the picture the worst case is the capped number of idle servers
+              # plus a handful of sessions, measured at roughly 2Gi. The
               # remaining headroom is for whatever a session builds or tests,
               # and a Go build that overruns it now kills this pod alone.
               memory: 6Gi
@@ -324,6 +391,58 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+        # The vault mirror. livesync-bridge keeps ~/second_brain in step with
+        # the second_brain LiveSync database in both directions, decrypting with
+        # the vault passphrase, the same as the chatops vault pod does for the
+        # bot. What differs is the uid. The image runs as deno (1993) and owns
+        # /app and /deno-dir; here the sessions are uid 1000 and both sides
+        # edit the same notes, so the bridge runs as 1000 too. /deno-dir is
+        # therefore replaced by a PVC subPath it can write: the image's cached
+        # jsr modules are hidden behind the mount and are downloaded again on
+        # the first start (the pod has internet egress), then kept on the
+        # volume. npm modules come from /app/node_modules in the image, which
+        # is readable by anyone. Deno's localStorage, the bridge's record of
+        # which files it has already scanned, lives in the same subPath; delete
+        # .livesync-bridge/location_data on the PVC to force a full rescan.
+        #
+        # Only this container and render-bridge-config see the rendered config
+        # with the passphrase. Do not mount bridge-rendered into claudebox.
+        - name: bridge
+          image: ghcr.io/pxldi/livesync-bridge:sha-00d9b6cbf891d01a5225a1ad8bea5006ba8458bd
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: LSB_CONFIG
+              value: /app/dat/config.json
+            # deno's home in the image belongs to uid 1993; point HOME at the
+            # one directory this uid can write.
+            - name: HOME
+              value: /deno-dir
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: bridge-rendered
+              mountPath: /app/dat
+              readOnly: true
+            - name: data
+              mountPath: /app/data/vault
+              subPath: second_brain
+            - name: data
+              mountPath: /deno-dir
+              subPath: .livesync-bridge
+          resources:
+            requests:
+              cpu: 20m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -332,6 +451,12 @@ spec:
           emptyDir: {}
         - name: tmp
           emptyDir: {}
+        - name: bridge-config
+          configMap:
+            name: claudebox-bridge-config
+        - name: bridge-rendered
+          emptyDir:
+            medium: Memory
         - name: entrypoint
           configMap:
             name: claudebox-entrypoint

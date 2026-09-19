@@ -115,6 +115,12 @@ through the normal sync, and the vault keeps the history. The bridge config
 container fills from the Secret into memory. Deno's scan state is on the
 volume under `bridge-state`; delete it to force a full rescan.
 
+The claudebox pod runs a second bridge against the same database, into
+`~/second_brain` on its own volume, so Claude Code sessions there see the
+vault at the workstation's path. Two mirrors, one database; a note either
+side writes reaches the other through CouchDB. See
+`kubernetes/apps/claudebox/deployment.yaml`.
+
 ## Scheduled nudges
 
 Two agent cron jobs are declared in `config.toml` under `[cron.*]` and run

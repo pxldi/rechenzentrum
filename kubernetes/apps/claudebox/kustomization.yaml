@@ -16,10 +16,17 @@ configMapGenerator:
       - codex-mcp/server.mjs
       - codex-mcp/monitor.mjs
       - codex-mcp/package.json
+  # livesync-bridge's config with placeholders; the pod's render-bridge-config
+  # init container fills in the credentials and the passphrase from the
+  # claudebox-vault Secret. Same shape as vault-bridge-config in chatops.
+  - name: claudebox-bridge-config
+    files:
+      - config.json=bridge-config.json
 resources:
   - rbac.yaml
   - pvc.yaml
   - secret.yaml
+  - secret-vault.yaml
   - entrypoint-configmap.yaml
   - managed-settings-configmap.yaml
   - deployment.yaml

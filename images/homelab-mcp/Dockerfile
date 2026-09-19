@@ -1,10 +1,12 @@
-# Six MCP servers in one image, selected by the container's args:
+# Eight MCP servers in one image, selected by the container's args:
 #   python -m tandoor_mcp   recipes and meal plans, holds the Tandoor token
 #   python -m homelab_mcp   read-only cluster view, holds a ServiceAccount token
 #   python -m calendar_mcp  Nextcloud calendars over CalDAV, holds an app password
 #   python -m vault_mcp     the Obsidian vault, mirrored to a volume
 #   python -m paperless_mcp Paperless documents, holds an API token
 #   python -m homeassistant_mcp  Home Assistant states and switches, holds a token
+#   python -m immich_mcp    photo search and shared links, holds an API key
+#   python -m karakeep_mcp  bookmarks, holds an API key
 # One image because they share the SDK and the build, and because a manifest
 # that names one tag for all of them is one thing to bump.
 FROM python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6

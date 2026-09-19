@@ -69,7 +69,7 @@ spec:
         # After two minutes it starts the bot anyway, with a warning: a bot
         # with old tools beats no bot.
         - name: wait-for-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-25a94abacac2d225504d6695098f4c658d1910f5
+          image: ghcr.io/pxldi/homelab-mcp:sha-21f0d074499bbdf6d6e794cb4ab9174ec0fa61b4
           imagePullPolicy: IfNotPresent
           command: ["python", "/app/src/wait_for_mcp.py"]
           env:

@@ -86,7 +86,6 @@ data:
           "Edit(//home/pxldi/.claude/**)",
           "Edit(//home/pxldi/.claude.json)",
           "Read(//home/pxldi/.claude/.credentials.json)",
-          "Read(**/age.key)",
           "Bash(sops -d:*)",
           "Bash(sops --decrypt:*)",
           "Bash(gh repo delete:*)"

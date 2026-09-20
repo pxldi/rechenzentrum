@@ -6,6 +6,9 @@ subfolder the write tools may touch (Clanky/ there); unset, writes are
 refused. Every path a tool takes is resolved and has to stay under the root;
 only Markdown files are read or written. Nothing here knows about the sync,
 so the same server works on any directory. The rules live in paths.py.
+
+With OAUTH_ISSUER set the server asks for an Authentik-issued bearer token on
+every /mcp request; that is how the copy claude.ai reaches runs. See oauth.py.
 """
 
 import os
@@ -16,10 +19,11 @@ from pathlib import Path
 from mcp.server import MCPServer
 from pydantic import Field
 
+from oauth import server_kwargs
 from serve import guarded
 from vault_mcp.paths import VaultPathError, check_writable, note_path, write_root
 
-mcp = MCPServer("vault")
+mcp = MCPServer("vault", **server_kwargs())
 
 ROOT = Path(os.environ.get("VAULT_ROOT", "/vault")).resolve()
 WRITE_ROOT = write_root(ROOT, os.environ.get("VAULT_WRITE_ROOT"))

@@ -11,3 +11,7 @@ spec:
     - name: http
       port: 8000
       targetPort: http
+    # The claude.ai copy; only the IngressRoute forwards to it.
+    - name: claude
+      port: 8001
+      targetPort: claude

@@ -35,6 +35,7 @@ resources:
   - vault/pvc.yaml
   - vault/deployment.yaml
   - vault/service.yaml
+  - vault/ingress.yaml
   - networkpolicy.yaml
 
 # Egress and ingress are hand-written in networkpolicy.yaml because the three

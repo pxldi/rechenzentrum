@@ -144,10 +144,9 @@ pass the login. `images/homelab-mcp/src/oauth.py` has the four variables.
 To connect: in claude.ai, Settings, Connectors, Add custom connector. URL
 `https://vault-mcp.<domain>/mcp`, and under advanced settings the client id
 from the tofu file with the secret left blank. The first tool call redirects
-to the Authentik login. The custom-connector docs say voice mode uses a
-fixed set of first-party tools; whether it calls a custom connector is
-untested. A voice conversation is a normal chat, so the fallback is to
-dictate and then continue the same chat in text.
+to the Authentik login. Voice mode calls the connector too (checked
+2026-09-20), so a spoken question about a spec or a task gets answered from
+the vault.
 
 Shipping it is the two-PR rule below plus one step between: the code and
 the tofu client merge first, the tofu apply on `main` creates the client,

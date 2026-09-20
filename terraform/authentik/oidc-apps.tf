@@ -207,3 +207,82 @@ resource "authentik_policy_binding" "ryot_users" {
   group  = authentik_group.rechenzentrum_users.id
   order  = 0
 }
+
+# --- Vault MCP, for claude.ai ---
+#
+# The OAuth client that a claude.ai custom connector uses to reach the vault
+# MCP server (kubernetes/apps/chatops/vault). claude.ai does the authorization
+# code flow with PKCE from Anthropic's servers and hands the access token to
+# the MCP server, which verifies it against this provider's JWKS
+# (images/homelab-mcp/src/oauth.py). The server therefore needs no secret, and
+# the client is public: the id below is not a credential, the login and the
+# group binding are.
+resource "authentik_provider_oauth2" "vault_mcp" {
+  name        = "vault-mcp"
+  client_id   = "E2NX2npEUxw6ZTCRfGpCpA5iZmtsfabEXWcfngTz"
+  client_type = "public"
+
+  authorization_flow  = data.authentik_flow.default-authorization-flow.id
+  invalidation_flow   = data.authentik_flow.default-invalidation-flow.id
+  authentication_flow = data.authentik_flow.default-authentication-flow.id
+
+  # The MCP server checks iss against this provider's own issuer, so the
+  # discovery document has to be the per-application one, same as Karakeep.
+  # RS256 because the server verifies offline with the public key; HS256
+  # would need the client secret a public client does not have.
+  issuer_mode = "per_provider"
+  signing_key = data.authentik_certificate_key_pair.jwt.id
+
+  # claude.ai refreshes a token up to five minutes before it expires; with
+  # authentik's default of five minutes every request would refresh.
+  access_token_validity  = "hours=1"
+  refresh_token_validity = "days=30"
+
+  grant_types = ["authorization_code", "refresh_token"]
+
+  # The one callback for claude.ai web, Desktop, mobile and Cowork.
+  allowed_redirect_uris = [
+    {
+      matching_mode     = "strict"
+      redirect_uri_type = "authorization"
+      url               = "https://claude.ai/api/mcp/auth_callback"
+    },
+  ]
+
+  # offline_access is what makes authentik issue a refresh token at all
+  # (since 2024.2); claude.ai asks for it when the discovery document lists it.
+  property_mappings = concat(
+    [for m in data.authentik_property_mapping_provider_scope.oidc : m.id],
+    [data.authentik_property_mapping_provider_scope.offline_access.id],
+  )
+}
+
+data "authentik_property_mapping_provider_scope" "offline_access" {
+  scope_name = "offline_access"
+}
+
+resource "authentik_application" "vault_mcp" {
+  name = "Vault MCP"
+  # The slug is the issuer: https://auth.<domain>/application/o/vault-mcp/,
+  # which is OAUTH_ISSUER on the server and what the MCP server advertises
+  # to claude.ai as its authorization server.
+  slug              = "vault-mcp"
+  protocol_provider = authentik_provider_oauth2.vault_mcp.id
+  meta_description  = "The Obsidian vault, for claude.ai"
+  meta_icon         = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/obsidian.png"
+}
+
+# The vault is one person's notes. A separate group rather than
+# rechenzentrum-users, so that the household accounts, which can start this
+# flow with the public client id, are refused at the login.
+resource "authentik_group" "vault_mcp_users" {
+  name         = "vault-mcp-users"
+  is_superuser = false
+  users        = [data.authentik_user.pxldi.id]
+}
+
+resource "authentik_policy_binding" "vault_mcp_users" {
+  target = authentik_application.vault_mcp.uuid
+  group  = authentik_group.vault_mcp_users.id
+  order  = 0
+}

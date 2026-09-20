@@ -122,6 +122,37 @@ vault at the workstation's path. Two mirrors, one database; a note either
 side writes reaches the other through CouchDB. See
 `kubernetes/apps/claudebox/deployment.yaml`.
 
+### The vault from claude.ai
+
+A claude.ai custom connector can reach the same mirror. It runs as a third
+container in the vault pod: the same `vault_mcp` module on port 8001, with
+`OAUTH_ISSUER` set so every `/mcp` request needs an access token, and with
+`VAULT_WRITE_ROOT=ops` so a chat can write project specs, tasks and ideas but
+nothing else. The Clanky container keeps its own write root; the two never
+share a port or a client.
+
+claude.ai calls from Anthropic's servers, so the route is public: a Traefik
+IngressRoute on `vault-mcp.<domain>` limited to Anthropic's egress range and
+the house, forwarding to port 8001 only. The server is an OAuth resource
+server (RFC 9728) and Authentik the authorization server. The client is
+`authentik_provider_oauth2.vault_mcp` in `terraform/authentik/oidc-apps.tf`,
+a public client with PKCE, so the pod holds no secret: it verifies tokens
+against the provider's JWKS over the in-cluster Service, which is the one
+egress rule the container adds. Only members of the `vault-mcp-users` group
+pass the login. `images/homelab-mcp/src/oauth.py` has the four variables.
+
+To connect: in claude.ai, Settings, Connectors, Add custom connector. URL
+`https://vault-mcp.<domain>/mcp`, and under advanced settings the client id
+from the tofu file with the secret left blank. The first tool call redirects
+to the Authentik login. The custom-connector docs say voice mode uses a
+fixed set of first-party tools; whether it calls a custom connector is
+untested. A voice conversation is a normal chat, so the fallback is to
+dictate and then continue the same chat in text.
+
+Shipping it is the two-PR rule below plus one step between: the code and
+the tofu client merge first, the tofu apply on `main` creates the client,
+and the manifests PR pins the new tag and adds the route.
+
 ## Scheduled nudges
 
 Two agent cron jobs are declared in `config.toml` under `[cron.*]` and run
@@ -143,10 +174,10 @@ the pod shows the synced jobs; `zeroclaw cron run <id>` fires one by hand.
 The image tag is the commit that produced it (`sha-<commit>`), and the
 workflow only pushes from `main`. So a change to `images/homelab-mcp/` is two
 PRs: the code, then the tag bump once the build on `main` has published
-it. The tag appears three times under `kubernetes/apps/chatops/`: the two
-MCP Deployments and ZeroClaw's `wait-for-mcp` init container, which runs
-the same image and waits until both Services report its own build (see
-`/health`). Bump all three with one `sed`; a lone bump leaves the init
+it. The tag appears under `kubernetes/apps/chatops/` in every MCP container,
+twice in the vault pod, and in ZeroClaw's `wait-for-mcp` init container,
+which runs the same image and waits until the Services report its own build
+(see `/health`). Bump them all with one `sed`; a lone bump leaves the init
 container waiting two minutes and then starting the bot with a warning.
 `ENABLE_IMAGE_PUBLISH` must be `true` in the repository variables or the
 workflow does not run at all.

@@ -88,3 +88,41 @@ jobs:
             curl -sf http://127.0.0.1:8000/health | grep -q "\"server\":\"${mod%_mcp}\""
             docker stop "$mod" >/dev/null
           done
+
+      # The vault server is the one claude.ai reaches. With OAUTH_ISSUER set it
+      # must publish the resource metadata, refuse /mcp without a token and
+      # say in the 401 where the metadata is; without it, /mcp must still
+      # answer ZeroClaw's untokened initialize.
+      - name: Smoke-test the vault server's token check
+        run: |
+          set -euo pipefail
+          init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
+          post() {
+            curl -s -o /dev/null -w '%{http_code}' -X POST \
+              -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+              -d "$init" http://127.0.0.1:8000/mcp
+          }
+          wait_healthy() {
+            for _ in $(seq 1 20); do
+              if curl -sf http://127.0.0.1:8000/health; then echo; return; fi
+              sleep 1
+            done
+            return 1
+          }
+          docker run -d --rm --name vault_open --read-only --user 1000:1000 \
+            -p 8000:8000 "${IMAGE}:sha-${SHA}" python -m vault_mcp
+          wait_healthy
+          test "$(post)" = 200
+          docker stop vault_open >/dev/null
+          docker run -d --rm --name vault_locked --read-only --user 1000:1000 \
+            -e OAUTH_ISSUER=https://auth.example.test/application/o/vault-mcp/ \
+            -e OAUTH_AUDIENCE=smoke \
+            -e OAUTH_RESOURCE_URL=http://127.0.0.1:8000/mcp \
+            -p 8000:8000 "${IMAGE}:sha-${SHA}" python -m vault_mcp
+          wait_healthy
+          curl -sf http://127.0.0.1:8000/.well-known/oauth-protected-resource/mcp \
+            | grep -q 'auth.example.test/application/o/vault-mcp/'
+          test "$(post)" = 401
+          curl -si -X POST -H 'Content-Type: application/json' -d "$init" http://127.0.0.1:8000/mcp \
+            | grep -qi '^www-authenticate: Bearer .*resource_metadata='
+          docker stop vault_locked >/dev/null

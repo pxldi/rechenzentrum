@@ -4,7 +4,9 @@
 #
 # Ingress: nothing reaches the agent, and the MCP servers accept only the
 # agent, on their one port. The MCP servers run with DNS-rebinding protection
-# off and no bearer token, which these rules are the reason for.
+# off and no bearer token, which these rules are the reason for. The one
+# exception is the vault pod's second server on 8001, which Traefik reaches
+# for claude.ai and which checks a bearer token itself.
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -158,6 +160,39 @@ spec:
       ports:
         - protocol: TCP
           port: 5984
+    # The claude.ai server fetches Authentik's signing keys over the
+    # in-cluster Service. Egress matches after DNAT, so this names the
+    # server's container port, not the Service's 80; and the whole namespace
+    # rather than a pod label, because only the server listens on 9000 there
+    # and a wrong label would fail silently.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: authentik
+      ports:
+        - protocol: TCP
+          port: 9000
+---
+# Traefik forwards vault-mcp.<domain> to the claude.ai server and nothing
+# else in this namespace; port 8000, the Clanky server, stays zeroclaw-only.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-vault-mcp-claude-from-traefik
+spec:
+  podSelector:
+    matchLabels:
+      app: vault-mcp
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - protocol: TCP
+          port: 8001
 ---
 # The document server reaches Paperless by its Service name and nothing
 # else; the matching ingress rule lives in kubernetes/apps/paperless-ngx.

@@ -1,0 +1,46 @@
+---
+# The vault MCP server for claude.ai, the one public route in this namespace.
+#
+# A custom connector calls from Anthropic's servers, which cannot follow an
+# Authentik redirect, so the route carries no forward-auth. Two things stand
+# in for it: the allowlist below, and the server itself, which refuses /mcp
+# without an access token that Authentik issued for its client (see
+# vault/deployment.yaml and images/homelab-mcp/src/oauth.py). Only the two
+# paths the connector uses are routed; /health stays inside.
+#
+# The source-address check works for the same reason internal-only does
+# (kubernetes/infrastructure-config/traefik/middleware-internal-only.yaml):
+# Traefik sees the real client address, and no X-Forwarded-For is consulted.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: anthropic-and-house
+  namespace: chatops
+spec:
+  ipAllowList:
+    sourceRange:
+      # Anthropic's published egress range, where claude.ai connectors and
+      # its OAuth discovery come from.
+      - 160.79.104.0/21
+      # The LAN and the tailnet, so the metadata and the 401 can be checked
+      # from a phone or the workstation without asking claude.ai.
+      - 192.168.8.0/24
+      - 100.64.0.0/10
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: vault-mcp
+  namespace: chatops
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: "Host(`vault-mcp.pxldi.de`) && (PathPrefix(`/mcp`) || PathPrefix(`/.well-known/`))"
+      middlewares:
+        - name: anthropic-and-house
+      priority: 10
+      services:
+        - name: vault-mcp
+          port: 8001

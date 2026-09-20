@@ -116,7 +116,7 @@ spec:
             limits:
               memory: 512Mi
         - name: vault-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-200c631ef992482d9dde99bacde4bc48a04dd6da
+          image: ghcr.io/pxldi/homelab-mcp:sha-b62efca7f31f1c5238d9b5bc1ebc1ba734de7cba
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "vault_mcp"]
           ports:
@@ -155,6 +155,68 @@ spec:
             httpGet:
               path: /health
               port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+        # The same server a second time, for claude.ai. Its own port, its own
+        # write root and a bearer-token check that the Clanky container does
+        # not have: a custom connector calls from Anthropic's network, through
+        # the IngressRoute beside this file, so the NetworkPolicy that stands
+        # in for auth on port 8000 does not cover it. The token is Authentik's,
+        # verified against the provider's JWKS over the in-cluster Service
+        # (oauth.py in the image). Writes may land in ops/, the specs, tasks
+        # and ideas a chat is meant to produce, and nowhere else.
+        - name: vault-mcp-claude
+          image: ghcr.io/pxldi/homelab-mcp:sha-b62efca7f31f1c5238d9b5bc1ebc1ba734de7cba
+          imagePullPolicy: IfNotPresent
+          args: ["python", "-m", "vault_mcp"]
+          ports:
+            - name: claude
+              containerPort: 8001
+          env:
+            - name: PORT
+              value: "8001"
+            - name: VAULT_ROOT
+              value: /data/vault
+            - name: VAULT_WRITE_ROOT
+              value: ops
+            # The provider and its client id are authentik_provider_oauth2.vault_mcp
+            # in terraform/authentik/oidc-apps.tf; the id is public.
+            - name: OAUTH_ISSUER
+              value: https://auth.pxldi.de/application/o/vault-mcp/
+            - name: OAUTH_AUDIENCE
+              value: E2NX2npEUxw6ZTCRfGpCpA5iZmtsfabEXWcfngTz
+            - name: OAUTH_RESOURCE_URL
+              value: https://vault-mcp.pxldi.de/mcp
+            - name: OAUTH_JWKS_URL
+              value: http://authentik-server.authentik.svc.cluster.local/application/o/vault-mcp/jwks/
+            - name: TZ
+              value: Europe/Berlin
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              subPath: vault-root
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: claude
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: claude
             periodSeconds: 30
           resources:
             requests:

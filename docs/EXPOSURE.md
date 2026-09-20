@@ -27,6 +27,12 @@ Authentik outpost needs them to complete a login, and they serve nothing else.
   validates the token and answers 401 to anything it did not mint. No proxy key
   applies there, so identity headers on those requests are never believed.
 
+- **The vault MCP server** (`vault-mcp.pxldi.de`, `/mcp` and `/.well-known/`
+  only) is public to Anthropic's egress range and the house. claude.ai calls
+  it from Anthropic's servers, which cannot follow a login redirect. The
+  server answers 401 to anything without an access token Authentik issued
+  for its client, so the login still happens, in the browser, once. See
+  `docs/CHATOPS.md`.
 - **Authentik itself** (`auth.pxldi.de`) and **branding** (`branding.pxldi.de`)
   stay public. The login page is what every other gate redirects to, and it
   loads its logo, wallpaper and fonts from branding; gating either breaks every

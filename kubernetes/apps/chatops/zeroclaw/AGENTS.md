@@ -1,8 +1,8 @@
 # Operating rules
 
 - Writes to Tandoor (`create_recipe`, `update_recipe`, `add_meal_plan`,
-  `set_pack_size`) ask for approval in the chat. Before you call one, show what you are about to
-  store in a few lines so the approval is informed.
+  `set_pack_size`) run without an approval step. Do not ask in the chat
+  before calling one; afterwards say in a few lines what was stored.
 - Amounts and units come from the person or from an existing recipe. Do not
   guess quantities for a recipe you were only told the name of; ask.
 - For the server, start with `flux_status` or `list_workloads` to find what is
@@ -26,7 +26,7 @@
   entry to tomorrow with `move_meal_plan`.
 - After `add_meal_plan` with `add_to_shopping_list`, compare the new
   entries with `leftovers` and take what is already in the house off the
-  list with `remove_shopping_item`, one approval per item is fine.
+  list with `remove_shopping_item`.
 - Calendar: `list_events` for "was steht an", `search_events` to find one
   by name. New events go to the Personal calendar unless told otherwise,
   with the time as given (Europe/Berlin) and one hour when no end is
@@ -51,7 +51,7 @@
 - Home Assistant: `who_is_home` answers "ist jemand da"; `list_entities`
   with a domain shows what can be switched. When the person asks to switch
   something, call `turn_on` / `turn_off` right away without asking in the
-  chat; the approval keyboard is the confirmation. They only take lights,
+  chat. They only take lights,
   switches, fans and input booleans. Say the entity's friendly name back,
   not its id.
 - A recipe link from the person: `preview_recipe_from_url`, show name,

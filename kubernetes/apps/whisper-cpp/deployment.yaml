@@ -22,6 +22,11 @@ spec:
     metadata:
       labels:
         app: whisper-cpp
+      annotations:
+        # The volume holds only the public ggml model, so a restore can fetch
+        # it again (after allowing egress for the init container). Backing it
+        # up would put 1.5GB in B2 every week.
+        backup.velero.io/backup-volumes-excludes: "models"
     spec:
       priorityClassName: rechenzentrum-bulk
       initContainers:

@@ -72,6 +72,12 @@ spec:
             # an upload that had.
             - name: SCHALL_UPLOAD_STAGING_PATH
               value: "/uploads"
+            # Where Schall keeps a track it fetched from a want's own address
+            # (ADR 0038). It shares the uploads volume, because a held copy has
+            # to survive a restart and staging ignores folders not named by a
+            # UUID. Schall creates it at startup.
+            - name: SCHALL_SOURCE_FETCH_PATH
+              value: "/uploads/fetched"
             - name: SCHALL_MUSICBRAINZ_USER_AGENT
               value: "Schall/0.1.0 (https://schall.pxldi.de)"
             # No SCHALL_NAVIDROME_PATH_MAP: cantus-music-pvc is mounted at

@@ -133,13 +133,15 @@ delivery = { mode = "announce", channel = "telegram.home", to = "@TELEGRAM_CHAT_
 # `/inference`, not the `/v1/...` path the schema example shows, and sets the
 # language itself (`--language de`), since ZeroClaw sends only the file.
 # 120 seconds is the default cap and longer notes are dropped without a word.
+# On the node a 31-second note took about 50 seconds with ggml-medium, so the
+# timeout covers the 300-second cap at 1.8x.
 [transcription]
 enabled = true
 max_duration_secs = 300
 
 [transcription.local_whisper]
 url = "http://whisper-cpp.whisper-cpp.svc.cluster.local:8080/inference"
-timeout_secs = 120
+timeout_secs = 540
 
 [memory]
 # No embedding provider is configured, so keyword search rather than a hybrid

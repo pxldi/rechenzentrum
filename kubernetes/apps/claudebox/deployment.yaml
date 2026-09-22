@@ -189,7 +189,7 @@ spec:
               echo "installed:" && ls -l /toolbin/npm/bin
           env:
             - name: CLAUDE_CODE_VERSION
-              value: "2.1.259"
+              value: "2.1.280"
             - name: CODEX_VERSION
               value: "0.153.4"
             # npm's default cache is $HOME/.npm and HOME is / for uid 0 here.

@@ -120,6 +120,26 @@ spec:
               Velero cannot reach the B2 bucket. Every schedule will fail until
               this clears; check the b2-credentials secret and Backblaze status.
 
+        # The maintenance jobs' own KubeJobFailed alerts go to the null
+        # receiver, so this is the only signal. From 2026-09-15 to 09-22
+        # three repositories failed about 290 times a day each with
+        # "repository not initialized" and nothing reached Gotify.
+        - alert: VeleroRepoMaintenanceFailing
+          expr: >-
+            increase(velero_repo_maintenance_failure_total[24h]) > 0
+            unless on (repository_name)
+            increase(velero_repo_maintenance_success_total[24h]) > 0
+          for: 2h
+          labels:
+            severity: warning
+          annotations:
+            summary: "kopia repository {{ $labels.repository_name }} has not been maintained in 24h"
+            description: >-
+              Every maintenance run for this repository failed in the last
+              24h. Read the newest maintain-job's log in the velero namespace.
+              "repository not initialized" means its data is gone from B2; if
+              that was intended, delete the BackupRepository object.
+
         # Without this, everything above fails open: if Velero stops running or
         # stops being scraped, its series go absent, the expressions return no
         # data, and silence reads as health. That is exactly the state this

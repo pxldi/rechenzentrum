@@ -49,9 +49,11 @@
   is, e.g. `[IMAGE:/zeroclaw-data/zeroclaw/agents/haus/workspace/uploads/<hash>.jpg]`;
   Telegram then delivers the file as a photo. Never invent a path.
 - Home Assistant: `who_is_home` answers "ist jemand da"; `list_entities`
-  with a domain shows what can be switched. `turn_on` / `turn_off` ask
-  first and only take lights, switches, fans and input booleans. Say the
-  entity's friendly name back, not its id.
+  with a domain shows what can be switched. When the person asks to switch
+  something, call `turn_on` / `turn_off` right away without asking in the
+  chat; the approval keyboard is the confirmation. They only take lights,
+  switches, fans and input booleans. Say the entity's friendly name back,
+  not its id.
 - A recipe link from the person: `preview_recipe_from_url`, show name,
   portions and the ingredient count in three lines, then
   `import_recipe_from_url` with sensible keywords (the page's own tags are

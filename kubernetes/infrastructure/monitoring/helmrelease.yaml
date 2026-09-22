@@ -106,6 +106,16 @@ spec:
       # Route alerts to Gotify via the gotify-bridge instances.
       # Watchdog (always-firing dead-man's switch) is dropped to null.
       config:
+        # The WAN drops for about a minute at 03:00 every night, and every
+        # flux source that fetches then fails DNS. A source that is still
+        # failing after 03:15 re-fires and gets through.
+        time_intervals:
+          - name: nightly-wan-drop
+            time_intervals:
+              - times:
+                  - start_time: "02:55"
+                    end_time: "03:15"
+                location: Europe/Berlin
         route:
           group_by: ["alertname", "namespace"]
           group_wait: 30s
@@ -144,6 +154,7 @@ spec:
             - receiver: gotify-flux
               group_interval: 30m
               repeat_interval: 12h
+              mute_time_intervals: ["nightly-wan-drop"]
               matchers:
                 - severity = "error"
             - receiver: gotify-critical
@@ -157,11 +168,15 @@ spec:
           - name: gotify-critical
             webhook_configs:
               - url: http://gotify-bridge-critical.observability.svc.cluster.local:8080/gotify_webhook
-                send_resolved: true
+                # Off because the bridge renders a resolved alert exactly like
+                # a firing one, so each incident arrived as two alarms.
+                send_resolved: false
           - name: gotify-warning
             webhook_configs:
               - url: http://gotify-bridge-warning.observability.svc.cluster.local:8080/gotify_webhook
-                send_resolved: true
+                # Off because the bridge renders a resolved alert exactly like
+                # a firing one, so each incident arrived as two alarms.
+                send_resolved: false
           # Its own bridge instance, not gotify-warning's. The bridge demands
           # `summary` and `description` annotations and 400s without them; flux
           # sends only `message`, so every flux alert was rejected at the last
@@ -195,6 +210,13 @@ spec:
               - alertname = "InfoInhibitor"
             target_matchers:
               - severity = "info"
+            equal: ["namespace"]
+          # A crashlooping pod also trips the not-ready and replica alerts for
+          # its workload. The crashloop says the most, so it is the one sent.
+          - source_matchers:
+              - alertname = "KubePodCrashLooping"
+            target_matchers:
+              - alertname =~ "KubePodNotReady|KubeDeploymentReplicasMismatch|KubeDeploymentRolloutStuck|KubeStatefulSetReplicasMismatch"
             equal: ["namespace"]
       alertmanagerSpec:
         storage:

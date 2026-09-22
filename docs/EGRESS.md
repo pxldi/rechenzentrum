@@ -54,7 +54,7 @@ Every application namespace except the two at the end of this section.
 | `sparkyfitness` | whatever its chart already allowed | See the chart section below |
 | `sure` | own namespace, internet | Postgres and Redis here; market data outside |
 | `tandoor` | own namespace, internet, API server | Postgres here; recipe import; CNPG |
-| `whisper-cpp` | nothing | Transcription happens in the pod; sits at zero replicas |
+| `whisper-cpp` | nothing | Transcription happens in the pod; the model is already on the PVC |
 
 ### Two namespaces deliberately left alone
 

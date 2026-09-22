@@ -1,0 +1,25 @@
+---
+# ZeroClaw in chatops posts Telegram voice notes here for transcription. It is
+# the only pod outside this namespace allowed in. whisper-server has no
+# authentication, so this rule is what keeps the rest of the cluster out.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-zeroclaw
+spec:
+  podSelector:
+    matchLabels:
+      app: whisper-cpp
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: chatops
+          podSelector:
+            matchLabels:
+              app: zeroclaw
+      ports:
+        - protocol: TCP
+          port: 8080

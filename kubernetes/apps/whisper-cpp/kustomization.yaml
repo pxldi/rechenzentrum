@@ -5,9 +5,11 @@ resources:
   - pvc.yaml
   - deployment.yaml
   - service.yaml
+  - networkpolicy-chatops.yaml
 components:
-  # Egress. Transcription happens in the pod and nothing leaves it. The
-  # deployment sits at zero replicas; DNS is the whole allowance when it runs.
+  # Egress. Transcription happens in the pod and nothing leaves it; DNS is
+  # the whole allowance. The model is already on the PVC, so the init
+  # container's download never runs; a new model needs egress added first.
   - ../../../components/default-deny-egress
   - ../../../components/allow-dns
   - ../../infrastructure-config/networkpolicies/default-deny-ingress

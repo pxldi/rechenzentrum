@@ -28,6 +28,8 @@ spec:
         # distinct primary UID/GID and sees that volume read-only.
         fsGroup: 568
         fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: schall
           image: ghcr.io/pxldi/schall:main

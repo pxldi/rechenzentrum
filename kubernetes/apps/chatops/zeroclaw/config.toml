@@ -35,8 +35,8 @@ cron_jobs = ["planning_nudge", "evening_check"]
 # into it from the ConfigMap.
 path = "/zeroclaw-data/zeroclaw/agents/haus/workspace"
 
-# Supervised: reads run on their own, the Tandoor and calendar writes put an approve/deny
-# keyboard in the Telegram chat first. log_cooked, append_note and
+# Supervised: reads run on their own, the Tandoor, calendar and Home Assistant
+# writes put an approve/deny keyboard in the Telegram chat first. log_cooked, append_note and
 # log_learned run on their own: they record a fact and are cheap to undo,
 # and the vault keeps history. write_note replaces a whole note, so it asks. allowed_tools pins the
 # built-ins to memory and the clock; MCP tools are admitted by the SDK's
@@ -63,15 +63,17 @@ auto_approve = [
   "homelab__list_services", "homelab__list_workloads", "homelab__workload_status",
   "homelab__pod_logs", "homelab__events", "homelab__flux_status", "homelab__backups",
 ]
+# Three tiers. auto_approve never asks. A tool in neither list asks, and the
+# keyboard's "Always" then allows it by name until zeroclaw restarts (the
+# allowlist is in memory). always_ask asks on every call and ignores "Always",
+# although Telegram still answers "Always approved"; it is kept for writes
+# that replace, delete or file something: a whole note, a calendar entry,
+# a Paperless document.
 always_ask = [
-  "tandoor__create_recipe", "tandoor__update_recipe", "tandoor__add_meal_plan",
-  "tandoor__set_pack_size", "tandoor__move_meal_plan",
-  "tandoor__add_shopping_item", "tandoor__remove_shopping_item",
-  "calendar__create_event", "calendar__move_event", "calendar__delete_event",
+  "calendar__delete_event",
   "vault__write_note",
   "paperless__update_document", "paperless__create_tag",
-  "homeassistant__turn_on", "homeassistant__turn_off",
-  "tandoor__import_recipe_from_url", "files__send_to_paperless",
+  "files__send_to_paperless",
 ]
 
 # The image is distroless: no sh anywhere. ZeroClaw's native runtime still

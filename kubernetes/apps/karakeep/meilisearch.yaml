@@ -54,7 +54,7 @@ spec:
           # crashlooped both times against the 1.41.0 database on disk. A
           # one-boot MEILI_UPGRADE_DB rewrote the database to the 1.53
           # format on 2026-09-15; the next minor bump needs the same.
-          image: getmeili/meilisearch:v1.53.2
+          image: getmeili/meilisearch:v1.54.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

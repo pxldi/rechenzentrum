@@ -24,7 +24,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: navidrome
-          image: deluan/navidrome:0.64.0
+          image: deluan/navidrome:0.64.1
           ports:
             - containerPort: 4533
               name: http

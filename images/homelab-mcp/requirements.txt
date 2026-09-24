@@ -2,7 +2,7 @@ mcp==2.2.0
 kubernetes==36.0.3
 httpx==0.28.1
 uvicorn==0.53.0
-starlette==1.6.0
+starlette==1.7.0
 pydantic==2.13.5
 caldav==3.3.1
 pymupdf==1.28.2

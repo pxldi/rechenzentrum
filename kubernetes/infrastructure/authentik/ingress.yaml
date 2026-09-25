@@ -1,4 +1,24 @@
 ---
+# A flood guard, not brute-force protection. The login page pulls dozens of
+# assets per load, so the limit sits far above what a person produces; what it
+# stops is one address hammering the form. Password guessing is handled by the
+# reputation policy on the authentication flow and by the second factor
+# (terraform/authentik/authentication-flow.tf).
+#
+# Per client address, which only works because Traefik sees real addresses
+# since externalTrafficPolicy became Local. Before that every request came from
+# 10.42.0.1 and this would have been one bucket for the whole internet.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: auth-rate-limit
+  namespace: authentik
+spec:
+  rateLimit:
+    average: 50
+    period: 1s
+    burst: 100
+---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -10,6 +30,8 @@ spec:
   routes:
     - match: Host(`auth.pxldi.de`)
       kind: Rule
+      middlewares:
+        - name: auth-rate-limit
       services:
         - name: authentik-server
           port: 80

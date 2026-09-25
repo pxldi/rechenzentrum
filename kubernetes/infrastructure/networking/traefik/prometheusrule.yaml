@@ -1,0 +1,44 @@
+---
+# Client-side health, measured where clients meet the cluster.
+#
+# Readiness probes ask the app, over the pod network, whether it is up. They do
+# not see what a phone sees. On 2026-09-25 Nextcloud sat at needsDbUpgrade for
+# 19 hours after an automerged patch: /status.php answered 200 to the probe and
+# Traefik answered 503 to 584 of 584 client requests. Nothing alerted.
+#
+# The window and the floor come from that incident. Two phones syncing produced
+# about 16 requests per 30 minutes, so a floor of 5 still sees a quiet app go
+# fully red, while a single failed request on an otherwise idle route does not
+# page. Kubelet probes bypass Traefik, so every request counted here is a
+# client's.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: traefik
+  namespace: traefik
+  labels:
+    app.kubernetes.io/name: kube-prometheus-stack
+spec:
+  groups:
+    - name: traefik.services
+      rules:
+        - alert: TraefikServiceErroring
+          expr: |
+            (
+              sum by (service) (increase(traefik_service_requests_total{code=~"5.."}[30m]))
+              /
+              sum by (service) (increase(traefik_service_requests_total[30m]))
+            ) > 0.5
+            and
+            sum by (service) (increase(traefik_service_requests_total[30m])) > 5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.service }} answers most client requests with 5xx"
+            description: >-
+              {{ $value | humanizePercentage }} of requests to this service
+              returned 5xx over the last 30 minutes. The pod may still report
+              Ready: check what clients get, e.g. the app's status endpoint on
+              its public name, and the app's own log for an upgrade or
+              maintenance state.

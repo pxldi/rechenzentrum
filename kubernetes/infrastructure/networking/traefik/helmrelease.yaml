@@ -113,6 +113,20 @@ spec:
     accessLog:
       enabled: true
 
+    # Traefik served per-service request counters on :9100 from the start, and
+    # nothing read them. On 2026-09-25 Nextcloud returned 503 to every client
+    # for 19 hours while its probes stayed green; a 5xx-rate rule on these
+    # counters would have caught it, and the only history anyone could find
+    # was the 8 days since the pod last restarted. The chart's Service and
+    # ServiceMonitor make Prometheus keep them. Rules: prometheusrule.yaml.
+    metrics:
+      prometheus:
+        service:
+          enabled: true
+        serviceMonitor:
+          enabled: true
+          interval: 30s
+
     ingressRoute:
       dashboard:
         enabled: false

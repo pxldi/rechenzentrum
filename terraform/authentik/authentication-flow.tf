@@ -130,8 +130,14 @@ resource "authentik_policy_reputation" "authentication" {
   threshold      = -5
 }
 
+# Negated, and this is load-bearing. A reputation policy *passes* when the score
+# is at or below the threshold (authentik/policies/reputation/models.py:
+# `passing = score <= self.threshold`); it is built to trigger something like a
+# captcha for bad actors. Bound un-negated it admitted only bad addresses and
+# denied everyone else, which is what the first apply did.
 resource "authentik_policy_binding" "authentication_reputation" {
   target = authentik_flow.authentication.uuid
   policy = authentik_policy_reputation.authentication.id
+  negate = true
   order  = 0
 }

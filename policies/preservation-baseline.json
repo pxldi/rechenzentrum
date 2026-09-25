@@ -47,9 +47,6 @@
   "apps/v1/Deployment/fredy/fredy": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/glance/glance": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/gotify/gotify": {
     "kind": "Deployment"
   },
@@ -60,9 +57,6 @@
     "kind": "Deployment"
   },
   "apps/v1/Deployment/home-assistant/otbr": {
-    "kind": "Deployment"
-  },
-  "apps/v1/Deployment/homepage/homepage": {
     "kind": "Deployment"
   },
   "apps/v1/Deployment/jdownloader/jdownloader": {
@@ -98,9 +92,6 @@
   "apps/v1/Deployment/ollama/ollama": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/overleaf/overleaf-redis": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/palworld/palworld": {
     "kind": "Deployment"
   },
@@ -113,22 +104,10 @@
   "apps/v1/Deployment/paperless/paperless-redis": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/ryot/ryot": {
-    "kind": "Deployment"
-  },
-  "apps/v1/Deployment/ryot/ryot-postgres": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/searxng/searxng": {
     "kind": "Deployment"
   },
   "apps/v1/Deployment/slskd/slskd": {
-    "kind": "Deployment"
-  },
-  "apps/v1/Deployment/sure/sure-web": {
-    "kind": "Deployment"
-  },
-  "apps/v1/Deployment/sure/sure-worker": {
     "kind": "Deployment"
   },
   "apps/v1/Deployment/whisper-cpp/whisper-cpp": {
@@ -138,18 +117,6 @@
     "kind": "StatefulSet"
   },
   "apps/v1/StatefulSet/obsidian-sync/obsidian-sync": {
-    "kind": "StatefulSet"
-  },
-  "apps/v1/StatefulSet/overleaf/overleaf-mongo": {
-    "kind": "StatefulSet"
-  },
-  "apps/v1/StatefulSet/sparkyfitness/sparkyfitness-postgresql": {
-    "kind": "StatefulSet"
-  },
-  "apps/v1/StatefulSet/sure/sure-db": {
-    "kind": "StatefulSet"
-  },
-  "apps/v1/StatefulSet/sure/sure-redis": {
     "kind": "StatefulSet"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/arc-runners/homelab-runners": {
@@ -197,9 +164,6 @@
   "helm.toolkit.fluxcd.io/v2/HelmRelease/media/sonarr": {
     "kind": "HelmRelease"
   },
-  "helm.toolkit.fluxcd.io/v2/HelmRelease/n8n/n8n": {
-    "kind": "HelmRelease"
-  },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/nextcloud/nextcloud": {
     "kind": "HelmRelease"
   },
@@ -207,12 +171,6 @@
     "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/openebs/openebs": {
-    "kind": "HelmRelease"
-  },
-  "helm.toolkit.fluxcd.io/v2/HelmRelease/overleaf/overleaf": {
-    "kind": "HelmRelease"
-  },
-  "helm.toolkit.fluxcd.io/v2/HelmRelease/sparkyfitness/sparkyfitness": {
     "kind": "HelmRelease"
   },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/tandoor/tandoor": {
@@ -234,10 +192,6 @@
   "postgresql.cnpg.io/v1/Cluster/media/cantus-postgresql": {
     "kind": "Cluster",
     "spec_sha256": "98066bb88336862b364ffb69f04cfa11a96055df38481b184ef9c764f38c4118"
-  },
-  "postgresql.cnpg.io/v1/Cluster/n8n/n8n-postgresql": {
-    "kind": "Cluster",
-    "spec_sha256": "5d5cf720cbb1e1a912a8cba17fdb28e5bcbdc29f71a16af52b8fb1b27c15be5c"
   },
   "postgresql.cnpg.io/v1/Cluster/tandoor/tandoor-postgresql": {
     "kind": "Cluster",
@@ -288,9 +242,6 @@
   "v1/Namespace//fredy": {
     "kind": "Namespace"
   },
-  "v1/Namespace//glance": {
-    "kind": "Namespace"
-  },
   "v1/Namespace//gotify": {
     "kind": "Namespace"
   },
@@ -298,9 +249,6 @@
     "kind": "Namespace"
   },
   "v1/Namespace//home-assistant": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//homepage": {
     "kind": "Namespace"
   },
   "v1/Namespace//immich": {
@@ -321,9 +269,6 @@
   "v1/Namespace//monitoring": {
     "kind": "Namespace"
   },
-  "v1/Namespace//n8n": {
-    "kind": "Namespace"
-  },
   "v1/Namespace//nextcloud": {
     "kind": "Namespace"
   },
@@ -339,9 +284,6 @@
   "v1/Namespace//openebs": {
     "kind": "Namespace"
   },
-  "v1/Namespace//overleaf": {
-    "kind": "Namespace"
-  },
   "v1/Namespace//palworld": {
     "kind": "Namespace"
   },
@@ -351,16 +293,7 @@
   "v1/Namespace//renovate": {
     "kind": "Namespace"
   },
-  "v1/Namespace//ryot": {
-    "kind": "Namespace"
-  },
   "v1/Namespace//searxng": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//sparkyfitness": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//sure": {
     "kind": "Namespace"
   },
   "v1/Namespace//tandoor": {
@@ -503,10 +436,6 @@
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "a6777e4e1b11fd9f8d491776e5fff1ea48ae86dc340612ff25e603bcf655d96d"
   },
-  "v1/PersistentVolumeClaim/n8n/n8n-data-pvc": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "12aa304e456bb83d8a9f73712a653df884b52c7843c3056b6c0f1165762446dd"
-  },
   "v1/PersistentVolumeClaim/nextcloud/nextcloud-data-pvc": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "d05b54c471896af2d8e25a2eff1e49258f0f5b8474e77ef1b40f35e76d52f70f"
@@ -518,10 +447,6 @@
   "v1/PersistentVolumeClaim/ollama/ollama-models": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "96093a8145a2ec319c79a32d855e7f209747dc092a63846f3d7dd93e988714c4"
-  },
-  "v1/PersistentVolumeClaim/overleaf/overleaf-data-pvc": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "6c62a5b5ce12f55bf58dd5fe14f712e31add47fe6ff2f83e4f51ad546ced6e89"
   },
   "v1/PersistentVolumeClaim/palworld/palworld-data": {
     "kind": "PersistentVolumeClaim",
@@ -551,10 +476,6 @@
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "a6777e4e1b11fd9f8d491776e5fff1ea48ae86dc340612ff25e603bcf655d96d"
   },
-  "v1/PersistentVolumeClaim/ryot/ryot-postgres-pvc": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
-  },
   "v1/PersistentVolumeClaim/slskd/slskd-config": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "d56df5df2bc90f74af1e6023416c6ab4ce16039db8395d2f93e79458cfeedf00"
@@ -566,10 +487,6 @@
   "v1/PersistentVolumeClaim/slskd/slskd-music": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "d77568db6cd240a4af4a5e70f412a39861c49914862712c8d8a82f53589573eb"
-  },
-  "v1/PersistentVolumeClaim/sure/sure-app-storage": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
   },
   "v1/PersistentVolumeClaim/tandoor/tandoor-media-pvc": {
     "kind": "PersistentVolumeClaim",

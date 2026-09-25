@@ -15,7 +15,6 @@ spec:
       - traefik
       - nextcloud
       - immich
-      - n8n
       - gotify
 
     # Backup all resources in these namespaces

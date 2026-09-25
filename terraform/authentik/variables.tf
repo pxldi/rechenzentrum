@@ -15,9 +15,3 @@ variable "karakeep_oidc_client_secret" {
   type        = string
   sensitive   = true
 }
-
-variable "ryot_oidc_client_secret" {
-  description = "OIDC client secret shared between the authentik provider and ryot's OIDC_CLIENT_SECRET. The existing value, carried in so the import does not rotate it. Set via TF_VAR_ryot_oidc_client_secret."
-  type        = string
-  sensitive   = true
-}

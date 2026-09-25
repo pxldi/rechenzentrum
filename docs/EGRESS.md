@@ -31,28 +31,21 @@ Every application namespace except the two at the end of this section.
 | `claudebox` | internet, API server, `obsidian-sync` | Clones repositories and drives this cluster; it carries a ServiceAccount token and RBAC. Its bridge sidecar mirrors the vault from CouchDB |
 | `excalidraw` | nothing | The pilot |
 | `fredy` | own namespace, internet | Scrapes property listings |
-| `glance` | internet, Traefik | Its widgets fetch 18 public URLs the way a browser would |
 | `gotify` | nothing | Clients connect inbound and hold the socket |
 | `grimmory` | own namespace, internet | MariaDB here; book metadata outside |
-| `homepage` | own namespace, internet, cluster, Traefik | Reads a widget out of 24 services in 15 namespaces |
 | `immich` | own namespace, internet, API server | Server, ML and valkey talk here; geocoding data outside; CNPG |
 | `jdownloader` | internet | The point of it |
 | `karakeep` | own namespace, internet, Traefik, `ollama` | Meilisearch here, crawls pages, OIDC by public name, tags with a local model |
 | `media` | own namespace, internet, Traefik, API server, `slskd` | Nine workloads; indexers and metadata; the cantus CNPG cluster |
 | `minecraft` | internet | Mojang authentication |
 | `monitoring` | internet, cluster, Traefik, API server | uptime-kuma probes 27 namespaces, and the API server is one of the things it watches |
-| `n8n` | own namespace, internet, cluster, Traefik, API server | A workflow can call anything; CNPG |
 | `nextcloud` | own namespace, internet, Traefik | Postgres and Redis here; app updates; its own public name |
 | `obsidian-sync` | nothing | CouchDB, single node, clients connect inbound |
 | `ollama` | internet | Pulls models on demand |
-| `overleaf` | own namespace, internet, Traefik | Mongo and Redis here; SMTP outside |
 | `palworld` | internet | Server list and updates |
 | `paperless` | own namespace, internet, Traefik | Postgres, Redis, Gotenberg and Tika here |
-| `ryot` | own namespace, internet, Traefik | Postgres here; metadata providers; OIDC by public name |
 | `searxng` | own namespace, internet | Querying upstream engines is the job |
 | `slskd` | own namespace, internet | gluetun's tunnel and Soulseek peers |
-| `sparkyfitness` | whatever its chart already allowed | See the chart section below |
-| `sure` | own namespace, internet | Postgres and Redis here; market data outside |
 | `tandoor` | own namespace, internet, API server | Postgres here; recipe import; CNPG |
 | `whisper-cpp` | nothing | Transcription happens in the pod; the model is already on the PVC |
 
@@ -97,11 +90,8 @@ against it before it is locked.
 
 | Caller | Reaches | How |
 | --- | --- | --- |
-| `gethomepage` | 24 services in 15 namespaces | `<service>.<namespace>.svc.cluster.local`, for the widget data |
-| `glance` | 18 services | `https://<name>.pxldi.de`, so through Traefik, not through the cluster |
 | `monitoring` | 27 namespaces | uptime-kuma probes and scrapes |
 | `observability` | `gotify` | alert delivery |
-| `n8n` | `gotify` | notifications from workflows |
 | `karakeep` | `ollama` | `ollama.ollama.svc.cluster.local` |
 | `media` (Schall) | `slskd` | an ExternalName alias onto `slskd.slskd.svc.cluster.local` |
 
@@ -147,7 +137,7 @@ reach the API server here, which is the same reasoning behind
 
 ## When a chart already did it
 
-`sparkyfitness` is the case to copy before reaching for the namespace-wide
+`sparkyfitness` (removed 2026-09-25) was the case to copy before reaching for the namespace-wide
 components. Its chart ships a NetworkPolicy per component: the frontend may
 reach the server on 3010 and nothing else, the server may reach postgresql on
 5432 and nothing else, both may do DNS, and `networkpolicy.yaml` in the app
@@ -229,9 +219,8 @@ the standard set on top of a per-component model makes it weaker, not stronger.
 Nothing to add. Every application namespace is covered, and the two exceptions
 above are exceptions on their merits rather than a backlog.
 
-What remains is narrowing. `homepage`, `monitoring` and `n8n` hold
-`allow-egress-to-cluster`, which does not isolate them from other namespaces,
-because reaching other namespaces is what they are for. If `homepage`'s widget
-list ever stops changing, a `namespaceSelector` per target would be tighter than
-one blanket rule. `monitoring` and `n8n` have no such stable list and probably
-never will.
+What remains is narrowing. `monitoring` holds `allow-egress-to-cluster`,
+which does not isolate it from other namespaces, because probing other
+namespaces is what it is for. It has no stable target list and probably never
+will. The homepage dashboard and n8n held the same rule until they were removed
+on 2026-09-25.

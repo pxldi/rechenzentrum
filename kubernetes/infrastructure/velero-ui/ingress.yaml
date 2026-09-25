@@ -19,11 +19,3 @@ spec:
       services:
         - name: velero-ui
           port: 3000
-
-    - kind: Rule
-      match: "Host(`velero.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`)"
-      priority: 15
-      services:
-        - name: authentik-server
-          namespace: authentik
-          port: 9000

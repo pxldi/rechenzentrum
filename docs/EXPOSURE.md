@@ -15,8 +15,12 @@ Three states:
 - **public** — reachable from the internet, protected only by whatever the
   application itself enforces.
 
-The `/outpost.goauthentik.io/` sub-routes carry no middleware on purpose: the
-Authentik outpost needs them to complete a login, and they serve nothing else.
+Four apps used to carry a `/outpost.goauthentik.io/` sub-route to authentik.
+Each named port 9000, which the `authentik-server` Service does not expose (it
+maps 80 to 9000), so Traefik rejected them on every reload. Logins worked
+anyway: the forward-auth middleware passes the callback to the outpost itself,
+as it always did for every app without such a route. They were removed on
+2026-09-26.
 
 ## Deliberate exceptions
 
@@ -94,7 +98,6 @@ is on Tailscale" is not an answer on its own.
 | branding | `branding.pxldi.de` | public | none |
 | media | `schall.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth,cantus-proxy-key |
 | media | `schall.pxldi.de PathPrefix(`/api/`) && HeaderRegexp(`Authorization`, `^Beare` | public | none |
-| media | `schall.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
 | nextcloud | `cloud.pxldi.de` | public | nextcloud-headers |
 | nextcloud | `cloud.pxldi.de (Path(`/.well-known/carddav`) \|\| Path(`/.well-known/caldav` | public | nextcloud-wellknown-dav |
 | nextcloud | `cloud.pxldi.de PathPrefix(`/remote.php/dav`)` | public | nextcloud-headers,nextcloud-dav-no-compress |
@@ -102,7 +105,6 @@ is on Tailscale" is not an answer on its own.
 | excalidraw | `draw.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | gotify | `gotify.pxldi.de` | public | none |
 | observability | `grafana.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| observability | `grafana.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
 | home-assistant | `home.pxldi.de` | public | none |
 | fredy | `immo.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `jellyfin.pxldi.de` | public | none |
@@ -124,6 +126,4 @@ is on Tailscale" is not an answer on its own.
 | adventurelog | `travel.pxldi.de` | public | none |
 | adventurelog | `travel.pxldi.de (PathPrefix(`/media`) \|\| PathPrefix(`/static`) \|\| PathPr` | public | add-trailing-slash,adventurelog-headers |
 | monitoring | `uptime.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| monitoring | `uptime.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
 | velero | `velero.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| velero | `velero.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |

@@ -22,6 +22,10 @@ spec:
       - velero
       # Ephemeral, git-reconstructable metrics stack (25Gi+ Prometheus TSDB).
       - observability
+      # CrowdSec's decisions and alerts rebuild from the logs within minutes,
+      # and its alert database holds request paths with query strings, some
+      # carrying API keys. Nothing there is worth an off-site copy.
+      - crowdsec
 
     # Backup all resources
     includedResources:

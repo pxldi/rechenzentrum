@@ -1,0 +1,16 @@
+---
+# baseline, not restricted: the CrowdSec image runs as root
+# (crowdsecurity/helm-charts#350). Nothing here needs a hostPath; the agent
+# reads Traefik's log through the API (pods/log), see helmrelease.yaml.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: crowdsec
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+    kubernetes.io/metadata.name: crowdsec

@@ -5,6 +5,7 @@ resources:
   - storage
   - sources
   - networking
+  - crowdsec
   - authentik
   - backup
   - velero-ui

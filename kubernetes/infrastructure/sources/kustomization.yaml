@@ -23,3 +23,4 @@ resources:
   - vmware-tanzu.yaml
   - seerr.yaml
   - actions-runner-controller.yaml
+  - crowdsec.yaml

@@ -112,6 +112,24 @@ spec:
 
     accessLog:
       enabled: true
+      # CrowdSec's bad-user-agent scenarios read this field, and it was "-" on
+      # every line while all headers were dropped. Only User-Agent is kept;
+      # Referer and the rest can carry tokens.
+      fields:
+        headers:
+          names:
+            User-Agent: keep
+
+    # The CrowdSec bouncer (infrastructure-config/traefik/middleware-crowdsec.yaml).
+    # Traefik downloads declared plugins from plugins.traefik.io on every start.
+    # abortOnPluginFailure stays false while no route uses the middleware: a
+    # failed download then only disables plugins, instead of crashlooping the
+    # only ingress. Attaching it to the entrypoint is a separate change.
+    experimental:
+      plugins:
+        crowdsec-bouncer:
+          moduleName: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+          version: v1.7.1
 
     # Traefik served per-service request counters on :9100 from the start, and
     # nothing read them. On 2026-09-25 Nextcloud returned 503 to every client

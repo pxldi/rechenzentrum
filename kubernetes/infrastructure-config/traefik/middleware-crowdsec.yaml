@@ -1,0 +1,41 @@
+---
+# Enforces CrowdSec's decisions at Traefik. Not attached to any route yet;
+# the entrypoint gets it in a follow-up once CrowdSec has run in simulation.
+#
+# stream mode: the plugin pulls the decision list every 60 s and answers from
+# memory, so a request never waits on the LAPI.
+#
+# The settings that keep a CrowdSec outage from becoming an ingress outage:
+#   updateMaxFailure: -1        keep serving if the LAPI is unreachable (the
+#                               default 0 blocks everything after one miss)
+#   streamStartupBlock: false   do not hold traffic until the first sync
+#   metricsUpdateIntervalSeconds: 0
+#                               no metrics ticker; with it, the stream poll can
+#                               stall for ~20 minutes on Traefik 3.7 (plugin #377)
+#
+# clientTrustedIPs are the private ranges and the tailnet, generic on purpose:
+# LAN clients, pods, hairpinned requests (they arrive with the router's LAN
+# address) and tailnet devices are never blocked.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: crowdsec-bouncer
+  namespace: traefik
+spec:
+  plugin:
+    crowdsec-bouncer:
+      enabled: true
+      crowdsecMode: stream
+      crowdsecLapiScheme: http
+      crowdsecLapiHost: crowdsec-service.crowdsec.svc.cluster.local:8080
+      # Resolved by Traefik from the Secret in this namespace.
+      crowdsecLapiKey: urn:k8s:secret:crowdsec-bouncer:key
+      updateIntervalSeconds: 60
+      updateMaxFailure: -1
+      streamStartupBlock: false
+      metricsUpdateIntervalSeconds: 0
+      clientTrustedIPs:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+        - 100.64.0.0/10

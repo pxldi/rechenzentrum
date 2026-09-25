@@ -137,6 +137,9 @@
   "helm.toolkit.fluxcd.io/v2/HelmRelease/cnpg-system/cnpg": {
     "kind": "HelmRelease"
   },
+  "helm.toolkit.fluxcd.io/v2/HelmRelease/crowdsec/crowdsec": {
+    "kind": "HelmRelease"
+  },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/grimmory/grimmory": {
     "kind": "HelmRelease"
   },
@@ -225,6 +228,9 @@
     "kind": "Namespace"
   },
   "v1/Namespace//cnpg-system": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//crowdsec": {
     "kind": "Namespace"
   },
   "v1/Namespace//default": {

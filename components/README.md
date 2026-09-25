@@ -26,8 +26,8 @@ selectors across this repository.
   namespace holding a CNPG cluster, whose instance manager needs the API server;
   it names the node's address and API port, which is what a request to the API
   service is rewritten to. `allow-egress-to-cluster` permits every pod in every
-  namespace and belongs only to the namespaces that legitimately talk to all of
-  them: the homepage dashboard, uptime-kuma and n8n.
+  namespace and belongs only to the namespace that legitimately talks to all of
+  them: `monitoring`, whose uptime checks probe every app.
 
 Kustomize components patch resources rendered by Kustomize. They do not reach
 pods rendered later inside a HelmRelease; use chart values or Helm postRenderers

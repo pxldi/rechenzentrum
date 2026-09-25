@@ -81,10 +81,6 @@ jobs:
           # Same value as OAUTH_CLIENT_SECRET in karakeep's SOPS secret.
           # Both sides have to be changed together or OIDC login breaks.
           TF_VAR_karakeep_oidc_client_secret: ${{ secrets.KARAKEEP_OIDC_CLIENT_SECRET }}
-          # Same value as OIDC_CLIENT_SECRET in the ryot namespace. This one was
-          # not chosen here: it is what the provider already had when it was
-          # adopted, so that the import did not rotate it.
-          TF_VAR_ryot_oidc_client_secret: ${{ secrets.RYOT_OIDC_CLIENT_SECRET }}
 
   apply:
     name: Apply
@@ -118,7 +114,3 @@ jobs:
           # Same value as OAUTH_CLIENT_SECRET in karakeep's SOPS secret.
           # Both sides have to be changed together or OIDC login breaks.
           TF_VAR_karakeep_oidc_client_secret: ${{ secrets.KARAKEEP_OIDC_CLIENT_SECRET }}
-          # Same value as OIDC_CLIENT_SECRET in the ryot namespace. This one was
-          # not chosen here: it is what the provider already had when it was
-          # adopted, so that the import did not rotate it.
-          TF_VAR_ryot_oidc_client_secret: ${{ secrets.RYOT_OIDC_CLIENT_SECRET }}

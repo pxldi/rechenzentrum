@@ -19,7 +19,6 @@ spec:
     - name: infrastructure-config
     - name: database-cantus
     - name: database-immich
-    - name: database-n8n
     - name: database-tandoor
   decryption:
     provider: sops

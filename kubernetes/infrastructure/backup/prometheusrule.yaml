@@ -64,7 +64,7 @@ spec:
             description: >-
               Last fully successful run was {{ $value | humanizeDuration }} ago.
               This schedule covers authentik, cert-manager, traefik, nextcloud,
-              immich, n8n and gotify. Runs at 02:00 daily, so 36h means it has
+              immich and gotify. Runs at 02:00 daily, so 36h means it has
               missed at least one window outright.
 
         - alert: VeleroWeeklyBackupStale

@@ -58,7 +58,7 @@ decided per app:
 | `paperless.pxldi.de` | Phone scanner app |
 | `recipes.pxldi.de` | Tandoor, shared with the household |
 | `books.pxldi.de` | An e-reader cannot join a tailnet |
-| `fit.pxldi.de`, `obsidian.pxldi.de`, `travel.pxldi.de` | Phone apps that sync |
+| `obsidian.pxldi.de`, `travel.pxldi.de` | Phone apps that sync |
 | `links.pxldi.de` | Decided above |
 
 The phone on the tailnet is not always connected to it, so "gate it, the phone
@@ -90,8 +90,6 @@ is on Tailscale" is not an answer on its own.
 | Namespace | Route | State | Middlewares |
 | --- | --- | --- | --- |
 | authentik | `auth.pxldi.de` | public | none |
-| n8n | `automation.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| n8n | `automation.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
 | grimmory | `books.pxldi.de` | public | none |
 | branding | `branding.pxldi.de` | public | none |
 | media | `schall.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth,cantus-proxy-key |
@@ -102,23 +100,18 @@ is on Tailscale" is not an answer on its own.
 | nextcloud | `cloud.pxldi.de PathPrefix(`/remote.php/dav`)` | public | nextcloud-headers,nextcloud-dav-no-compress |
 | jdownloader | `download.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | excalidraw | `draw.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| sure | `finance.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| sparkyfitness | `fit.pxldi.de` | public | none |
-| glance | `glance.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | gotify | `gotify.pxldi.de` | public | none |
 | observability | `grafana.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | observability | `grafana.pxldi.de PathPrefix(`/outpost.goauthentik.io/`)` | public | none |
 | home-assistant | `home.pxldi.de` | public | none |
 | fredy | `immo.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `jellyfin.pxldi.de` | public | none |
-| overleaf | `latex.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | karakeep | `links.pxldi.de` | public | none |
 | media | `music.pxldi.de` | public | none |
 | obsidian-sync | `obsidian.pxldi.de` | public | none |
 | paperless | `paperless.pxldi.de` | public | none |
 | immich | `photos.pxldi.de` | public | none |
 | media | `prowlarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| homepage | `pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `radarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | tandoor | `recipes.pxldi.de` | public | none |
 | media | `request.pxldi.de` | public | none |
@@ -126,7 +119,6 @@ is on Tailscale" is not an answer on its own.
 | searxng | `search.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | slskd | `slskd.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `sonarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| ryot | `track.pxldi.de` | LAN/tailnet | internal-only |
 | traefik | `traefik.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | adventurelog | `travel-admin.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | adventurelog | `travel.pxldi.de` | public | none |

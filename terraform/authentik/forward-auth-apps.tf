@@ -77,35 +77,11 @@ locals {
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/velero.png"
       description = "Kubernetes Backup Management"
     }
-    n8n = {
-      name        = "n8n"
-      host        = "automation.${var.domain}"
-      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/n8n.png"
-      description = "Workflow Automation Platform"
-    }
     adventurelog-admin = {
       name        = "AdventureLog Admin"
       host        = "travel-admin.${var.domain}"
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/adventurelog.png"
       description = "AdventureLog Django Admin"
-    }
-    homepage = {
-      name        = "Homepage"
-      host        = var.domain
-      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/glance.png"
-      description = "Home Dashboard"
-    }
-    glance = {
-      name        = "Glance"
-      host        = "glance.${var.domain}"
-      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/glance.png"
-      description = "Home Dashboard"
-    }
-    sure = {
-      name        = "Sure"
-      host        = "finance.${var.domain}"
-      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/sure-finance.png"
-      description = "Personal Finance"
     }
     grafana = {
       name        = "Grafana"
@@ -124,12 +100,6 @@ locals {
       host        = "immo.${var.domain}"
       icon        = ""
       description = "Property listing scraper"
-    }
-    overleaf = {
-      name        = "Overleaf"
-      host        = "latex.${var.domain}"
-      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/overleaf.png"
-      description = "LaTeX Editor"
     }
   }
 }
@@ -168,17 +138,13 @@ resource "authentik_application" "forward_auth" {
 # authentik has: the outpost checks that you are signed in and, with nothing
 # bound, checks nothing else. That was invisible while there was one human
 # account. It stops being invisible the moment there is a second one, because
-# "has a login" would mean Grafana, the Traefik dashboard, Velero, n8n and the
-# household finances.
+# "has a login" would mean Grafana, the Traefik dashboard and Velero.
 #
 # So membership is explicit. Every application above asks for this group, and
 # the group's members are managed here rather than in the admin interface: a
 # name added by hand there is removed on the next apply. Add people in this
 # file.
 #
-# One application is not covered and cannot be from here: ryot-oidc speaks OIDC
-# and was created by hand, so it is not in this state (see oidc-apps.tf). It
-# stays open to any account until it is imported or bound in the UI.
 data "authentik_user" "pxldi" {
   username = "pxldi"
 }

@@ -1,0 +1,195 @@
+# Gatus endpoints. Two kinds of check, on purpose:
+#
+# - Public apps are checked on their public name, which is the path a phone
+#   takes: DNS, Traefik, TLS and the app. A pod-level probe cannot see a broken
+#   route, an expired certificate or an app that is up but refusing clients.
+#   Nextcloud is the reason: on 2026-09-25 its probe stayed green for 19 hours
+#   while every client got 503, because status.php answers 200 even when
+#   needsDbUpgrade is true.
+# - House-only apps sit behind internal-only and Authentik, so from here their
+#   public name answers with a redirect. They are checked on their Service
+#   instead, which proves the app answers, not that its route works.
+#
+# A bare "[STATUS] < 400" passes when the connection fails, because the status
+# is then 0. Every range condition is paired with "[CONNECTED] == true".
+#
+# Alerting does not happen here. Prometheus scrapes gatus_results_endpoint_success
+# and prometheusrule.yaml fires through Alertmanager, so these alerts share
+# Gotify routing, the 03:00 quiet window and the dead-man check with every
+# other alert, and Gatus holds no credential.
+metrics: true
+storage:
+  type: memory
+ui:
+  title: rechenzentrum
+  header: rechenzentrum
+web:
+  port: 8080
+
+x-public: &public
+  interval: 1m
+  client:
+    timeout: 10s
+
+x-house: &house
+  interval: 1m
+  client:
+    timeout: 5s
+
+endpoints:
+  # --- Public, checked the way clients reach them ---
+  - name: Nextcloud
+    group: public
+    url: https://cloud.pxldi.de/status.php
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].maintenance == false"
+      - "[BODY].needsDbUpgrade == false"
+      # One certificate covers every name, so one expiry check is enough.
+      # cert-manager renews at 30 days left; 14 means renewal has failed twice.
+      - "[CERTIFICATE_EXPIRATION] > 336h"
+  - name: Immich
+    group: public
+    url: https://photos.pxldi.de/api/server/ping
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].res == pong"
+  - name: Jellyfin
+    group: public
+    url: https://jellyfin.pxldi.de/health
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY] == Healthy"
+  - name: Navidrome
+    group: public
+    url: https://music.pxldi.de/ping
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+  - name: Home Assistant
+    group: public
+    url: https://home.pxldi.de/manifest.json
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+  - name: Gotify
+    group: public
+    url: https://gotify.pxldi.de/health
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].health == green"
+      - "[BODY].database == green"
+  - name: Paperless
+    group: public
+    url: https://paperless.pxldi.de/accounts/login/
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+  - name: Tandoor
+    group: public
+    url: https://recipes.pxldi.de/accounts/login/
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+  - name: Grimmory
+    group: public
+    url: https://books.pxldi.de/
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+  - name: Obsidian LiveSync
+    group: public
+    url: https://obsidian.pxldi.de/_up
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == ok"
+  - name: Karakeep
+    group: public
+    url: https://links.pxldi.de/api/health
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+  - name: Seerr
+    group: public
+    url: https://request.pxldi.de/api/v1/status
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+  - name: Authentik
+    group: public
+    url: https://auth.pxldi.de/-/health/live/
+    <<: *public
+    conditions:
+      - "[CONNECTED] == true"
+      - "[STATUS] < 300"
+
+  # --- House-only, checked on the Service ---
+  - name: Sonarr
+    group: house
+    url: http://sonarr.media.svc.cluster.local:8989/ping
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
+  - name: Radarr
+    group: house
+    url: http://radarr.media.svc.cluster.local:7878/ping
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
+  - name: Prowlarr
+    group: house
+    url: http://prowlarr.media.svc.cluster.local:9696/ping
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
+  - name: SABnzbd
+    group: house
+    url: http://sabnzbd.media.svc.cluster.local:10097/
+    <<: *house
+    conditions:
+      - "[CONNECTED] == true"
+      - "[STATUS] < 400"
+  - name: Schall
+    group: house
+    url: http://schall.media.svc.cluster.local:8080/
+    <<: *house
+    conditions:
+      - "[CONNECTED] == true"
+      - "[STATUS] < 500"
+  - name: slskd
+    group: house
+    url: http://slskd.slskd.svc.cluster.local:5030/health
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
+  - name: SearXNG
+    group: house
+    url: http://searxng.searxng.svc.cluster.local:8080/healthz
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
+  - name: Fredy
+    group: house
+    url: http://fredy.fredy.svc.cluster.local:9998/
+    <<: *house
+    conditions:
+      - "[CONNECTED] == true"
+      - "[STATUS] < 500"
+  - name: Excalidraw
+    group: house
+    url: http://excalidraw.excalidraw.svc.cluster.local:80/
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
+  - name: Velero UI
+    group: house
+    url: http://velero-ui.velero.svc.cluster.local:3000/
+    <<: *house
+    conditions:
+      - "[CONNECTED] == true"
+      - "[STATUS] < 500"

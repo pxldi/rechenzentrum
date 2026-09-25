@@ -1,0 +1,57 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gatus
+  namespace: monitoring
+  labels:
+    app: gatus
+spec:
+  selector:
+    matchLabels:
+      app: gatus
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+---
+# Gatus decides pass or fail per check; these rules decide when that is worth a
+# notification. Checks run every minute, so `for: 5m` is five failures in a row.
+# That rides out the ~60 s WAN drop at 03:00 (the public checks may leave through
+# the router) and a pod restart, and still reports a real outage within minutes.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gatus
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: kube-prometheus-stack
+spec:
+  groups:
+    - name: gatus
+      rules:
+        - alert: GatusEndpointDown
+          expr: gatus_results_endpoint_success == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.name }} fails its uptime check"
+            description: >-
+              Gatus has failed the {{ $labels.group }} check for
+              {{ $labels.name }} for 5 minutes. The status page on
+              uptime.pxldi.de shows which condition failed. Public checks
+              run on the public name, so a failure there is what clients see.
+        # ScrapeTargetDown covers a Gatus that is scraped and failing. This
+        # covers one that is gone, which leaves no target to be down.
+        - alert: GatusMissing
+          expr: absent(gatus_results_endpoint_success)
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Gatus reports no results"
+            description: >-
+              No gatus_results_endpoint_success series for 15 minutes. Every
+              uptime check is unmonitored until Gatus is back in the
+              monitoring namespace.

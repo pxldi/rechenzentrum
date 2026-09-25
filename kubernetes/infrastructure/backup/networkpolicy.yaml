@@ -48,19 +48,19 @@ spec:
             matchLabels:
               kubernetes.io/metadata.name: observability
 ---
-# Two health checks reach into this namespace from outside it, and #924 missed
-# both — velero went red on Telegram within the hour.
+# A health check reaches into this namespace from outside it. #924 missed the
+# two that existed then (uptime-kuma and homepage), and velero went red on
+# Telegram within the hour. Since 2026-09-25 it is one:
 #
-#   uptime-kuma (monitoring) -> velero.velero:8085          TCP port check
-#   homepage    (homepage)   -> velero-ui.velero:3000       service tile
+#   gatus (monitoring) -> velero-ui.velero:3000       HTTP check
 #
-# Neither is prometheus, so `allow-from-observability` does not cover them, and
-# neither goes through traefik, so `allow-from-traefik` does not either. They
-# connect pod-to-pod across namespaces, which is exactly what default-deny
+# It is not prometheus, so `allow-from-observability` does not cover it, and it
+# does not go through traefik, so `allow-from-traefik` does not either. It
+# connects pod-to-pod across namespaces, which is exactly what default-deny
 # stops.
 #
-# Worth noting why cert-manager did NOT break the same way, since it has the
-# same shape: uptime-kuma checks it on service port 443, and NetworkPolicy
+# Worth noting why cert-manager did NOT break the same way, since it had the
+# same shape: uptime-kuma checked it on service port 443, and NetworkPolicy
 # matches the *pod* port — 10250 — which `allow-webhook` opens to any source.
 # It survived by accident of that rule being source-agnostic, not by design.
 apiVersion: networking.k8s.io/v1

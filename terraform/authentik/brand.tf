@@ -39,7 +39,9 @@ resource "authentik_brand" "default" {
   # at 16px, so the tab keeps the house-and-rack symbol.
   branding_default_flow_background = "https://branding.pxldi.de/wallpapers/login-bg.avif"
 
-  flow_authentication = data.authentik_flow.default-authentication-flow.id
+  # The flow with a required second factor (authentication-flow.tf). The stock
+  # default-authentication-flow still exists as the way back in.
+  flow_authentication = authentik_flow.authentication.uuid
   flow_invalidation   = data.authentik_flow.brand-invalidation-flow.id
   flow_user_settings  = data.authentik_flow.brand-user-settings-flow.id
 

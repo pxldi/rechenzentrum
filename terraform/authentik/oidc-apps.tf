@@ -32,7 +32,7 @@ resource "authentik_provider_oauth2" "karakeep" {
 
   authorization_flow  = data.authentik_flow.default-authorization-flow.id
   invalidation_flow   = data.authentik_flow.default-invalidation-flow.id
-  authentication_flow = data.authentik_flow.default-authentication-flow.id
+  authentication_flow = authentik_flow.authentication.uuid
 
   # Karakeep is handed one URL, OAUTH_WELLKNOWN_URL, and derives every endpoint
   # from the document it finds there. That document is per-application, so this
@@ -135,7 +135,7 @@ resource "authentik_provider_oauth2" "vault_mcp" {
 
   authorization_flow  = data.authentik_flow.default-authorization-flow.id
   invalidation_flow   = data.authentik_flow.default-invalidation-flow.id
-  authentication_flow = data.authentik_flow.default-authentication-flow.id
+  authentication_flow = authentik_flow.authentication.uuid
 
   # The MCP server checks iss against this provider's own issuer, so the
   # discovery document has to be the per-application one, same as Karakeep.

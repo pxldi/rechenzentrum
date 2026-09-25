@@ -27,8 +27,9 @@ resource "authentik_flow" "authentication" {
   title       = "Rechenzentrum"
   slug        = "rechenzentrum-authentication"
   designation = "authentication"
-  # Only someone without a session may start a login.
-  authentication = "require_unauthenticated"
+  # As in the stock flow. require_unauthenticated would show "access denied"
+  # to a stale login tab whose session already exists, instead of passing it on.
+  authentication = "none"
   background     = "https://branding.pxldi.de/wallpapers/login-bg.avif"
 }
 

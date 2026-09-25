@@ -8,4 +8,6 @@ resources:
   - dashboard-secret.yaml
   - certificate.yaml
   - prometheusrule.yaml
+  - crowdsec-bouncer-secret.yaml
+  - crowdsec-log-reader.yaml
   - traefik-api.yaml

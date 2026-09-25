@@ -1,0 +1,31 @@
+---
+# CrowdSec's agent streams Traefik's access log through the API instead of
+# reading files on the node. This is the whole grant: pods and their logs, in
+# this namespace, read-only. It sits here because this kustomization pins
+# `namespace: traefik`.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: crowdsec-log-reader
+  namespace: traefik
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: crowdsec-log-reader
+  namespace: traefik
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: crowdsec-log-reader
+subjects:
+  - kind: ServiceAccount
+    name: crowdsec-agent
+    namespace: crowdsec

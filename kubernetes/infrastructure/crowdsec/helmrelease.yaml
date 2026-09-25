@@ -1,0 +1,133 @@
+---
+# CrowdSec reads Traefik's access log, recognises brute force and scanning, and
+# decides which client addresses to block. Traefik enforces those decisions
+# through the crowdsec-bouncer plugin (infrastructure-config/traefik/
+# middleware-crowdsec.yaml).
+#
+# It starts in simulation: decisions are recorded, nothing is blocked. After a
+# week of `cscli alerts list` shows what it would have blocked, simulation.yaml
+# goes to false.
+#
+# Log source: the `kubernetes` datasource (CrowdSec 1.8) streams Traefik's
+# stdout through pods/log. That needs no hostPath and no sidecar in the traefik
+# namespace, which enforces restricted and would not admit this root image.
+#
+# The Central API is off. Enabling it brings the community blocklist, but it
+# also shares signals from this house's address, and a listed carrier address
+# could block a family phone. The alert database stores request paths with
+# query strings, some of which carry API keys (apikey=, Subsonic t=/s=), so
+# console context sharing must stay off too.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: crowdsec
+  namespace: crowdsec
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: crowdsec
+      version: 0.24.2
+      sourceRef:
+        kind: HelmRepository
+        name: crowdsec
+        namespace: flux-system
+      interval: 12h
+
+  # Chart 0.24.2's values.schema.json lists every datasource except the new
+  # `kubernetes` one, so it rejects the acquisition below although the template
+  # renders it verbatim into acquis.yaml. Drop these two lines once the schema
+  # accepts `source: kubernetes`.
+  install:
+    disableSchemaValidation: true
+    remediation:
+      retries: 3
+
+  upgrade:
+    disableSchemaValidation: true
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+
+  values:
+    # The chart's default mounts /var/lib/docker/containers from the host even
+    # when the agent is a Deployment. containerd mounts nothing.
+    container_runtime: containerd
+
+    secrets:
+      externalSecret:
+        name: crowdsec-secrets
+
+    config:
+      simulation.yaml: |
+        simulation: true
+      parsers:
+        s02-enrich:
+          # The image's own whitelist covers the private ranges: the LAN, pods,
+          # hairpinned requests that arrive with the router's LAN address, and
+          # the svclb fallback. The tailnet is the one range it does not know.
+          tailnet-whitelist.yaml: |
+            name: rechenzentrum/tailnet-whitelist
+            description: "Clients on the tailnet are the household's own devices"
+            whitelist:
+              reason: "tailnet"
+              cidr:
+                - 100.64.0.0/10
+
+    lapi:
+      env:
+        # Must be the string "true": the chart compares it with eq.
+        - name: DISABLE_ONLINE_API
+          value: "true"
+        - name: BOUNCER_KEY_traefik
+          valueFrom:
+            secretKeyRef:
+              name: crowdsec-secrets
+              key: bouncerKey
+      podSecurityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 25m
+          memory: 96Mi
+        limits:
+          memory: 256Mi
+      persistentVolume:
+        data:
+          enabled: true
+          storageClassName: local-ssd
+          size: 1Gi
+        config:
+          enabled: true
+          storageClassName: local-ssd
+          size: 100Mi
+
+    agent:
+      isDeployment: true
+      hostVarLog: false
+      serviceAccountName: crowdsec-agent
+      acquisition: []
+      additionalAcquisition:
+        - source: kubernetes
+          namespace: traefik
+          selector: "app.kubernetes.io/name=traefik,app.kubernetes.io/instance=traefik-traefik"
+          labels:
+            type: traefik
+      env:
+        # crowdsecurity/traefik pulls in base-http-scenarios and http-cve.
+        - name: COLLECTIONS
+          value: "crowdsecurity/traefik"
+        # Nextcloud's DAV clients and Jellyfin's players produce 4xx in normal
+        # use; these whitelists keep that from counting as probing.
+        - name: PARSERS
+          value: "crowdsecurity/nextcloud-whitelist crowdsecurity/jellyfin-whitelist"
+      podSecurityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 25m
+          memory: 128Mi
+        limits:
+          memory: 320Mi

@@ -1,0 +1,121 @@
+---
+# Default deny in both directions, then exactly what CrowdSec needs:
+#
+#   traefik (bouncer) -> LAPI :8080     fetch decisions
+#   agent             -> LAPI :8080     report alerts
+#   agent             -> API :6443      stream Traefik's pod log
+#   agent, LAPI       -> internet :443  hub index and data (cdn-hub, hub-data)
+#
+# Both pods download hub content at every start, because neither keeps it on a
+# volume. With the Central API off, nothing else leaves the cluster.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: crowdsec
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: crowdsec
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-lapi-ingress
+  namespace: crowdsec
+spec:
+  podSelector:
+    matchLabels:
+      k8s-app: crowdsec
+      type: lapi
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+        - podSelector:
+            matchLabels:
+              k8s-app: crowdsec
+              type: agent
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-agent-egress
+  namespace: crowdsec
+spec:
+  podSelector:
+    matchLabels:
+      k8s-app: crowdsec
+      type: agent
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              k8s-app: crowdsec
+              type: lapi
+      ports:
+        - protocol: TCP
+          port: 8080
+    # The API server. Port only: a NetworkPolicy matches the destination after
+    # DNAT, which is the node's own address, and the public repository does
+    # not carry that address.
+    - ports:
+        - protocol: TCP
+          port: 6443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-hub-egress
+  namespace: crowdsec
+spec:
+  podSelector:
+    matchLabels:
+      k8s-app: crowdsec
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443

@@ -59,11 +59,11 @@ locals {
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/jdownloader.png"
       description = "Downloader"
     }
-    uptime-kuma = {
-      name        = "Uptime Kuma"
+    gatus = {
+      name        = "Gatus"
       host        = "uptime.${var.domain}"
-      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/uptime-kuma.png"
-      description = "Uptime Monitoring & Status Page"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/gatus.png"
+      description = "Uptime Checks & Status Page"
     }
     traefik-dashboard = {
       name        = "Traefik Dashboard"

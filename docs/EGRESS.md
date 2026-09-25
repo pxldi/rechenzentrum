@@ -38,7 +38,7 @@ Every application namespace except the two at the end of this section.
 | `karakeep` | own namespace, internet, Traefik, `ollama` | Meilisearch here, crawls pages, OIDC by public name, tags with a local model |
 | `media` | own namespace, internet, Traefik, API server, `slskd` | Nine workloads; indexers and metadata; the cantus CNPG cluster |
 | `minecraft` | internet | Mojang authentication |
-| `monitoring` | internet, cluster, Traefik, API server | uptime-kuma probes 27 namespaces, and the API server is one of the things it watches |
+| `monitoring` | internet, cluster, Traefik | Gatus checks public apps on their public names and house-only apps on their Services |
 | `nextcloud` | own namespace, internet, Traefik | Postgres and Redis here; app updates; its own public name |
 | `obsidian-sync` | nothing | CouchDB, single node, clients connect inbound |
 | `ollama` | internet | Pulls models on demand |
@@ -90,7 +90,7 @@ against it before it is locked.
 
 | Caller | Reaches | How |
 | --- | --- | --- |
-| `monitoring` | 27 namespaces | uptime-kuma probes and scrapes |
+| `monitoring` | 10 Services in 6 namespaces | Gatus checks on house-only apps |
 | `observability` | `gotify` | alert delivery |
 | `karakeep` | `ollama` | `ollama.ollama.svc.cluster.local` |
 | `media` (Schall) | `slskd` | an ExternalName alias onto `slskd.slskd.svc.cluster.local` |

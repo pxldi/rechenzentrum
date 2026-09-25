@@ -55,7 +55,7 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | media | Deployment/slskd | Recreate | slskd-config-pvc, downloads-pvc, cantus-music-pvc | yes |
 | media | Deployment/sonarr | Recreate | sonarr-config-pvc, downloads-pvc, media-pvc | yes |
 | minecraft | Deployment/minecraft | Recreate | minecraft-data | yes |
-| monitoring | Deployment/uptime-kuma | Recreate | uptime-kuma-pvc | yes |
+| monitoring | Deployment/gatus | RollingUpdate | none | yes |
 | nextcloud | Deployment/nextcloud | Recreate | nextcloud-nextcloud, nextcloud-data-pvc | no |
 | nextcloud | StatefulSet/nextcloud-postgresql | RollingUpdate | none | yes |
 | nextcloud | StatefulSet/nextcloud-redis-master | RollingUpdate | none | yes |

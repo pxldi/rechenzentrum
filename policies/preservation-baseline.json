@@ -74,7 +74,7 @@
   "apps/v1/Deployment/minecraft/minecraft": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/monitoring/uptime-kuma": {
+  "apps/v1/Deployment/monitoring/gatus": {
     "kind": "Deployment"
   },
   "apps/v1/Deployment/observability/gotify-bridge-critical": {
@@ -431,10 +431,6 @@
   "v1/PersistentVolumeClaim/minecraft/minecraft-data": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "e0f1c01c78cf03ca1fce2ae9ed978deaefd670efb009209ae8217da540fbabcd"
-  },
-  "v1/PersistentVolumeClaim/monitoring/uptime-kuma-pvc": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "a6777e4e1b11fd9f8d491776e5fff1ea48ae86dc340612ff25e603bcf655d96d"
   },
   "v1/PersistentVolumeClaim/nextcloud/nextcloud-data-pvc": {
     "kind": "PersistentVolumeClaim",

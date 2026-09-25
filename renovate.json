@@ -88,6 +88,13 @@
       ],
       "automerge": false,
       "description": "Databases and indexes that migrate their on-disk format on a version bump, and cannot be rolled back afterwards. Meilisearch v1.53.2 was automerged on 2026-09-13 and crashlooped karakeep's index until it was pinned back. A MariaDB series bump needs mariadb-upgrade, and a PostGIS bump needs ALTER EXTENSION. Renovate proposes these; a human runs them."
+    },
+    {
+      "matchPackageNames": [
+        "nextcloud"
+      ],
+      "automerge": false,
+      "description": "Every Nextcloud bump migrates the database and the app-store apps, and the pod reports Ready while it is half done: status.php answers 200 with needsDbUpgrade true. Patch 35.0.1 was automerged on 2026-09-25 and returned 503 to every client for 19 hours. Renovate proposes these; a human merges them and checks status.php afterwards."
     }
   ],
   "prHourlyLimit": 0,

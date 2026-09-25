@@ -19,10 +19,3 @@ spec:
       services:
         - name: kube-prometheus-stack-grafana
           port: 80
-    - kind: Rule
-      match: "Host(`grafana.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`)"
-      priority: 15
-      services:
-        - name: authentik-server
-          namespace: authentik
-          port: 9000

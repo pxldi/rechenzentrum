@@ -22,13 +22,6 @@ spec:
       services:
         - name: schall
           port: 8080
-    - kind: Rule
-      match: "Host(`schall.pxldi.de`) && PathPrefix(`/outpost.goauthentik.io/`)"
-      priority: 15
-      services:
-        - name: authentik-server
-          namespace: authentik
-          port: 9000
     # The phone app sends an app token minted in Settings → Phone as a Bearer
     # header. It cannot follow an authentik redirect, so API calls carrying one
     # skip forward-auth; Schall checks the token itself and answers 401 to any

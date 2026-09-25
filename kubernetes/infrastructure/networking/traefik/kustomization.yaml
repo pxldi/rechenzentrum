@@ -7,4 +7,5 @@ resources:
   - helmrelease.yaml
   - dashboard-secret.yaml
   - certificate.yaml
+  - prometheusrule.yaml
   - traefik-api.yaml

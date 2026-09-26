@@ -111,9 +111,6 @@ is on Tailscale" is not an answer on its own.
 | karakeep | `links.pxldi.de` | public | none |
 | opengym | `gym.pxldi.de` | public | none |
 | wealthfolio | `wealth.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| firefly | `finance.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| firefly | `finance-import.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| firefly | `money.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `music.pxldi.de` | public | none |
 | obsidian-sync | `obsidian.pxldi.de` | public | none |
 | paperless | `paperless.pxldi.de` | public | none |

@@ -32,15 +32,6 @@
   "apps/v1/Deployment/excalidraw/excalidraw": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/firefly/firefly": {
-    "kind": "Deployment"
-  },
-  "apps/v1/Deployment/firefly/firefly-importer": {
-    "kind": "Deployment"
-  },
-  "apps/v1/Deployment/firefly/firefly-pico": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/flux-system/helm-controller": {
     "kind": "Deployment"
   },
@@ -255,9 +246,6 @@
     "kind": "Namespace"
   },
   "v1/Namespace//excalidraw": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//firefly": {
     "kind": "Namespace"
   },
   "v1/Namespace//flux-system": {

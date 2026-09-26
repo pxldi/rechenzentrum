@@ -28,6 +28,10 @@ spec:
     metadata:
       labels:
         app: firefly-importer
+      annotations:
+        # A SOPS secret change does not restart the pod, and the Enable Banking
+        # App ID is read from the environment. Bump this with the secret.
+        rechenzentrum/restart-revision: "2026-09-26-enable-banking"
     spec:
       automountServiceAccountToken: false
       securityContext:

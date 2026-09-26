@@ -57,6 +57,7 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | minecraft | Deployment/minecraft | Recreate | minecraft-data | yes |
 | monitoring | Deployment/gatus | RollingUpdate | none | yes |
 | opengym | Deployment/opengym | Recreate | opengym-data, opengym-media | yes |
+| wealthfolio | Deployment/wealthfolio | Recreate | wealthfolio-data | yes |
 | firefly | Deployment/firefly | Recreate | firefly-upload | yes |
 | firefly | Deployment/firefly-importer | RollingUpdate | none | yes |
 | firefly | Deployment/firefly-pico | Recreate | firefly-pico-data | yes |

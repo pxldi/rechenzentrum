@@ -122,6 +122,9 @@
   "apps/v1/Deployment/slskd/slskd": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/wealthfolio/wealthfolio": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/whisper-cpp/whisper-cpp": {
     "kind": "Deployment"
   },
@@ -327,6 +330,9 @@
     "kind": "Namespace"
   },
   "v1/Namespace//velero": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//wealthfolio": {
     "kind": "Namespace"
   },
   "v1/Namespace//whisper-cpp": {

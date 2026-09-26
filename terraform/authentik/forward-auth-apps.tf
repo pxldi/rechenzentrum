@@ -113,6 +113,12 @@ locals {
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/firefly-iii.png"
       description = "Finance Dashboard"
     }
+    wealthfolio = {
+      name        = "Wealthfolio"
+      host        = "wealth.${var.domain}"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/wealthfolio.png"
+      description = "Net Worth & Investments"
+    }
     fredy = {
       name        = "Fredy"
       host        = "immo.${var.domain}"

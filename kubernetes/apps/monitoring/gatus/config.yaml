@@ -120,6 +120,13 @@ endpoints:
     <<: *public
     conditions:
       - "[STATUS] == 200"
+  - name: openGym
+    group: public
+    url: https://gym.pxldi.de/api/health
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].ok == true"
   - name: Authentik
     group: public
     url: https://auth.pxldi.de/-/health/live/

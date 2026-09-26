@@ -85,6 +85,13 @@ spec:
             # No "continue without account": this instance is for known people.
             - name: ALLOW_GUEST
               value: "0"
+            # New profiles need an invite code from the admin dashboard. The
+            # route is public, so without this anyone could sign up.
+            - name: INVITE_ONLY
+              value: "1"
+            # openGym user ids, from /data/db.json users[].id. Not a secret.
+            - name: ADMIN_UIDS
+              value: 3fs_bnE2WUBlPul6
             # Network part of the address in the sign-in log, enough to tell
             # one failed sign-in from twenty.
             - name: AUDIT_IP

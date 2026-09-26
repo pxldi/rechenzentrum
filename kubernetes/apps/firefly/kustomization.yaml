@@ -4,8 +4,11 @@ kind: Kustomization
 namespace: firefly
 resources:
   - secret.yaml
+  - importer-secret.yaml
   - pvc.yaml
   - deployment.yaml
+  - importer.yaml
+  - pico.yaml
   - cronjob.yaml
   - ingress.yaml
 components:

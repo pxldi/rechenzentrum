@@ -101,6 +101,18 @@ locals {
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/firefly-iii.png"
       description = "Personal Finance"
     }
+    firefly-importer = {
+      name        = "Firefly Importer"
+      host        = "finance-import.${var.domain}"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/firefly-iii.png"
+      description = "Bank Import for Firefly III"
+    }
+    firefly-pico = {
+      name        = "Firefly Pico"
+      host        = "money.${var.domain}"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/firefly-iii.png"
+      description = "Finance Dashboard"
+    }
     fredy = {
       name        = "Fredy"
       host        = "immo.${var.domain}"

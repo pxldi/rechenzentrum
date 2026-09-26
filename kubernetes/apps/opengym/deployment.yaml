@@ -1,0 +1,184 @@
+---
+# openGym: gym and body-weight tracker, replacing Hevy. Upstream is
+# gitlab.com/DuarteSantos8/opengym; its compose file runs three services, folded
+# into one pod here:
+#
+# - api   Node, keeps users, passkeys and per-user state as JSON in /data.
+# - web   nginx serving the frontend and proxying /api. With both containers in
+#         one pod it proxies to 127.0.0.1, so nginx never has to resolve a name.
+# - media (initContainer) one-time download of the exercise images and GIFs
+#         (~140 MB) from github.com/hasaneyldrm/exercises-dataset. The images are
+#         (c) Gym visual and used under that dataset's terms (upstream NOTICE.md).
+#
+# Recreate because /data is a volume and the API writes plain files; two pods on
+# it would overwrite each other's JSON.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opengym
+  namespace: opengym
+  labels:
+    app: opengym
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: opengym
+  template:
+    metadata:
+      labels:
+        app: opengym
+      annotations:
+        # Re-downloadable from upstream; only /data is worth a copy.
+        backup.velero.io/backup-volumes-excludes: media
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: media
+          image: alpine/git:2.45.2@sha256:16ad8e788e1d3b0c30f18da8dde5c0ace3b187445a62d8af893b003ca1e70592
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              if [ -n "$(ls -A /out/img 2>/dev/null)" ]; then
+                echo "exercise media already present"; exit 0
+              fi
+              git clone --depth 1 https://github.com/hasaneyldrm/exercises-dataset /tmp/ds
+              mkdir -p /out/img /out/gif
+              cp /tmp/ds/images/*.jpg /out/img/ && cp /tmp/ds/videos/*.gif /out/gif/
+              echo "exercise media ready: $(ls /out/img | wc -l) images"
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+          volumeMounts:
+            - name: media
+              mountPath: /out
+      containers:
+        - name: api
+          image: ghcr.io/duartesantos8/opengym-api:1.3.8@sha256:0d949d05897f3d01c5a087fc2c1888230ff55d5551095550d83f84806766991b
+          env:
+            - name: PORT
+              value: "3000"
+            - name: DATA_DIR
+              value: /data
+            # Passkeys are bound to this exact hostname. Changing it later
+            # orphans every registered passkey.
+            - name: RP_ID
+              value: gym.pxldi.de
+            - name: ORIGIN
+              value: https://gym.pxldi.de
+            - name: RP_NAME
+              value: openGym
+            # No "continue without account": this instance is for known people.
+            - name: ALLOW_GUEST
+              value: "0"
+            # Network part of the address in the sign-in log, enough to tell
+            # one failed sign-in from twenty.
+            - name: AUDIT_IP
+              value: net
+            - name: TZ
+              value: Europe/Berlin
+          ports:
+            - containerPort: 3000
+              name: api
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: api
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: api
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          volumeMounts:
+            - name: data
+              mountPath: /data
+        - name: web
+          image: ghcr.io/duartesantos8/opengym-web:1.3.8@sha256:2beebe4011f35efe249f12c20c1a2d53d389b4acb917011525ec7e4311235638
+          env:
+            - name: NGINX_PORT
+              value: "80"
+            - name: BACKEND
+              value: 127.0.0.1
+            - name: PORT
+              value: "3000"
+            # Unused while BACKEND is an address, but it must be a resolver that
+            # answers: the image's default is Docker's, and an unreachable one
+            # makes every /api request hang if BACKEND ever becomes a name.
+            - name: RESOLVER
+              value: 10.43.0.10
+          ports:
+            - containerPort: 80
+              name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+          volumeMounts:
+            - name: media
+              subPath: img
+              mountPath: /usr/share/nginx/html/img
+              readOnly: true
+            - name: media
+              subPath: gif
+              mountPath: /usr/share/nginx/html/gif
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: opengym-data
+        - name: media
+          persistentVolumeClaim:
+            claimName: opengym-media
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opengym
+  namespace: opengym
+  labels:
+    app: opengym
+spec:
+  selector:
+    app: opengym
+  ports:
+    - port: 80
+      targetPort: http
+      name: http

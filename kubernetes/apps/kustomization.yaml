@@ -26,4 +26,5 @@ resources:
   - actions-runner
   - excalidraw
   - karakeep
+  - opengym
   - chatops

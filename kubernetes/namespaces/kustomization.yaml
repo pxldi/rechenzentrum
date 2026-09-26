@@ -19,6 +19,7 @@ resources:
   - nextcloud.yaml
   - obsidian.yaml
   - ollama.yaml
+  - opengym.yaml
   - palworld.yaml
   - paperless-ngx.yaml
   - searxng.yaml

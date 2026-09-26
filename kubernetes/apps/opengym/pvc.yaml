@@ -1,0 +1,28 @@
+---
+# Users, passkeys, workouts and the session secret. Backed up by Velero.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opengym-data
+  namespace: opengym
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Exercise images and GIFs, downloaded by the init container. Not backed up.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opengym-media
+  namespace: opengym
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 1Gi

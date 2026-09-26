@@ -1,0 +1,14 @@
+---
+# Receipts and other attachments. Backed up by Velero.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: firefly-upload
+  namespace: firefly
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 2Gi

@@ -1,0 +1,20 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: firefly
+  namespace: firefly
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`finance.pxldi.de`)
+      middlewares:
+        - name: internal-only
+          namespace: traefik
+        - name: authentik-forward-auth
+          namespace: traefik
+      services:
+        - name: firefly
+          port: 8080

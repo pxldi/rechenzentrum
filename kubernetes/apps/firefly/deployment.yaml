@@ -1,0 +1,143 @@
+---
+# Firefly III, personal finance. Replaces Sure, which was removed unused on
+# 2026-09-25. Database: CNPG cluster firefly-db (kubernetes/databases/firefly).
+#
+# Login is authentik's: the route is house only and behind forward-auth, and
+# Firefly trusts the X-authentik-email header (remote_user_guard). The first
+# address to arrive becomes the owner. Firefly does NO check on that header, so
+# whoever can reach this pod directly can claim any user. That is why the only
+# ingress is Traefik (which overwrites the header from authentik's response)
+# and pods in this namespace; nothing else, not even monitoring.
+#
+# Clients that use the API (the Data Importer, Firefly Pico) call the Service
+# in-cluster with a Personal Access Token, which the header guard does not
+# touch.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: firefly
+  namespace: firefly
+  labels:
+    app: firefly
+spec:
+  replicas: 1
+  # Attachments live on a volume.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: firefly
+  template:
+    metadata:
+      labels:
+        app: firefly
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 33
+        runAsGroup: 33
+        fsGroup: 33
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: firefly
+          image: fireflyiii/core:version-6.7.4@sha256:28b35d7c9f8933cdc03db868e5a248d46ae0411af8410f1693fc00a10b51beda
+          env:
+            - name: APP_URL
+              value: https://finance.pxldi.de
+            - name: APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: firefly-app
+                  key: APP_KEY
+            - name: STATIC_CRON_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: firefly-app
+                  key: STATIC_CRON_TOKEN
+            - name: TRUSTED_PROXIES
+              value: "**"
+            - name: TZ
+              value: Europe/Berlin
+            - name: DEFAULT_LANGUAGE
+              value: de_DE
+            - name: DEFAULT_LOCALE
+              value: equal
+            - name: DB_CONNECTION
+              value: pgsql
+            - name: DB_HOST
+              value: firefly-db-rw
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_DATABASE
+              value: firefly
+            - name: DB_USERNAME
+              value: firefly
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: firefly-db-credentials
+                  key: password
+            - name: AUTHENTICATION_GUARD
+              value: remote_user_guard
+            - name: AUTHENTICATION_GUARD_HEADER
+              value: HTTP_X_AUTHENTIK_EMAIL
+            - name: AUTHENTICATION_GUARD_EMAIL
+              value: HTTP_X_AUTHENTIK_EMAIL
+            # Signing out of Firefly ends the authentik session too; otherwise
+            # the next request would sign straight back in.
+            - name: CUSTOM_LOGOUT_URL
+              value: https://auth.pxldi.de/if/flow/default-invalidation-flow/
+          ports:
+            - containerPort: 8080
+              name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            # The first start runs every database migration.
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+          volumeMounts:
+            - name: upload
+              mountPath: /var/www/html/storage/upload
+      volumes:
+        - name: upload
+          persistentVolumeClaim:
+            claimName: firefly-upload
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: firefly
+  namespace: firefly
+  labels:
+    app: firefly
+spec:
+  selector:
+    app: firefly
+  ports:
+    - port: 8080
+      targetPort: http
+      name: http

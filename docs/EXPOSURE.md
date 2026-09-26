@@ -110,6 +110,7 @@ is on Tailscale" is not an answer on its own.
 | media | `jellyfin.pxldi.de` | public | none |
 | karakeep | `links.pxldi.de` | public | none |
 | opengym | `gym.pxldi.de` | LAN/tailnet | internal-only |
+| firefly | `finance.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `music.pxldi.de` | public | none |
 | obsidian-sync | `obsidian.pxldi.de` | public | none |
 | paperless | `paperless.pxldi.de` | public | none |

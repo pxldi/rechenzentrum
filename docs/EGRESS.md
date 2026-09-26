@@ -38,6 +38,7 @@ Every application namespace except the two at the end of this section.
 | `jdownloader` | internet | The point of it |
 | `karakeep` | own namespace, internet, Traefik, `ollama` | Meilisearch here, crawls pages, OIDC by public name, tags with a local model |
 | `opengym` | internet | The init container clones the exercise media from GitHub; the API sends Web Push |
+| `firefly` | own namespace, internet, API server | Postgres here (CNPG), exchange rates outside |
 | `media` | own namespace, internet, Traefik, API server, `slskd` | Nine workloads; indexers and metadata; the cantus CNPG cluster |
 | `minecraft` | internet | Mojang authentication |
 | `monitoring` | internet, cluster, Traefik | Gatus checks public apps on their public names and house-only apps on their Services |

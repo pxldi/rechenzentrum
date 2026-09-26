@@ -95,6 +95,12 @@ locals {
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/excalidraw.png"
       description = "Whiteboard & Diagrams"
     }
+    firefly = {
+      name        = "Firefly III"
+      host        = "finance.${var.domain}"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/firefly-iii.png"
+      description = "Personal Finance"
+    }
     fredy = {
       name        = "Fredy"
       host        = "immo.${var.domain}"

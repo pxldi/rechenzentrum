@@ -1,0 +1,15 @@
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: firefly-db-daily
+  namespace: firefly
+spec:
+  schedule: "0 0 1 * * *"
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: firefly-db
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

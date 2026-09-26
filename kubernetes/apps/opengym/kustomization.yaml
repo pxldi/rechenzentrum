@@ -1,0 +1,26 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: opengym
+resources:
+  - pvc.yaml
+  - deployment.yaml
+  - ingress.yaml
+components:
+  # Egress: the init container clones the exercise media from GitHub, and the
+  # API sends Web Push to the browsers' push services. Nothing in the cluster.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../../components/allow-internet-egress
+  - ../../infrastructure-config/networkpolicies/default-deny-ingress
+  - ../../infrastructure-config/networkpolicies/allow-from-traefik
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: opengym
+      app.kubernetes.io/instance: opengym
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

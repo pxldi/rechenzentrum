@@ -56,6 +56,7 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | media | Deployment/sonarr | Recreate | sonarr-config-pvc, downloads-pvc, media-pvc | yes |
 | minecraft | Deployment/minecraft | Recreate | minecraft-data | yes |
 | monitoring | Deployment/gatus | RollingUpdate | none | yes |
+| opengym | Deployment/opengym | Recreate | opengym-data, opengym-media | yes |
 | nextcloud | Deployment/nextcloud | Recreate | nextcloud-nextcloud, nextcloud-data-pvc | no |
 | nextcloud | StatefulSet/nextcloud-postgresql | RollingUpdate | none | yes |
 | nextcloud | StatefulSet/nextcloud-redis-master | RollingUpdate | none | yes |

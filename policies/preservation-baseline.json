@@ -92,6 +92,9 @@
   "apps/v1/Deployment/ollama/ollama": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/opengym/opengym": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/palworld/palworld": {
     "kind": "Deployment"
   },
@@ -288,6 +291,9 @@
     "kind": "Namespace"
   },
   "v1/Namespace//openebs": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//opengym": {
     "kind": "Namespace"
   },
   "v1/Namespace//palworld": {

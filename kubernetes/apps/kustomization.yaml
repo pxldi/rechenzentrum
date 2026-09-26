@@ -25,7 +25,6 @@ resources:
   - minecraft
   - actions-runner
   - excalidraw
-  - firefly
   - karakeep
   - opengym
   - chatops

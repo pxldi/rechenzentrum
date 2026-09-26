@@ -1,0 +1,129 @@
+---
+# Wealthfolio: net worth across bank accounts and the Scalable depot, with
+# performance and dividends. Chosen over Firefly on 2026-09-26: the goal is the
+# total, not spending categories.
+#
+# Where the numbers come from, and why by hand:
+# - The depot: Scalable's transaction CSV, imported about once a month. No
+#   self-hosted tool can sync a German depot automatically; PSD2 covers payment
+#   accounts only, and services like Finanzfluss Copilot use a licensed
+#   aggregator (finAPI). Quotes update on their own.
+# - Volksbank and Revolut: their balances, entered at the same time as cash
+#   accounts. Automating two numbers a month was not worth a second app.
+#
+# Login is authentik's forward-auth in front of a house-only route, so the app
+# runs with WF_AUTH_REQUIRED=false; the server refuses to start without either
+# its own login or that explicit statement. It must only be reachable through
+# Traefik, which is why ingress is Traefik alone.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wealthfolio
+  namespace: wealthfolio
+  labels:
+    app: wealthfolio
+spec:
+  replicas: 1
+  # SQLite on a volume.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wealthfolio
+  template:
+    metadata:
+      labels:
+        app: wealthfolio
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: wealthfolio
+          image: wealthfolio/wealthfolio:3.8.0@sha256:3c6f117828949204029c2b4a391f039e62987b4e091139e11b04e6764b5f6866
+          env:
+            - name: WF_LISTEN_ADDR
+              value: 0.0.0.0:8088
+            - name: WF_DB_PATH
+              value: /data/wealthfolio.db
+            - name: WF_SECRET_FILE
+              value: /data/secrets.json
+            # Encrypts stored provider secrets and signs sessions. Losing it
+            # makes those secrets unreadable, so it lives in SOPS.
+            - name: WF_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: wealthfolio
+                  key: WF_SECRET_KEY
+            - name: WF_AUTH_REQUIRED
+              value: "false"
+            - name: WF_CORS_ALLOW_ORIGINS
+              value: https://wealth.pxldi.de
+            - name: TZ
+              value: Europe/Berlin
+          ports:
+            - containerPort: 8088
+              name: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: wealthfolio-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wealthfolio
+  namespace: wealthfolio
+  labels:
+    app: wealthfolio
+spec:
+  selector:
+    app: wealthfolio
+  ports:
+    - port: 8088
+      targetPort: http
+      name: http
+---
+# The database, its nightly consistent copy (backup.yaml) and the secrets
+# vault. Backed up by Velero.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wealthfolio-data
+  namespace: wealthfolio
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 2Gi

@@ -1,0 +1,20 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: wealthfolio
+  namespace: wealthfolio
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`wealth.pxldi.de`)
+      middlewares:
+        - name: internal-only
+          namespace: traefik
+        - name: authentik-forward-auth
+          namespace: traefik
+      services:
+        - name: wealthfolio
+          port: 8088

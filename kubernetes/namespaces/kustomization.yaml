@@ -26,4 +26,5 @@ resources:
   - searxng.yaml
   - slskd.yaml
   - tandoor.yaml
+  - wealthfolio.yaml
   - whisper-cpp.yaml

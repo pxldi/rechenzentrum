@@ -41,7 +41,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: media
-          image: alpine/git:2.45.2@sha256:16ad8e788e1d3b0c30f18da8dde5c0ace3b187445a62d8af893b003ca1e70592
+          image: alpine/git:v2.54.0@sha256:ae0f6f4bce38d2b8c40becc0d6241a08d9f57186ea03029de2189a2b5e722d94
           command: ["/bin/sh", "-c"]
           args:
             - |

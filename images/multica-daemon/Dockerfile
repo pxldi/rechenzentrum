@@ -39,7 +39,7 @@
 
 # The digest is the actual pin. The tag is here so a human reading it knows what
 # they are looking at, and so Renovate has something to bump.
-FROM node:24.21.0-trixie@sha256:33397c740200dc823a0b3e6ea71fb3b4173ad6fc7bdebad62b2c7a5bd37f5dc5
+FROM node:24.21.0-trixie@sha256:be40f6a87b9b22215ddb20da0a2320a5c6d583fe3ee3b0024d9fa4f05b40c8fd
 
 # Every version is an explicit ARG so that the table in the PR, the pins here and
 # the verification transcript are the same three numbers rather than three
@@ -103,19 +103,19 @@ RUN set -euo pipefail; \
     echo 'create_main_cluster = false' > /etc/postgresql-common/createcluster.conf; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-        postgresql-17=17.10-0+deb13u1 \
-        postgresql-client-17=17.10-0+deb13u1 \
+        postgresql-17=17.11-0+deb13u1 \
+        postgresql-client-17=17.11-0+deb13u1 \
         ffmpeg=7:7.1.5-0+deb13u1 \
         libchromaprint-tools=1.5.1-7 \
         ripgrep=14.1.1-1+b4 \
-        jq=1.7.1-6+deb13u3 \
+        jq=1.7.1-6+deb13u4 \
         less=668-1 \
         tree=2.2.1-1 \
         git-lfs=3.6.1-1+deb13u1 \
         zstd=1.5.7+dfsg-1 \
         rsync=3.4.1+ds1-5+deb13u4 \
         shellcheck=0.10.0-1 \
-        sqlite3=3.46.1-7+deb13u1 \
+        sqlite3=3.46.1-7+deb13u2 \
         skopeo=1.18.0+ds1-1+b5; \
     rm -rf /var/lib/apt/lists/*
 

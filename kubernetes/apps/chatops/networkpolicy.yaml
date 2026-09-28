@@ -144,9 +144,11 @@ spec:
           podSelector:
             matchLabels:
               app.kubernetes.io/name: nextcloud
+      # The pod's port, not the Service's: the Service maps 8080 to 80, and a
+      # policy sees the packet after that translation.
       ports:
         - protocol: TCP
-          port: 8080
+          port: 80
 ---
 # The vault pod's bridge replicates with CouchDB in obsidian-sync and nothing
 # else; the matching ingress rule lives in kubernetes/apps/obsidian.

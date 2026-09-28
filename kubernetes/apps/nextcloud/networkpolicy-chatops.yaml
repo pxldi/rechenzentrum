@@ -20,6 +20,8 @@ spec:
           podSelector:
             matchLabels:
               app: calendar-mcp
+      # The pod's port, not the Service's: the Service maps 8080 to 80, and a
+      # policy sees the packet after that translation.
       ports:
         - protocol: TCP
-          port: 8080
+          port: 80

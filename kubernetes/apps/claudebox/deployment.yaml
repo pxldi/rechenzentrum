@@ -35,13 +35,12 @@
 # bridge runs as uid 1000, the same as the sessions, because both sides write
 # the same files; see the container below for what that costs.
 #
-# The image is the one built for the Multica daemon, unchanged. Multica itself
-# was deleted from this repository on 2026-09-15, so claudebox is now the only
-# consumer and `images/multica-daemon/` plus
-# `.github/workflows/multica-daemon-image.yml` exist for it alone. They keep the
-# old name rather than being renamed in the same change as the deletion; that is
-# a rename of a published package and belongs on its own. That image was
-# already the reviewed answer to "what does an agent expect to find on PATH" —
+# The image is built from `images/claudebox/` by
+# `.github/workflows/claudebox-image.yml` and published as
+# ghcr.io/pxldi/claudebox. It was written for the Multica daemon, which was
+# deleted from this repository on 2026-09-15; claudebox is its only consumer.
+# That image was already the reviewed answer to "what does an agent expect to
+# find on PATH" —
 # Go 1.24.13, Node 24, kubectl/helm/flux/kustomize/stern/k9s, sops and age, gh,
 # sqlc and goose, the PostgreSQL 17 client, Playwright's Chromium. It also
 # carries a JDK 17 and an Android SDK that nothing here uses, which is roughly
@@ -177,7 +176,7 @@ spec:
         # Same image as the runtime container, so the pod pulls one image rather
         # than two and this step already has the node and npm it needs.
         - name: install-tools
-          image: ghcr.io/pxldi-labs/multica-daemon:sha-ec91dd10fbc6f6ac11f3adc38d7002330ead8b8c
+          image: ghcr.io/pxldi/claudebox:sha-ce9a241f5abcc0e3b5d513e153d7e13d162dac10
           command:
             - bash
             - -c
@@ -256,11 +255,8 @@ spec:
             - name: bridge-rendered
               mountPath: /rendered
       containers:
-        # Note the owner: pxldi-labs, not pxldi. The image workflow tags
-        # ghcr.io/${github.repository_owner}/multica-daemon and this repo moved
-        # to the pxldi-labs org, so builds land there.
         - name: claudebox
-          image: ghcr.io/pxldi-labs/multica-daemon:sha-ec91dd10fbc6f6ac11f3adc38d7002330ead8b8c
+          image: ghcr.io/pxldi/claudebox:sha-ce9a241f5abcc0e3b5d513e153d7e13d162dac10
           imagePullPolicy: IfNotPresent
           command: ["sh", "/entrypoint/entrypoint.sh"]
           # So that an interactive `kubectl exec ... -- claude` starts in the

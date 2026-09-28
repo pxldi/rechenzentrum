@@ -70,12 +70,6 @@ spec:
               value: "true"
             - name: MEILI_DB_PATH
               value: /meili_data
-            # One-shot: rewrites the on-disk database from 1.53.2 to the
-            # engine's format on the next boot. Remove it once the pod is
-            # ready. The upgrade cannot be undone, but the index is derived
-            # data that karakeep can rebuild from its SQLite database.
-            - name: MEILI_UPGRADE_DB
-              value: "true"
             - name: MEILI_MASTER_KEY
               valueFrom:
                 secretKeyRef:

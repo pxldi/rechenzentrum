@@ -46,7 +46,7 @@ spec:
     minRunners: 0
     maxRunners: 2
 
-    # dind gives the runner a real Docker daemon, which multica-daemon-image.yml
+    # dind gives the runner a real Docker daemon, which claudebox-image.yml
     # needs — it does `docker build`, `docker run` and `docker manifest inspect`.
     # containerMode: kubernetes would cover `container:` steps but not those.
     containerMode:

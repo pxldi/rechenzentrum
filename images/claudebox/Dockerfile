@@ -1,4 +1,6 @@
-# The toolchain the Multica agent daemon runs on, as an image layer.
+# The toolchain claudebox runs on, as an image layer. It was written for the
+# Multica agent daemon, which was removed on 2026-09-15; the text below is
+# from that time.
 #
 # Before this, the daemon was a stock node image and its tools arrived two ways:
 # an init container fetched four binaries into an emptyDir at /toolbin, and

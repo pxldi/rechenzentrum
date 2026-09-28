@@ -12,6 +12,8 @@ from zoneinfo import ZoneInfo
 
 import caldav
 from caldav.lib.error import DAVError
+from caldav.lib.vcal import create_ical
+from icalendar import Calendar, vRecur
 from mcp.server import MCPServer
 from pydantic import Field
 
@@ -168,8 +170,18 @@ def create_event(
     calendar: str = Field("Personal", description="Calendar name or id (see list_calendars)."),
     location: str = "",
     description: str = "",
+    repeat: str = Field(
+        "",
+        description=(
+            "RFC 5545 RRULE for a series; start and end are the first occurrence. "
+            "FREQ=WEEKLY repeats on start's weekday with no end; add COUNT=10 or "
+            "UNTIL=20261231 to stop it, BYDAY=MO,WE for several weekdays, INTERVAL=2 "
+            "for every other week. Empty: a single event."
+        ),
+    ),
 ) -> dict:
-    """Create an event. Returns its uid, which move_event and delete_event take."""
+    """Create an event or, with repeat, a recurring series. Returns its uid, which
+    move_event and delete_event take."""
     client = _client()
     cal = _calendar(client, calendar)
     dtstart = _parse_when(start)
@@ -179,7 +191,17 @@ def create_event(
         dtend = (_parse_when(end, all_day=True) if end else dtstart) + timedelta(days=1)
     if dtend <= dtstart:
         raise ValueError("end must be after start")
-    ev = cal.save_event(dtstart=dtstart, dtend=dtend, summary=summary, location=location or None, description=description or None)
+    rrule = vRecur.from_ical(repeat.strip().removeprefix("RRULE:")) if repeat.strip() else None
+    if rrule is not None and "FREQ" not in rrule:
+        raise ValueError("repeat needs FREQ, e.g. FREQ=WEEKLY")
+    ical = Calendar.from_ical(
+        create_ical(dtstart=dtstart, dtend=dtend, summary=summary, location=location or None, description=description or None, rrule=rrule)
+    )
+    # Without a VTIMEZONE a client may read TZID=Europe/Berlin as UTC or as
+    # floating time, and a weekly series would drift by an hour at the DST
+    # change.
+    ical.add_missing_timezones()
+    ev = cal.add_event(ical.to_ical().decode())
     return _event_dict(ev, cal)
 
 
@@ -190,7 +212,8 @@ def move_event(
     start: str = Field(..., description="New start, ISO datetime or date."),
     end: str = Field("", description="New end. Empty keeps the event's duration."),
 ) -> dict:
-    """Move an event (by uid) to a new start, keeping its duration unless end is given."""
+    """Move an event (by uid) to a new start, keeping its duration unless end is given.
+    For a recurring event this moves the whole series."""
     client = _client()
     ev, cal = _find(client, uid)
     c = ev.icalendar_component
@@ -214,7 +237,8 @@ def move_event(
 @mcp.tool()
 @guarded(*ERRORS)
 def delete_event(uid: str) -> dict:
-    """Delete an event by uid. Nextcloud keeps it in the calendar trash bin for a while."""
+    """Delete an event by uid; for a recurring event, the whole series. Nextcloud keeps
+    it in the calendar trash bin for a while."""
     client = _client()
     ev, cal = _find(client, uid)
     summary = str(ev.icalendar_component.get("summary") or "")

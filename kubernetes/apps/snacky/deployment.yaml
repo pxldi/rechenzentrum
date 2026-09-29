@@ -34,7 +34,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: snacky
-          image: ghcr.io/pxldi/snacky:TAG_SET_BEFORE_MERGE
+          image: ghcr.io/pxldi/snacky:0.1.0@sha256:b8d0e7009a04803700bcf8ac54d47a5f8b0a0427a6467ae026c56a06e91c824f
           imagePullPolicy: IfNotPresent
           ports:
             - name: mcp

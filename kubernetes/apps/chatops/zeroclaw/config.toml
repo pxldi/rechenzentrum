@@ -28,7 +28,7 @@ risk_profile = "haus"
 runtime_profile = "default"
 channels = ["telegram.home"]
 mcp_bundles = ["homelab"]
-cron_jobs = ["planning_nudge", "evening_check"]
+cron_jobs = ["planning_nudge", "evening_check", "weekly_review"]
 
 [agents.haus.workspace]
 # On the PVC, so memory survives a restart. SOUL.md and AGENTS.md are mounted
@@ -70,6 +70,10 @@ auto_approve = [
   "tandoor__add_shopping_item", "tandoor__remove_shopping_item",
   "calendar__create_event", "calendar__move_event",
   "homeassistant__turn_on", "homeassistant__turn_off",
+  # Snacky's reads and the logging writes: a wrong log is one delete_entry away.
+  "snacky__search_food", "snacky__log_food", "snacky__log_barcode",
+  "snacky__log_label", "snacky__log_recipe_portion",
+  "snacky__day_summary", "snacky__week_summary", "snacky__add_serving",
 ]
 # Three tiers. auto_approve never asks. A tool in neither list asks, and the
 # keyboard's "Always" then allows it by name until zeroclaw restarts (the
@@ -82,6 +86,10 @@ always_ask = [
   "vault__write_note",
   "paperless__update_document", "paperless__create_tag",
   "files__send_to_paperless",
+  # Snacky: a plate-photo estimate is a guess, and the other three change or
+  # remove numbers that were already logged or that define the goal.
+  "snacky__log_estimate", "snacky__update_entry", "snacky__delete_entry",
+  "snacky__set_goal",
 ]
 
 # The image is distroless: no sh anywhere. ZeroClaw's native runtime still
@@ -107,7 +115,7 @@ agents = ["haus"]
 # flow (which would try to rewrite this read-only file) never runs.
 external_peers = []
 
-# The two proactive nudges. Declared here rather than with `zeroclaw cron
+# The three proactive messages. Declared here rather than with `zeroclaw cron
 # add` so they live in git; the scheduler syncs them into its database at
 # startup and config wins over the database copy. `delivery.to` is the chat
 # id; the env-override grammar cannot reach into `[cron.<alias>]`, so the
@@ -132,7 +140,17 @@ job_type = "agent"
 schedule = { kind = "cron", expr = "0 20 * * *", tz = "Europe/Berlin" }
 session_target = "main"
 prompt = """Es ist Abend. Prüfe mit tandoor__list_meal_plan, was für heute geplant war. Wenn für heute nichts geplant ist, antworte mit exakt NO_REPLY und sonst nichts.
-Wenn etwas geplant ist, frage in einem Satz: Hast du <Titel> gekocht? Keine Einleitung, keine Erklärung, nichts weiter."""
+Wenn etwas geplant ist, frage in einem Satz: Hast du <Titel> gekocht? Keine Einleitung, keine Erklärung, nichts weiter.
+Wenn der Besitzer später bestätigt, dass gekocht wurde, und tandoor__log_cooked gelaufen ist: frage, wie viele Portionen gegessen wurden, und logge sie mit snacky__log_recipe_portion (recipe_id, servings, cooklog_id = die id aus log_cooked). Rufe danach snacky__day_summary auf. Liegt das Protein des Tages unter dem Ziel, hänge eine Zeile an: die Lücke in Gramm und ein bis zwei konkrete vegane Optionen aus dem, was er oft loggt. Sonst keine Zeile dazu."""
+delivery = { mode = "announce", channel = "telegram.home", to = "@TELEGRAM_CHAT_ID@", best_effort = true }
+
+[cron.weekly_review]
+name = "Wochenrückblick"
+job_type = "agent"
+schedule = { kind = "cron", expr = "0 19 * * 0", tz = "Europe/Berlin" }
+session_target = "main"
+prompt = """Es ist Sonntagabend. Rufe snacky__week_summary auf. Wenn die Woche keine Einträge hat, antworte mit exakt NO_REPLY und sonst nichts.
+Sonst schreibe eine kurze Nachricht: an wie vielen Tagen geloggt wurde, das durchschnittliche Protein gegen das Ziel, die Trainingstage und der Gewichtstrend (nur wenn die Daten da sind), und eine ermutigende Beobachtung. Fortschritt zählt mehr als Perfektion, keine Belehrung, alles vegan. Höchstens 6 Zeilen, keine Einleitung."""
 delivery = { mode = "announce", channel = "telegram.home", to = "@TELEGRAM_CHAT_ID@", best_effort = true }
 
 # Telegram voice notes are transcribed before the agent sees them, by the
@@ -197,8 +215,20 @@ name = "files"
 transport = "http"
 url = "http://127.0.0.1:8001/mcp"
 
+# Snacky (nutrition log, its own namespace and image). It is left out of the
+# wait-for-mcp init container on purpose: that script waits until every URL's
+# /health reports the build of its own image, and Snacky is a different image,
+# so listing it would keep the pod in Init until the deadline on every start.
+# The script has no plain reachability mode, and adding one means a new
+# homelab-mcp image. If Snacky is down at startup ZeroClaw registers without
+# its tools; restart zeroclaw once it is up.
+[[mcp.servers]]
+name = "snacky"
+transport = "http"
+url = "http://snacky.snacky.svc.cluster.local:8000/mcp"
+
 [mcp_bundles.homelab]
-servers = ["tandoor", "homelab", "calendar", "vault", "paperless", "homeassistant", "files"]
+servers = ["tandoor", "homelab", "calendar", "vault", "paperless", "homeassistant", "files", "snacky"]
 
 # The dashboard stays on the pod's loopback. Nothing routes to it, and the
 # liveness probe uses `zeroclaw status` rather than an HTTP port.

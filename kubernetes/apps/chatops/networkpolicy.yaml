@@ -30,7 +30,8 @@ spec:
           port: 8000
 ---
 # The agent dials out to api.telegram.org, to chatgpt.com (the Codex backend)
-# and auth.openai.com (token refresh), to its MCP servers next door, and to
+# and auth.openai.com (token refresh), to its MCP servers next door (Snacky in its
+# own namespace), and to
 # whisper-cpp for voice notes. Nothing else.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -49,6 +50,17 @@ spec:
               - key: app
                 operator: In
                 values: ["homelab-mcp", "tandoor-mcp", "calendar-mcp", "vault-mcp", "paperless-mcp", "homeassistant-mcp"]
+      ports:
+        - protocol: TCP
+          port: 8000
+    # Snacky, the nutrition log; its ingress rule allows app: zeroclaw.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: snacky
+          podSelector:
+            matchLabels:
+              app: snacky
       ports:
         - protocol: TCP
           port: 8000

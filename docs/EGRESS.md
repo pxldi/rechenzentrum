@@ -49,6 +49,7 @@ Every application namespace except the two at the end of this section.
 | `paperless` | own namespace, internet, Traefik | Postgres, Redis, Gotenberg and Tika here |
 | `searxng` | own namespace, internet | Querying upstream engines is the job |
 | `slskd` | own namespace, internet | gluetun's tunnel and Soulseek peers |
+| `snacky` | internet, `tandoor`, `opengym` | Open Food Facts outside; recipes and workouts by Service name. Its pod takes MCP from the chat agent only |
 | `tandoor` | own namespace, internet, API server | Postgres here; recipe import; CNPG |
 | `whisper-cpp` | nothing | Transcription happens in the pod; the model is already on the PVC |
 
@@ -97,6 +98,7 @@ against it before it is locked.
 | `observability` | `gotify` | alert delivery |
 | `karakeep` | `ollama` | `ollama.ollama.svc.cluster.local` |
 | `media` (Schall) | `slskd` | an ExternalName alias onto `slskd.slskd.svc.cluster.local` |
+| `snacky` | `tandoor`, `opengym` | `tandoor.tandoor.svc.cluster.local`, `opengym.opengym.svc.cluster.local` |
 
 Two things follow. A caller needs a `namespaceSelector` rule per target before it
 is locked; `allow-internet-egress` does not cover a cluster path, since the

@@ -1,25 +1,31 @@
----
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: opengym
+namespace: snacky
 resources:
+  - secret.yaml
   - pvc.yaml
   - deployment.yaml
+  - backup.yaml
+  - service.yaml
   - ingress.yaml
-  - networkpolicy-snacky.yaml
+  - networkpolicy.yaml
 components:
-  # Egress: the init container clones the exercise media from GitHub, and the
-  # API sends Web Push to the browsers' push services. Nothing in the cluster.
+  # Egress. Open Food Facts on the internet; Tandoor and openGym are named in
+  # networkpolicy.yaml. The shared internet rule allows every port to public
+  # addresses, not only 443, and reaches nothing inside the house.
   - ../../../components/default-deny-egress
   - ../../../components/allow-dns
   - ../../../components/allow-internet-egress
+  # Ingress. Traefik for the web UI; the assistant's rule for the MCP port is
+  # in networkpolicy.yaml.
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-from-traefik
 
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
 labels:
   - pairs:
-      app.kubernetes.io/name: opengym
-      app.kubernetes.io/instance: opengym
+      app.kubernetes.io/name: snacky
+      app.kubernetes.io/instance: snacky
       app.kubernetes.io/component: application
       app.kubernetes.io/part-of: rechenzentrum
       app.kubernetes.io/managed-by: flux

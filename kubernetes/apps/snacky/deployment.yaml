@@ -1,0 +1,123 @@
+# Snacky: protein and calorie log. One process serves MCP on 8000 for the chat
+# assistant and the web UI on 8080 for a browser. State is one SQLite file.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snacky
+  namespace: snacky
+  labels:
+    app: snacky
+spec:
+  replicas: 1
+  # SQLite on an RWO volume. RWO binds to a node, not a pod, and there is one
+  # node, so only Recreate stops a rollout running two writers on the file.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: snacky
+  template:
+    metadata:
+      labels:
+        app: snacky
+      annotations:
+        # The emptyDir is scratch; only the data volume is worth a copy.
+        backup.velero.io/backup-volumes: data
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: snacky
+          image: ghcr.io/pxldi/snacky:0.1.0@sha256:b8d0e7009a04803700bcf8ac54d47a5f8b0a0427a6467ae026c56a06e91c824f
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: mcp
+              containerPort: 8000
+            - name: web
+              containerPort: 8080
+          env:
+            - name: SNACKY_DB
+              value: /data/snacky.sqlite
+            - name: SNACKY_TZ
+              value: Europe/Berlin
+            # Open Food Facts asks API clients to identify themselves.
+            - name: SNACKY_OFF_USER_AGENT
+              value: Snacky/1.0 (https://github.com/pxldi/snacky)
+            # Service names, not the public hostnames. Tandoor answers only to
+            # its ALLOWED_HOSTS, and the Service name is in that list.
+            - name: TANDOOR_URL
+              value: http://tandoor.tandoor.svc.cluster.local
+            - name: OPENGYM_URL
+              value: http://opengym.opengym.svc.cluster.local:80
+            # Both tokens are optional. Empty means that source is off.
+            - name: TANDOOR_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: snacky
+                  key: TANDOOR_TOKEN
+            - name: OPENGYM_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: snacky
+                  key: OPENGYM_TOKEN
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+          # kubelet sends the pod IP as Host. The Host header is pinned so a
+          # Host check in the web or MCP layer cannot turn the probe into a 4xx
+          # and leave the pod permanently NotReady.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: web
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: web
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            periodSeconds: 10
+            timeoutSeconds: 5
+          # The MCP listener is the one the assistant depends on, so liveness
+          # watches it and readiness watches the web port.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: mcp
+              httpHeaders:
+                - name: Host
+                  value: localhost
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 20m
+              memory: 96Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: snacky-data
+        - name: tmp
+          emptyDir: {}

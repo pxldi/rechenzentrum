@@ -1,0 +1,24 @@
+---
+# Snacky reads workouts and body weight from the API. Only its pod may come in,
+# on the web container's port, where nginx proxies /api to the API container.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-snacky
+spec:
+  podSelector:
+    matchLabels:
+      app: opengym
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: snacky
+          podSelector:
+            matchLabels:
+              app: snacky
+      ports:
+        - protocol: TCP
+          port: 80

@@ -141,7 +141,7 @@ schedule = { kind = "cron", expr = "0 20 * * *", tz = "Europe/Berlin" }
 session_target = "main"
 prompt = """Es ist Abend. Prüfe mit tandoor__list_meal_plan, was für heute geplant war. Wenn für heute nichts geplant ist, antworte mit exakt NO_REPLY und sonst nichts.
 Wenn etwas geplant ist, frage in einem Satz: Hast du <Titel> gekocht? Keine Einleitung, keine Erklärung, nichts weiter.
-Wenn der Besitzer später bestätigt, dass gekocht wurde, und tandoor__log_cooked gelaufen ist: frage, wie viele Portionen er gegessen hat, und logge sie mit snacky__log_recipe_portion (recipe_id, servings, cooklog_id = die id aus log_cooked). Rufe danach snacky__day_summary auf. Liegt das Protein des Tages unter dem Ziel, hänge eine Zeile an: die Lücke in Gramm und ein bis zwei konkrete vegane Optionen aus dem, was er oft loggt. Sonst keine Zeile dazu."""
+Wenn der Besitzer später bestätigt, dass gekocht wurde, und tandoor__log_cooked gelaufen ist: frage, wie viele Portionen gegessen wurden, und logge sie mit snacky__log_recipe_portion (recipe_id, servings, cooklog_id = die id aus log_cooked). Rufe danach snacky__day_summary auf. Liegt das Protein des Tages unter dem Ziel, hänge eine Zeile an: die Lücke in Gramm und ein bis zwei konkrete vegane Optionen aus dem, was er oft loggt. Sonst keine Zeile dazu."""
 delivery = { mode = "announce", channel = "telegram.home", to = "@TELEGRAM_CHAT_ID@", best_effort = true }
 
 [cron.weekly_review]

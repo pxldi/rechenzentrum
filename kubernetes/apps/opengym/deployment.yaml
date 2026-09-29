@@ -129,7 +129,7 @@ spec:
             - name: data
               mountPath: /data
         - name: web
-          image: ghcr.io/duartesantos8/opengym-web:1.3.8@sha256:2beebe4011f35efe249f12c20c1a2d53d389b4acb917011525ec7e4311235638
+          image: ghcr.io/duartesantos8/opengym-web:1.3.9@sha256:9d19807f28a59a449b26a009f96764fc93fc6ea78b139891ee2010146d7ea792
           env:
             - name: NGINX_PORT
               value: "80"

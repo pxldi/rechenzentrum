@@ -34,7 +34,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: snacky
-          image: ghcr.io/pxldi/snacky:0.2.0@sha256:e75bfa9e3a18a9d08131be5a77c5b0c41bbd1469aa4cfe8afc43541b86f7b89a
+          image: ghcr.io/pxldi/snacky:0.3.0@sha256:194752a459f4bbff840c44ca905fde0fa163f4244344f5ec59f6b00c65a28d7c
           imagePullPolicy: IfNotPresent
           ports:
             - name: mcp

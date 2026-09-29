@@ -1,0 +1,15 @@
+# The SQLite file and the nightly copies of it that backup.yaml writes into
+# /data/backups. Small, so it sits on the NVMe. Velero picks the volume up; see
+# the annotation on the pod in deployment.yaml.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: snacky-data
+  namespace: snacky
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 1Gi

@@ -1,0 +1,26 @@
+---
+# Snacky matches logged food against Tandoor recipes and reads their nutrition
+# over the API. Only its pod may come in, and only on the app's port, so it
+# cannot reach the Postgres pods that share this namespace. The selector is the
+# app pod's own label; the chart puts nothing else on it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-snacky
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: tandoor
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: snacky
+          podSelector:
+            matchLabels:
+              app: snacky
+      ports:
+        - protocol: TCP
+          port: 80

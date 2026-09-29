@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: snacky
+  namespace: snacky
+spec:
+  selector:
+    app: snacky
+  ports:
+    # Only the chat assistant reaches this; see networkpolicy.yaml.
+    - name: mcp
+      port: 8000
+      targetPort: mcp
+    # The browser UI. Traefik forwards to this one.
+    - name: web
+      port: 8080
+      targetPort: web

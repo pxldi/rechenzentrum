@@ -24,6 +24,7 @@ resources:
   - paperless-ngx.yaml
   - searxng.yaml
   - slskd.yaml
+  - snacky.yaml
   - tandoor.yaml
   - wealthfolio.yaml
   - whisper-cpp.yaml

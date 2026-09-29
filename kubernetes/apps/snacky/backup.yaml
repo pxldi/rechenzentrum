@@ -1,0 +1,110 @@
+# Same job as karakeep's backup.yaml, for Snacky's SQLite file.
+#
+# Velero copies the volume file by file, so a live database can be read torn:
+# the main file before a checkpoint and the -wal file after it. The file Velero
+# can trust is the one this job writes.
+#
+# Connection.backup() is SQLite's online backup API, the same one the sqlite3
+# CLI's .backup uses: it copies page by page under the source's read lock and
+# restarts if a writer moves a page. The snacky image has no sqlite3 CLI, and
+# python:3.14-slim never had one, so the job runs Python from the same image the
+# app runs instead of installing a package or pulling a second image.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: snacky-db-backup
+  namespace: snacky
+spec:
+  # 04:00, after the nightly WAN blip at 03:00 and the karakeep and wealthfolio
+  # copies at 03:30 and 03:45.
+  schedule: "0 4 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: sqlite-backup
+              # Keep this tag in step with deployment.yaml.
+              image: ghcr.io/pxldi/snacky:TAG_SET_BEFORE_MERGE
+              imagePullPolicy: IfNotPresent
+              command:
+                - python
+                - -c
+                - |
+                  import datetime, glob, os, sqlite3, sys
+
+                  src_path = os.environ["SNACKY_DB"]
+                  # connect() would quietly create an empty database here.
+                  if not os.path.exists(src_path):
+                      sys.exit("no database at " + src_path)
+                  stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+                  out = "/data/backups/db-" + stamp + ".sqlite"
+                  os.makedirs("/data/backups", exist_ok=True)
+
+                  # Written under a name the prune glob does not match, then
+                  # renamed, so a failed run leaves no half file that counts.
+                  part = out + ".partial"
+                  src = sqlite3.connect(src_path)
+                  dst = sqlite3.connect(part)
+                  src.backup(dst)
+                  result = dst.execute("PRAGMA integrity_check").fetchone()[0]
+                  src.close()
+                  dst.close()
+                  if result != "ok":
+                      os.remove(part)
+                      sys.exit("integrity_check failed: " + result)
+                  os.replace(part, out)
+                  print("wrote %s (%d bytes)" % (out, os.path.getsize(out)))
+
+                  # Three nights is enough: this is the local copy and Velero
+                  # carries it off the node. The file just written is held out
+                  # of the list rather than trusted to sort first, so a clock
+                  # that has moved backwards cannot delete tonight's backup.
+                  others = [p for p in glob.glob("/data/backups/db-*.sqlite") if p != out]
+                  others.sort(key=os.path.getmtime, reverse=True)
+                  for stale in others[2:]:
+                      os.remove(stale)
+              env:
+                - name: SNACKY_DB
+                  value: /data/snacky.sqlite
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                # SQLite may spill integrity_check to a temp file.
+                - name: tmp
+                  mountPath: /tmp
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 64Mi
+                limits:
+                  memory: 256Mi
+          volumes:
+            # The same RWO claim the app holds. RWO binds a volume to one node,
+            # not one pod, and there is one node here, so this mounts alongside
+            # the running app rather than against it.
+            - name: data
+              persistentVolumeClaim:
+                claimName: snacky-data
+            - name: tmp
+              emptyDir: {}

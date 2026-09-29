@@ -113,6 +113,9 @@
   "apps/v1/Deployment/slskd/slskd": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/snacky/snacky": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/wealthfolio/wealthfolio": {
     "kind": "Deployment"
   },
@@ -311,6 +314,9 @@
   "v1/Namespace//searxng": {
     "kind": "Namespace"
   },
+  "v1/Namespace//snacky": {
+    "kind": "Namespace"
+  },
   "v1/Namespace//tandoor": {
     "kind": "Namespace"
   },
@@ -501,6 +507,10 @@
   "v1/PersistentVolumeClaim/slskd/slskd-music": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "d77568db6cd240a4af4a5e70f412a39861c49914862712c8d8a82f53589573eb"
+  },
+  "v1/PersistentVolumeClaim/snacky/snacky-data": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "a6777e4e1b11fd9f8d491776e5fff1ea48ae86dc340612ff25e603bcf655d96d"
   },
   "v1/PersistentVolumeClaim/tandoor/tandoor-media-pvc": {
     "kind": "PersistentVolumeClaim",

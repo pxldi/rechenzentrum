@@ -107,6 +107,12 @@ locals {
       icon        = ""
       description = "Property listing scraper"
     }
+    snacky = {
+      name        = "Snacky"
+      host        = "snacky.${var.domain}"
+      icon        = ""
+      description = "Protein & calorie log"
+    }
   }
 }
 

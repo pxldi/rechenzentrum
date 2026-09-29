@@ -2,7 +2,7 @@
 
 A Telegram bot that can read the cluster, manage recipes and the calendar,
 read and write the Obsidian vault, search documents and switch the lights,
-built from seven pods in the `chatops` namespace:
+built from seven pods in the `chatops` namespace and one MCP server next door:
 
 ```text
 Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, meal plan, shopping list)
@@ -11,6 +11,7 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
                        ├▶ vault-mcp ────▶ /data/vault ◀─ livesync-bridge ─▶ obsidian-sync (CouchDB)
                        ├▶ paperless-mcp ▶ paperless (documents)
                        ├▶ homeassistant-mcp ▶ home-assistant (states, switches)
+                       ├▶ snacky (namespace snacky) ▶ nutrition log (SQLite)
                        └▶ files-mcp (sidecar) ▶ the workspace: what people send the bot
 ```
 
@@ -44,6 +45,8 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 | homeassistant | `turn_on`, `turn_off` (light, switch, fan, input_boolean only) | approve/deny keyboard in the chat first |
 | files | `list_received_files`, `read_pdf_text`, `render_page` | runs on its own |
 | files | `send_to_paperless` | approve/deny keyboard in the chat first |
+| snacky | `search_food`, `log_food`, `log_barcode`, `log_label`, `log_recipe_portion`, `day_summary`, `week_summary`, `add_serving` | runs on its own |
+| snacky | `log_estimate`, `update_entry`, `delete_entry`, `set_goal` | approve/deny keyboard in the chat first |
 | homelab | `list_services`, `list_workloads`, `workload_status`, `pod_logs`, `events`, `flux_status`, `backups` | runs on its own |
 
 `files-mcp` is a native sidecar in the ZeroClaw pod, on the same volume,
@@ -154,15 +157,18 @@ and the manifests PR pins the new tag and adds the route.
 
 ## Scheduled nudges
 
-Two agent cron jobs are declared in `config.toml` under `[cron.*]` and run
+Three agent cron jobs are declared in `config.toml` under `[cron.*]` and run
 as the `haus` agent, in Europe/Berlin time:
 
 | Job | When | What |
 | --- | --- | --- |
 | `planning_nudge` | 16:00 on Sunday, Tuesday and Thursday | If nothing is planned for today or tomorrow: two or three numbered recipe suggestions, leftovers first. A reply with the number plans it and puts the missing ingredients on the shopping list. |
-| `evening_check` | 20:00 daily | If something is planned for today: "Hast du X gekocht?". "Ja" logs it and asks for a rating; "Nein" offers to move it to tomorrow. |
+| `evening_check` | 20:00 daily | If something is planned for today: "Hast du X gekocht?". "Ja" logs it and asks for a rating; "Nein" offers to move it to tomorrow. After the confirmation it also asks how many portions were eaten and logs them in Snacky with the cook log id; if the day's protein is under the goal it adds one line with the gap and a vegan option or two. |
+| `weekly_review` | 19:00 on Sunday | Calls Snacky's `week_summary` and sends a short message: days logged, average protein against the goal, training days and weight trend if present, one encouraging observation. `NO_REPLY` when the week has no entries. |
 
-Both prompts answer `NO_REPLY` when there is nothing to say, which is the
+Snacky is a separate app ([pxldi/snacky](https://github.com/pxldi/snacky)) with its own image, so it is not in `wait-for-mcp`'s `MCP_URLS`: that script waits for each URL's `/health` build to equal its own image build. The `zeroclaw-egress` policy allows port 8000 to pods labelled `app: snacky` in the `snacky` namespace. Goals and body data live in Snacky's database, not in this repository.
+
+All prompts answer `NO_REPLY` when there is nothing to say, which is the
 one output the scheduler does not deliver (an empty answer would arrive as
 "agent job executed"). The chat id they deliver to comes from the
 `chatops-telegram-chat` Secret as an env override. `zeroclaw cron list` in

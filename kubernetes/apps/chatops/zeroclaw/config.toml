@@ -74,6 +74,7 @@ auto_approve = [
   "snacky__search_food", "snacky__log_food", "snacky__log_barcode",
   "snacky__log_label", "snacky__log_recipe_portion",
   "snacky__day_summary", "snacky__week_summary", "snacky__add_serving",
+  "snacky__suggest_foods", "snacky__log_again", "snacky__recipe_nutrition",
 ]
 # Three tiers. auto_approve never asks. A tool in neither list asks, and the
 # keyboard's "Always" then allows it by name until zeroclaw restarts (the
@@ -131,7 +132,7 @@ job_type = "agent"
 schedule = { kind = "cron", expr = "0 16 * * 0,2,4", tz = "Europe/Berlin" }
 session_target = "main"
 prompt = """Es ist Nachmittag. Prüfe mit tandoor__list_meal_plan, ob für heute und die nächsten zwei Tage schon ein Essen geplant ist. Wenn für heute oder morgen etwas geplant ist, antworte mit exakt NO_REPLY und sonst nichts.
-Wenn nicht: hole tandoor__leftovers und tandoor__recipes_for_leftovers und schlage 2 bis 3 Rezepte vor, nummeriert. Reste zuerst, besonders was bald abläuft; kürzlich Gekochtes auslassen. Pro Vorschlag eine Zeile: Name, Portionen, was fehlt. Höchstens 8 Zeilen insgesamt, keine Einleitung. Schließe mit einem Satz: Antworte mit der Nummer, dann plane ich es für heute Abend ein und setze das Fehlende auf die Einkaufsliste."""
+Wenn nicht: hole tandoor__leftovers und tandoor__recipes_for_leftovers und schlage 2 bis 3 Rezepte vor, nummeriert. Reste zuerst, besonders was bald abläuft; kürzlich Gekochtes auslassen. Hole für die Kandidaten mit snacky__recipe_nutrition das Protein pro Portion und ziehe bei ähnlich guter Resteverwertung das proteinreichere Rezept vor. Pro Vorschlag eine Zeile: Name, Portionen, Protein pro Portion, was fehlt. Höchstens 8 Zeilen insgesamt, keine Einleitung. Schließe mit einem Satz: Antworte mit der Nummer, dann plane ich es für heute Abend ein und setze das Fehlende auf die Einkaufsliste."""
 delivery = { mode = "announce", channel = "telegram.home", to = "@TELEGRAM_CHAT_ID@", best_effort = true }
 
 [cron.evening_check]
@@ -141,7 +142,7 @@ schedule = { kind = "cron", expr = "0 20 * * *", tz = "Europe/Berlin" }
 session_target = "main"
 prompt = """Es ist Abend. Prüfe mit tandoor__list_meal_plan, was für heute geplant war. Wenn für heute nichts geplant ist, antworte mit exakt NO_REPLY und sonst nichts.
 Wenn etwas geplant ist, frage in einem Satz: Hast du <Titel> gekocht? Keine Einleitung, keine Erklärung, nichts weiter.
-Wenn der Besitzer später bestätigt, dass gekocht wurde, und tandoor__log_cooked gelaufen ist: frage, wie viele Portionen gegessen wurden, und logge sie mit snacky__log_recipe_portion (recipe_id, servings, cooklog_id = die id aus log_cooked). Rufe danach snacky__day_summary auf. Liegt das Protein des Tages unter dem Ziel, hänge eine Zeile an: die Lücke in Gramm und ein bis zwei konkrete vegane Optionen aus dem, was er oft loggt. Sonst keine Zeile dazu."""
+Wenn der Besitzer später bestätigt, dass gekocht wurde, und tandoor__log_cooked gelaufen ist: frage, wie viele Portionen gegessen wurden, und logge sie mit snacky__log_recipe_portion (recipe_id, servings, cooklog_id = die id aus log_cooked). Rufe danach snacky__day_summary auf. Liegt das Protein des Tages unter dem Ziel, hänge eine Zeile an: die Lücke in Gramm und ein bis zwei Vorschläge aus snacky__suggest_foods (protein_g = die Lücke). Sonst keine Zeile dazu."""
 delivery = { mode = "announce", channel = "telegram.home", to = "@TELEGRAM_CHAT_ID@", best_effort = true }
 
 [cron.weekly_review]

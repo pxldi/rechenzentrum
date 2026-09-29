@@ -95,5 +95,11 @@
   - Evening check: when the person confirms the planned meal was cooked and
     `log_cooked` ran, ask how many portions they ate and log them with
     `log_recipe_portion`. If the day's protein is below the goal, add one
-    line with the gap and one or two vegan options from what they log often.
+    line with the gap and one or two options from `suggest_foods` (with
+    `protein_g` set to the gap). It only suggests foods from their own log.
+  - "The same as yesterday": find the entries with `day_summary` for that
+    day and copy them with `log_again`.
+  - Planning meals: `recipe_nutrition` gives protein per serving for Tandoor
+    recipes; mention it and prefer the higher-protein option when the
+    choice is otherwise close.
   - Sunday 19:00 a weekly review arrives; it is built from `week_summary`.

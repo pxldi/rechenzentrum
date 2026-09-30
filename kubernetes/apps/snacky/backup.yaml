@@ -39,7 +39,7 @@ spec:
           containers:
             - name: sqlite-backup
               # Keep this tag in step with deployment.yaml.
-              image: ghcr.io/pxldi/snacky:0.3.0@sha256:194752a459f4bbff840c44ca905fde0fa163f4244344f5ec59f6b00c65a28d7c
+              image: ghcr.io/pxldi/snacky:0.4.0@sha256:048af4f4d4853a99cbc63bbd8854d7916921e84d0a9ed29502c4953ef237b1ed
               imagePullPolicy: IfNotPresent
               command:
                 - python

@@ -1,6 +1,7 @@
 ---
-# Enforces CrowdSec's decisions at Traefik. Not attached to any route yet;
-# the entrypoint gets it in a follow-up once CrowdSec has run in simulation.
+# Enforces CrowdSec's decisions at Traefik. Attached to the websecure
+# entrypoint (infrastructure/networking/traefik/helmrelease.yaml), so it runs
+# on every HTTPS route. Traefik loads it as a local plugin.
 #
 # stream mode: the plugin pulls the decision list every 60 s and answers from
 # memory, so a request never waits on the LAPI.
@@ -39,3 +40,5 @@ spec:
         - 172.16.0.0/12
         - 192.168.0.0/16
         - 100.64.0.0/10
+        # Anthropic's connector range; the vault MCP route depends on it.
+        - 160.79.104.0/21

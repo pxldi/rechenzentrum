@@ -4,9 +4,9 @@
 # through the crowdsec-bouncer plugin (infrastructure-config/traefik/
 # middleware-crowdsec.yaml).
 #
-# It starts in simulation: decisions are recorded, nothing is blocked. After a
-# week of `cscli alerts list` shows what it would have blocked, simulation.yaml
-# goes to false.
+# It ran in simulation from 2026-09-25 to 2026-09-30: 3,287 alerts from 180
+# addresses, all scanners on cloud hosting, none from the LAN, the tailnet, a
+# German carrier or Anthropic. Since then it enforces.
 #
 # Log source: the `kubernetes` datasource (CrowdSec 1.8) streams Traefik's
 # stdout through pods/log. That needs no hostPath and no sidecar in the traefik
@@ -60,7 +60,7 @@ spec:
 
     config:
       simulation.yaml: |
-        simulation: true
+        simulation: false
       parsers:
         s02-enrich:
           # The image's own whitelist covers the private ranges: the LAN, pods,
@@ -73,6 +73,16 @@ spec:
               reason: "tailnet"
               cidr:
                 - 100.64.0.0/10
+          # claude.ai's connectors call the vault MCP route from here and
+          # retry on 401 during token refresh, which could look like brute
+          # force (kubernetes/apps/chatops/vault/ingress.yaml).
+          anthropic-whitelist.yaml: |
+            name: rechenzentrum/anthropic-whitelist
+            description: "Anthropic's published egress range for claude.ai connectors"
+            whitelist:
+              reason: "anthropic connectors"
+              cidr:
+                - 160.79.104.0/21
 
     lapi:
       env:

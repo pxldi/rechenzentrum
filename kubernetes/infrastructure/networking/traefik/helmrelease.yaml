@@ -80,6 +80,11 @@ spec:
         protocol: TCP
         http3:
           enabled: true
+        # CrowdSec's decisions apply to every HTTPS route. The LAN, the tailnet
+        # and Anthropic's connector range are trusted in the middleware itself.
+        http:
+          middlewares:
+            - traefik-crowdsec-bouncer@kubernetescrd
 
       metrics:
         port: 9100
@@ -150,7 +155,6 @@ spec:
     # downloaded from plugins.traefik.io on every start: after a power cut the
     # node is up before the router has internet, and a failed download would
     # break every route behind the bouncer until Traefik restarts.
-    # abortOnPluginFailure stays false while no route uses the middleware.
     experimental:
       localPlugins:
         crowdsec-bouncer:

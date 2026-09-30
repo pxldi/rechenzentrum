@@ -34,6 +34,31 @@ spec:
 
     deployment:
       replicas: 1
+      # Copies the CrowdSec bouncer's source into plugin-src before Traefik
+      # starts (images/traefik-crowdsec-plugin). The image is pinned by digest
+      # and stays in the node's containerd cache, so this needs no network.
+      initContainers:
+        - name: crowdsec-plugin
+          image: ghcr.io/pxldi/traefik-crowdsec-plugin:sha-37ed45eed57f7040b6ad0ed1520bb5747945137d@sha256:7b251e628be1c9c4956ce01d207b0c2199aefaab50b7886ccffc45c32e26a6b4
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 32Mi
+          volumeMounts:
+            - name: plugin-src
+              mountPath: /plugins-local
+      additionalVolumes:
+        - name: plugin-src
+          emptyDir:
+            sizeLimit: 16Mi
 
     additionalArguments:
       - "--api.dashboard=true"
@@ -120,16 +145,19 @@ spec:
           names:
             User-Agent: keep
 
-    # The CrowdSec bouncer (infrastructure-config/traefik/middleware-crowdsec.yaml).
-    # Traefik downloads declared plugins from plugins.traefik.io on every start.
-    # abortOnPluginFailure stays false while no route uses the middleware: a
-    # failed download then only disables plugins, instead of crashlooping the
-    # only ingress. Attaching it to the entrypoint is a separate change.
+    # The CrowdSec bouncer (infrastructure-config/traefik/middleware-crowdsec.yaml),
+    # loaded as a local plugin from the plugin-src volume above instead of
+    # downloaded from plugins.traefik.io on every start: after a power cut the
+    # node is up before the router has internet, and a failed download would
+    # break every route behind the bouncer until Traefik restarts.
+    # abortOnPluginFailure stays false while no route uses the middleware.
     experimental:
-      plugins:
+      localPlugins:
         crowdsec-bouncer:
           moduleName: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
-          version: v1.7.1
+          mountPath: /plugins-local/src/github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+          type: localPath
+          volumeName: plugin-src
 
     # Traefik served per-service request counters on :9100 from the start, and
     # nothing read them. On 2026-09-25 Nextcloud returned 503 to every client

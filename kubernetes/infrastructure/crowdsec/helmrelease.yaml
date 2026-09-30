@@ -87,12 +87,15 @@ spec:
       podSecurityContext:
         seccompProfile:
           type: RuntimeDefault
+      # cscli runs inside this container. On 2026-09-30 `cscli alerts list -l 0
+      # -o json` over ~3,300 alerts pushed it past 256Mi and the OOM kill took
+      # the LAPI down for a minute and a half.
       resources:
         requests:
           cpu: 25m
           memory: 96Mi
         limits:
-          memory: 256Mi
+          memory: 384Mi
       persistentVolume:
         data:
           enabled: true

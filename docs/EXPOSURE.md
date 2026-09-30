@@ -24,6 +24,8 @@ as it always did for every app without such a route. They were removed on
 
 ## Deliberate exceptions
 
+- **Snacky** (`snacky.pxldi.de`) stays Authentik-only. Its owner opens it on
+  the phone on mobile data, without the tailnet. The MCP port has no route.
 - **Karakeep** (`links.pxldi.de`) stays Authentik-only. It is shared with someone
   who has an account but no device on the tailnet.
 - **Schall's API route** (`schall.pxldi.de` with a Bearer header) stays public so
@@ -122,7 +124,7 @@ is on Tailscale" is not an answer on its own.
 | media | `sabnzbd.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | searxng | `search.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | slskd | `slskd.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| snacky | `snacky.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| snacky | `snacky.pxldi.de` | Authentik | authentik-forward-auth |
 | media | `sonarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | traefik | `traefik.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | adventurelog | `travel-admin.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |

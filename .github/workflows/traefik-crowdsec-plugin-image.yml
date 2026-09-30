@@ -1,0 +1,81 @@
+---
+# Builds the CrowdSec bouncer plugin source image that Traefik loads locally
+# (kubernetes/infrastructure/networking/traefik). Same shape as
+# livesync-bridge-image.yml: pull requests build and smoke-test, a push to main
+# or a manual run publishes, tagged with the commit it built.
+name: Traefik CrowdSec Plugin Image
+
+on:
+  # So a build can be started by hand once ENABLE_IMAGE_PUBLISH is set,
+  # without a commit to trigger it.
+  workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "images/traefik-crowdsec-plugin/**"
+      - ".github/workflows/traefik-crowdsec-plugin-image.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "images/traefik-crowdsec-plugin/**"
+      - ".github/workflows/traefik-crowdsec-plugin-image.yml"
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/traefik-crowdsec-plugin
+  # On a pull_request `github.sha` is the ephemeral merge commit; the branch
+  # head is the commit that actually holds the Dockerfile.
+  SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  build:
+    if: vars.ENABLE_IMAGE_PUBLISH == 'true'
+    name: Build and push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Lint the Dockerfile
+        uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: images/traefik-crowdsec-plugin/Dockerfile
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: images/traefik-crowdsec-plugin
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ env.SHA }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:main', env.IMAGE) || '' }}
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+          cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}:buildcache,mode=max', env.IMAGE) || '' }}
+          provenance: false
+
+      # The copy must land where Traefik expects a local plugin: the manifest
+      # and the vendored source, written as the pod user into an empty volume.
+      - name: Smoke-test the copy
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/plugin && chmod 0777 /tmp/plugin
+          docker run --rm --user 65532:65532 -v /tmp/plugin:/plugins-local "${IMAGE}:sha-${SHA}"
+          test -f /tmp/plugin/.traefik.yml
+          test -f /tmp/plugin/bouncer.go
+          test -d /tmp/plugin/vendor
+          grep -q "import: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin" /tmp/plugin/.traefik.yml

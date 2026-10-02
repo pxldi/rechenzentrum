@@ -47,7 +47,7 @@
 # scripts/check-policies.py reads these lists and applies the same checks to
 # every pod in the Flux build, so a manifest that would be refused fails CI
 # before it reaches the cluster. Charts are not rendered there; their pods are
-# covered by the warning stage and the alert in prometheusrule.yaml.
+# covered by the week in Warn and the alert in prometheusrule.yaml.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -155,14 +155,14 @@ metadata:
   name: workload-baseline
 spec:
   policyName: workload-baseline
-  # Warn first, then Deny. The offline render cannot see the TrueCharts media
-  # charts, seerr, or pods that controllers create at runtime (CNPG instances,
-  # Velero data movers, OpenEBS helpers). Warn surfaces any of
-  # them that would be refused, and WorkloadBaselineViolation in
-  # prometheusrule.yaml pages on it. Switch to [Deny, Audit] once that alert
-  # has stayed quiet for a week that includes a scheduled backup and a
-  # restart of every media app.
-  validationActions: [Warn, Audit]
+  # Deny since 2026-10-09, after a week in Warn (from 2026-10-02) in which
+  # WorkloadBaselineViolation stayed quiet through a scheduled backup and a
+  # restart of every media app. That week covered what the offline render
+  # cannot see: the TrueCharts media charts, seerr, and pods that controllers
+  # create at runtime (CNPG instances, Velero data movers, OpenEBS helpers).
+  # The same alert now fires on a refusal. To loosen a check, add a reviewed
+  # per-namespace exception above rather than going back to Warn.
+  validationActions: [Deny, Audit]
   matchResources:
     namespaceSelector:
       matchExpressions:

@@ -1,12 +1,10 @@
-# Pages when workload-baseline would have refused a pod. While its binding is
-# Warn/Audit the pod is still admitted, so this is the only place a violation
-# shows up: the Warn text goes to whoever created the pod, which for a
-# Deployment is the ReplicaSet controller, and nobody reads that.
+# Pages when workload-baseline refuses a pod. The refusal goes to whoever
+# created the pod, which for a Deployment is the ReplicaSet controller, and
+# nobody reads that, so this is where it shows up: a refused pod is an app
+# that did not start.
 #
-# The apiserver counts each Warn outcome per policy. A non-zero increase means
-# a pod in a namespace without an exception for that check was just created.
-# Once the binding is Deny the same series counts refusals instead, and the
-# alert still applies: a refused pod is an app that did not start.
+# The apiserver counts each outcome per policy. The binding ran Warn from
+# 2026-10-02 to 2026-10-09 and Deny since; the expression matches both.
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:

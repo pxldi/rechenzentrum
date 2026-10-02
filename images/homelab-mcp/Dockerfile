@@ -10,7 +10,7 @@
 #   python -m files_mcp     files people send the bot (sidecar in the ZeroClaw pod)
 # One image because they share the SDK and the build, and because a manifest
 # that names one tag for all of them is one thing to bump.
-FROM python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
+FROM python:3.14-slim@sha256:0741d101873c12ab927e6f8653feb8862b9bd58771177acb1b885b95141f91b4
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

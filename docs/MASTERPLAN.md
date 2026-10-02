@@ -87,4 +87,5 @@ Configured does not mean live or restore-tested.
 | Runtime detection | Falco (modern eBPF, four capabilities, no privileged container) watches syscalls with the upstream stable rules; `FalcoWarningEvents` alerts on Warning and above, `FalcoNotReporting` when it goes quiet |
 | Schall namespace | slskd moved out 2026-09-13 and `media` is baseline; Schall stays, see [SCHALL_ISOLATION.md](SCHALL_ISOLATION.md) |
 | Edge/egress expansion | Done for every application namespace, see [EGRESS.md](EGRESS.md). `home-assistant` is hostNetwork so policy does not apply; `actions-runner` already had an equivalent rule |
+| Bot actions | `restart_workload`, `reconcile_flux` and `backup_now` in homelab-mcp from 2026-10-02, asked in the chat every time and held by RBAC plus the `homelab-mcp-actions` admission policy; live once the image tag is bumped |
 | ZeroClaw/MCP | Deployed 2026-09-18, see [CHATOPS.md](CHATOPS.md): ZeroClaw on Telegram with a Tandoor MCP server and a read-only homelab MCP server. Needs its four credentials in `chatops-credentials` to come alive |

@@ -48,14 +48,21 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 | snacky | `search_food`, `log_food`, `log_barcode`, `log_label`, `log_recipe_portion`, `day_summary`, `week_summary`, `add_serving` | runs on its own |
 | snacky | `log_estimate`, `update_entry`, `delete_entry`, `set_goal` | approve/deny keyboard in the chat first |
 | homelab | `list_services`, `list_workloads`, `workload_status`, `pod_logs`, `events`, `flux_status`, `backups` | runs on its own |
+| homelab | `restart_workload` (deletes a Deployment's or StatefulSet's pods), `reconcile_flux`, `backup_now` (a Velero backup from an existing schedule's template) | approve/deny keyboard in the chat, every time |
 
 `files-mcp` is a native sidecar in the ZeroClaw pod, on the same volume,
 because Telegram attachments land in ZeroClaw's workspace and nowhere
 else; it listens on the pod's loopback. The built-in `deliver_file` is on so a page picture from Paperless can be
 sent into the chat; the only files in the workspace are what MCP tools
-return. There is no restart, scale, reconcile or "run kubectl" tool, and the
-homelab ServiceAccount cannot read Secrets or ConfigMaps. The masterplan's
-"later allowlisted actions" are still later. The agent's built-in shell, file,
+return. There is no scale, edit or "run kubectl" tool, and the homelab
+ServiceAccount cannot read Secrets or ConfigMaps. Its three writes are the
+masterplan's allowlisted actions, each held to its one effect twice: RBAC
+grants only pod delete, Flux patch and Backup create (`mcp/rbac.yaml`,
+`infrastructure-config/velero/homelab-mcp-backup.yaml`), and the
+`homelab-mcp-actions` admission policy refuses a Flux patch that changes
+anything but `reconcile.fluxcd.io/requestedAt`, a pod delete in kube-system,
+flux-system, cnpg-system or chatops or on a CNPG instance, and a Backup with
+hooks or another storage location. The agent's built-in shell, file,
 HTTP and browser tools are switched off by `risk_profiles.haus.allowed_tools`.
 
 ## Configuration
@@ -197,6 +204,6 @@ decision is made.
 - Proactive messages about the cluster ("a backup failed"). Alertmanager
   already reaches the phone through Gotify; a second path needs a dedup
   story first. The two kitchen nudges below are the only scheduled messages.
-- Any write to the cluster.
+- Any cluster write beyond the three actions above.
 - A local model. Ollama on this node runs `qwen2.5:3b`, whose tool calling is
   not reliable enough to drive eight tools with an approval gate in between.

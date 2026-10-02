@@ -5,3 +5,4 @@ resources:
   - schedule-daily-critical.yaml
   - schedule-weekly-full.yaml
   - volume-policy-configmap.yaml
+  - homelab-mcp-backup.yaml

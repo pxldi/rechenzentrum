@@ -4,5 +4,6 @@ resources:
   - workload-security.yaml
   - workload-baseline.yaml
   - prometheusrule.yaml
+  - homelab-mcp-actions.yaml
   - require-pinned-images.yaml
   - require-requests.yaml

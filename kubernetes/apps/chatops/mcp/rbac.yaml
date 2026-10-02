@@ -55,3 +55,38 @@ subjects:
   - kind: ServiceAccount
     name: homelab-mcp
     namespace: chatops
+---
+# The three writes behind homelab-mcp's action tools, each asked for in the
+# chat first. Every grant here is narrowed again by the homelab-mcp-actions
+# admission policy (infrastructure-config/admission-policies): a pod delete
+# is refused in the protected namespaces and on CNPG instances, a Flux patch
+# may set the reconcile annotation and nothing else, and a Backup may not
+# carry hooks or another storage location. Deleting a pod cannot change what
+# runs; it only restarts it.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: homelab-mcp-act
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["delete"]
+  - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+    resources: ["kustomizations"]
+    verbs: ["patch"]
+  - apiGroups: ["helm.toolkit.fluxcd.io"]
+    resources: ["helmreleases"]
+    verbs: ["patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: homelab-mcp-act
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: homelab-mcp-act
+subjects:
+  - kind: ServiceAccount
+    name: homelab-mcp
+    namespace: chatops

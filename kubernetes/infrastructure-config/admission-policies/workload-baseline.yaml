@@ -7,7 +7,7 @@
 # passes this one.
 #
 # Pod Security Admission already enforces baseline in every namespace labelled
-# baseline or restricted. What it cannot do is narrow the seven labelled
+# baseline or restricted. What it cannot do is narrow the ones labelled
 # privileged, where PSA checks nothing: there node-exporter could also run
 # privileged, gluetun could mount the host, Velero could join the host
 # network. This policy gives each of those namespaces only the checks its
@@ -34,10 +34,12 @@
 #                   openebs         the volume directories themselves
 #                   observability   node-exporter: /, /proc, /sys
 #                   velero          node-agent: kubelet pod volumes for Kopia
+#                   falco           /proc, /etc, /usr, /boot, /sys/kernel, containerd socket
 #   host namespaces home-assistant  home-assistant, matter-server, otbr (mDNS, Thread)
 #                   observability   node-exporter (hostNetwork, hostPID)
 #   capabilities    home-assistant  otbr: NET_ADMIN, NET_RAW, SYS_ADMIN
 #                   slskd           gluetun VPN sidecar: NET_ADMIN
+#                   falco           BPF, PERFMON, SYS_RESOURCE, SYS_PTRACE (eBPF probe)
 #
 # Namespace is the boundary because it is the only one a pod cannot set on
 # itself: a label- or name-based exception would be claimed by any pod that
@@ -63,11 +65,11 @@ spec:
     - name: privilegedNamespaces
       expression: "['device-plugins', 'home-assistant', 'arc-runners', 'openebs']"
     - name: hostPathNamespaces
-      expression: "['device-plugins', 'home-assistant', 'openebs', 'observability', 'velero']"
+      expression: "['device-plugins', 'home-assistant', 'openebs', 'observability', 'velero', 'falco']"
     - name: hostNamespaceNamespaces
       expression: "['home-assistant', 'observability']"
     - name: extraCapabilityNamespaces
-      expression: "['home-assistant', 'slskd']"
+      expression: "['home-assistant', 'slskd', 'falco']"
     # The capabilities a container runtime grants by default, which the
     # baseline level allows a pod to add back after dropping ALL.
     - name: defaultCapabilities

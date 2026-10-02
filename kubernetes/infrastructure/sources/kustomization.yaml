@@ -25,3 +25,4 @@ resources:
   - actions-runner-controller.yaml
   - crowdsec.yaml
   - aquasecurity.yaml
+  - falcosecurity.yaml

@@ -1,0 +1,41 @@
+# One alert per Falco rule that matched at Warning or above in the last 15
+# minutes. Falco's priorities are syslog levels as numbers: 0 Emergency,
+# 1 Alert, 2 Critical, 3 Error, 4 Warning, 5 Notice. Notice covers the
+# everyday ones, a shell from `kubectl exec` among them, so it stays out.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: falco
+  namespace: falco
+  labels:
+    app.kubernetes.io/name: kube-prometheus-stack
+spec:
+  groups:
+    - name: falco.events
+      rules:
+        - alert: FalcoWarningEvents
+          expr: |
+            sum by (rule_name, priority) (
+              increase(falcosecurity_falco_rules_matches_total{priority=~"[0-4]"}[15m])
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: "Falco: {{ $labels.rule_name }} ({{ $value | humanize }} in 15m)"
+            description: >-
+              Falco matched "{{ $labels.rule_name }}" at priority {{ $labels.priority }}
+              (0 Emergency to 4 Warning). Which process, container and pod is
+              in `kubectl logs -n falco ds/falco -c falco`. If it is expected,
+              add an exception for that rule to the Falco values instead of
+              silencing the alert.
+        - alert: FalcoNotReporting
+          expr: absent_over_time(falcosecurity_falco_version_info[30m])
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Falco stopped reporting
+            description: >-
+              No Falco metrics for 30 minutes, so syscalls on the node are not
+              being watched. Check `kubectl -n falco get pods` and the falco
+              container log; a probe that cannot load says so on start.

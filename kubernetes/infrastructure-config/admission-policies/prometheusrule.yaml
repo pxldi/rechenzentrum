@@ -1,0 +1,38 @@
+# Pages when workload-baseline would have refused a pod. While its binding is
+# Warn/Audit the pod is still admitted, so this is the only place a violation
+# shows up: the Warn text goes to whoever created the pod, which for a
+# Deployment is the ReplicaSet controller, and nobody reads that.
+#
+# The apiserver counts each Warn outcome per policy. A non-zero increase means
+# a pod in a namespace without an exception for that check was just created.
+# Once the binding is Deny the same series counts refusals instead, and the
+# alert still applies: a refused pod is an app that did not start.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: admission-policies
+  namespace: observability
+  labels:
+    app.kubernetes.io/name: kube-prometheus-stack
+spec:
+  groups:
+    - name: admission.workload-baseline
+      rules:
+        - alert: WorkloadBaselineViolation
+          expr: |
+            sum by (enforcement_action) (
+              increase(apiserver_validating_admission_policy_check_total{
+                policy="workload-baseline", enforcement_action=~"warn|deny"
+              }[1h])
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: "workload-baseline {{ $labels.enforcement_action }} in the last hour"
+            description: >-
+              A pod failed the baseline pod-security checks (privileged,
+              hostPath, host namespaces, hostPort, extra capabilities). Under
+              Warn it is running; `task policy:live` lists it. Under Deny it was
+              refused; `kubectl get events -A --field-selector reason=FailedCreate`
+              names it. Fix its securityContext, or add a reviewed exception to
+              workload-baseline.yaml.

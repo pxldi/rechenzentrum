@@ -5,6 +5,9 @@ import subprocess
 import sys
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import pod_baseline  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 errors = []
 docs = [d for d in yaml.safe_load_all((ROOT / ".build/all.yaml").read_text()) if isinstance(d, dict)]
@@ -42,6 +45,7 @@ for doc in docs:
         if doc['kind'] == 'Deployment' and spec.get('strategy', {}).get('rollingUpdate', {}).get('maxUnavailable') == 0:
             if not all(c.get('readinessProbe') for c in pod.get('containers', [])):
                 errors.append(f"{name}: zero-unavailable rollout requires container readiness probes")
+errors += pod_baseline.check_documents(docs, pod_baseline.load_exceptions())
 for path in (ROOT / '.github/workflows').glob('*.yml'):
     workflow = yaml.safe_load(path.read_text())
     for job, value in workflow.get('jobs', {}).items():
@@ -57,5 +61,5 @@ for name in tracked:
         errors.append(f"Forbidden tracked artifact: {name}")
 if (ROOT / '.gitmodules').exists():
     errors.append('Submodules are not allowed')
-print('\n'.join(errors) if errors else 'PASS: Flux dependencies, image policies, hosted CI, and repository boundaries')
+print('\n'.join(errors) if errors else 'PASS: Flux dependencies, image policies, pod baseline, hosted CI, and repository boundaries')
 sys.exit(bool(errors))

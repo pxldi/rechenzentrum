@@ -1,0 +1,172 @@
+# The Pod Security "baseline" level: the settings that let a container reach
+# the node. Privileged mode, host namespaces, hostPath, hostPort, capabilities
+# beyond the runtime defaults, an unconfined seccomp profile or an unmasked
+# /proc. workload-security-audit covers the "restricted" checks (non-root,
+# drop ALL, no privilege escalation) and stays Audit/Warn: most apps here fail
+# those today. Everything in the cluster except the exceptions below already
+# passes this one.
+#
+# Pod Security Admission already enforces baseline in every namespace labelled
+# baseline or restricted. What it cannot do is narrow the seven labelled
+# privileged, where PSA checks nothing: there node-exporter could also run
+# privileged, gluetun could mount the host, Velero could join the host
+# network. This policy gives each of those namespaces only the checks its
+# workloads need and holds the rest of the baseline, and it is a second
+# lock if a namespace label is ever loosened by mistake.
+#
+# `kubectl debug` still works with --profile=baseline or restricted. The
+# general profile adds SYS_PTRACE and sysadmin runs privileged; both are
+# refused outside the exceptions, as they should be.
+#
+# None of these checks touch pod-to-pod traffic. That is NetworkPolicy's job;
+# a pod that passes here talks to exactly the same peers as before.
+#
+# The exceptions are per check and per namespace, never a whole-namespace
+# skip, and each lists the workload that needs it. Derived on 2026-10-02 from
+# the Flux build plus every HelmRelease rendered with its own values:
+#
+#   privileged      device-plugins  generic-device-plugin hands /dev/dri to pods
+#                   home-assistant  otbr (Thread border router: radio, tun, nft)
+#                   arc-runners     docker:dind in every ephemeral runner
+#                   openebs         localpv helper pods create and wipe volume dirs
+#   hostPath        device-plugins  /dev, kubelet device-plugin socket
+#                   home-assistant  otbr: the ZBT-2 radio, /dev/net/tun, dbus
+#                   openebs         the volume directories themselves
+#                   observability   node-exporter: /, /proc, /sys
+#                   velero          node-agent: kubelet pod volumes for Kopia
+#   host namespaces home-assistant  home-assistant, matter-server, otbr (mDNS, Thread)
+#                   observability   node-exporter (hostNetwork, hostPID)
+#   capabilities    home-assistant  otbr: NET_ADMIN, NET_RAW, SYS_ADMIN
+#                   slskd           gluetun VPN sidecar: NET_ADMIN
+#
+# Namespace is the boundary because it is the only one a pod cannot set on
+# itself: a label- or name-based exception would be claimed by any pod that
+# copied it. Only Flux and the controllers it installs create pods there.
+#
+# scripts/check-policies.py reads these lists and applies the same checks to
+# every pod in the Flux build, so a manifest that would be refused fails CI
+# before it reaches the cluster. Charts are not rendered there; their pods are
+# covered by the warning stage and the alert in prometheusrule.yaml.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: workload-baseline
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods, pods/ephemeralcontainers]
+  variables:
+    - name: privilegedNamespaces
+      expression: "['device-plugins', 'home-assistant', 'arc-runners', 'openebs']"
+    - name: hostPathNamespaces
+      expression: "['device-plugins', 'home-assistant', 'openebs', 'observability', 'velero']"
+    - name: hostNamespaceNamespaces
+      expression: "['home-assistant', 'observability']"
+    - name: extraCapabilityNamespaces
+      expression: "['home-assistant', 'slskd']"
+    # The capabilities a container runtime grants by default, which the
+    # baseline level allows a pod to add back after dropping ALL.
+    - name: defaultCapabilities
+      expression: >-
+        ['AUDIT_WRITE', 'CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'FSETID', 'KILL',
+         'MKNOD', 'NET_BIND_SERVICE', 'SETFCAP', 'SETGID', 'SETPCAP', 'SETUID',
+         'SYS_CHROOT']
+    - name: containers
+      expression: >-
+        object.spec.containers +
+        (has(object.spec.initContainers) ? object.spec.initContainers : []) +
+        (has(object.spec.ephemeralContainers) ? object.spec.ephemeralContainers : [])
+  validations:
+    - expression: >-
+        request.namespace in variables.privilegedNamespaces ||
+        variables.containers.all(c,
+          !has(c.securityContext) || !has(c.securityContext.privileged) ||
+          !c.securityContext.privileged)
+      messageExpression: >-
+        'privileged containers are refused in ' + request.namespace + ': ' +
+        variables.containers.filter(c,
+          has(c.securityContext) && has(c.securityContext.privileged) &&
+          c.securityContext.privileged).map(c, c.name).join(', ')
+      reason: Forbidden
+    - expression: >-
+        request.namespace in variables.hostPathNamespaces ||
+        !has(object.spec.volumes) || object.spec.volumes.all(v, !has(v.hostPath))
+      messageExpression: >-
+        'hostPath volumes are refused in ' + request.namespace + ': ' +
+        object.spec.volumes.filter(v, has(v.hostPath)).map(v, v.name).join(', ')
+      reason: Forbidden
+    - expression: >-
+        request.namespace in variables.hostNamespaceNamespaces ||
+        ((!has(object.spec.hostNetwork) || !object.spec.hostNetwork) &&
+         (!has(object.spec.hostPID) || !object.spec.hostPID) &&
+         (!has(object.spec.hostIPC) || !object.spec.hostIPC))
+      messageExpression: >-
+        'hostNetwork, hostPID and hostIPC are refused in ' + request.namespace
+      reason: Forbidden
+    - expression: >-
+        request.namespace in variables.hostNamespaceNamespaces ||
+        variables.containers.all(c, !has(c.ports) ||
+          c.ports.all(p, !has(p.hostPort) || p.hostPort == 0))
+      messageExpression: >-
+        'hostPort is refused in ' + request.namespace + ': ' +
+        variables.containers.filter(c, has(c.ports) &&
+          c.ports.exists(p, has(p.hostPort) && p.hostPort != 0)).map(c, c.name).join(', ')
+      reason: Forbidden
+    - expression: >-
+        request.namespace in variables.extraCapabilityNamespaces ||
+        variables.containers.all(c,
+          !has(c.securityContext) || !has(c.securityContext.capabilities) ||
+          !has(c.securityContext.capabilities.add) ||
+          c.securityContext.capabilities.add.all(cap, cap in variables.defaultCapabilities))
+      messageExpression: >-
+        'capabilities beyond the runtime defaults are refused in ' + request.namespace + ': ' +
+        variables.containers.filter(c,
+          has(c.securityContext) && has(c.securityContext.capabilities) &&
+          has(c.securityContext.capabilities.add) &&
+          c.securityContext.capabilities.add.exists(cap,
+            !(cap in variables.defaultCapabilities))).map(c, c.name).join(', ')
+      reason: Forbidden
+    # Two settings that switch off a kernel guard outright. Nothing here uses
+    # either, so neither has an exception.
+    - expression: >-
+        (!has(object.spec.securityContext) ||
+         !has(object.spec.securityContext.seccompProfile) ||
+         object.spec.securityContext.seccompProfile.type != 'Unconfined') &&
+        variables.containers.all(c,
+          !has(c.securityContext) || !has(c.securityContext.seccompProfile) ||
+          c.securityContext.seccompProfile.type != 'Unconfined')
+      message: An Unconfined seccomp profile is refused.
+      reason: Forbidden
+    - expression: >-
+        variables.containers.all(c,
+          !has(c.securityContext) || !has(c.securityContext.procMount) ||
+          c.securityContext.procMount == 'Default')
+      message: An Unmasked /proc mount is refused.
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: workload-baseline
+spec:
+  policyName: workload-baseline
+  # Warn first, then Deny. The offline render cannot see the TrueCharts media
+  # charts, seerr, or pods that controllers create at runtime (ARC listeners,
+  # CNPG instances, Velero data movers, OpenEBS helpers). Warn surfaces any of
+  # them that would be refused, and WorkloadBaselineViolation in
+  # prometheusrule.yaml pages on it. Switch to [Deny, Audit] once that alert
+  # has stayed quiet for a week that includes a scheduled backup and a
+  # restart of every media app.
+  validationActions: [Warn, Audit]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          # k3s runs svclb, coredns and metrics-server here with host ports and
+          # NET_ADMIN; Flux is the thing that would repair a mistake in this file.
+          values: [kube-system, kube-public, kube-node-lease, flux-system]

@@ -1,0 +1,128 @@
+---
+# Default deny in both directions, then exactly what scanning needs:
+#
+#   operator      -> API :6443        watch workloads, write reports
+#   scan jobs     -> trivy server     look up vulnerabilities
+#   server        -> internet :443    vulnerability database (mirror.gcr.io)
+#   scan jobs     -> internet :443    image layers from the registries
+#   prometheus    -> operator :8080   metrics
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: trivy-system
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: trivy-system
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-operator-apiserver-egress
+  namespace: trivy-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: trivy-operator
+  policyTypes:
+    - Egress
+  egress:
+    # Port only: a NetworkPolicy matches the destination after DNAT, which is
+    # the node's own address, and the public repository does not carry it.
+    - ports:
+        - protocol: TCP
+          port: 6443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-metrics-ingress
+  namespace: trivy-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: trivy-operator
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-server-ingress
+  namespace: trivy-system
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: trivy-server
+  policyTypes:
+    - Ingress
+  ingress:
+    # Scan jobs and the operator's health check. Both live here.
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 4954
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-scanner-egress
+  namespace: trivy-system
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: trivy-server
+      ports:
+        - protocol: TCP
+          port: 4954
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443

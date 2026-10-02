@@ -1,0 +1,31 @@
+# One alert per workload whose running image has a critical vulnerability
+# with a fix available. The operator rescans daily, so the alert clears
+# itself once the fixed image is running. `for: 6h` keeps a rollout that
+# replaces the image, and the rescan that follows, from paging.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: trivy-operator
+  namespace: trivy-system
+  labels:
+    app.kubernetes.io/name: kube-prometheus-stack
+spec:
+  groups:
+    - name: images.vulnerabilities
+      rules:
+        - alert: ImageCriticalVulnerabilities
+          expr: |
+            sum by (namespace, resource_kind, resource_name, image_repository, image_tag) (
+              trivy_image_vulnerabilities{severity="Critical"}
+            ) > 0
+          for: 6h
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.resource_name }}: {{ $value }} fixable critical CVEs in {{ $labels.image_repository }}:{{ $labels.image_tag }}"
+            description: >-
+              Trivy found critical vulnerabilities with a fixed version in this
+              image. The list is in
+              `kubectl get vulnerabilityreports -n {{ $labels.namespace }} -o wide`.
+              Usually a Renovate PR for the image is already open; merge it, or
+              pin a newer tag or digest.

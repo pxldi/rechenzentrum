@@ -83,6 +83,7 @@ Configured does not mean live or restore-tested.
 | Exposure | Decided and applied 2026-09-13: 19 routes require LAN or tailnet plus Authentik, see [EXPOSURE.md](EXPOSURE.md). Karakeep and the Schall API stay public on purpose |
 | Backups | CNPG and Velero restores verified 2026-09-12, see [BACKUPS.md](BACKUPS.md); Schall audio files are deliberately excluded, see [BACKUPS.md](BACKUPS.md#cantus) |
 | Image automation | Retired 2026-09-18. Renovate covers image tags; Schall follows a mutable development tag on purpose |
+| Image scanning | Trivy Operator in `trivy-system` rescans running images daily for fixable HIGH/CRITICAL CVEs, `ImageCriticalVulnerabilities` alerts per workload. The four images built here fail CI on a fixable CRITICAL and are signed keyless with cosign on push; nothing verifies signatures at admission yet |
 | Schall namespace | slskd moved out 2026-09-13 and `media` is baseline; Schall stays, see [SCHALL_ISOLATION.md](SCHALL_ISOLATION.md) |
 | Edge/egress expansion | Done for every application namespace, see [EGRESS.md](EGRESS.md). `home-assistant` is hostNetwork so policy does not apply; `actions-runner` already had an equivalent rule |
 | ZeroClaw/MCP | Deployed 2026-09-18, see [CHATOPS.md](CHATOPS.md): ZeroClaw on Telegram with a Tandoor MCP server and a read-only homelab MCP server. Needs its four credentials in `chatops-credentials` to come alive |

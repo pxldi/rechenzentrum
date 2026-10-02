@@ -36,6 +36,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # Keyless signing: cosign trades this token for a short-lived certificate.
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -57,6 +59,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: images/homelab-mcp
@@ -71,6 +74,42 @@ jobs:
           cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
           cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}:buildcache,mode=max', env.IMAGE) || '' }}
           provenance: false
+
+      # Scans the image just built: loaded locally on a pull request, pulled
+      # from GHCR after a push. The first step lists HIGH and CRITICAL in the
+      # job log; the second fails the build on a CRITICAL with a fix available.
+      # An unfixed one does not fail, because no change here could clear it.
+      - name: List high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:sha-${{ env.SHA }}
+          severity: HIGH,CRITICAL
+          format: table
+      - name: Gate on fixable critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:sha-${{ env.SHA }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+          skip-setup-trivy: true
+
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      # Keyless: the signature binds the pushed digest to this workflow in this
+      # repository through GitHub's OIDC identity, so there is no key to keep.
+      # Check one with
+      #   cosign verify "$IMAGE@<digest>" \
+      #     --certificate-identity-regexp '^https://github.com/pxldi/rechenzentrum/' \
+      #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+      - name: Sign the pushed digest
+        if: github.event_name != 'pull_request'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
 
       # Both servers must come up and answer /health as uid 1000 on a
       # read-only root filesystem, which is how the Deployments run them.

@@ -1,0 +1,16 @@
+---
+# Every pod here runs as non-root with all capabilities dropped: the operator,
+# the built-in Trivy server and the scan jobs, which only pull image layers
+# from a registry and never run the image they scan.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: trivy-system
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+    kubernetes.io/metadata.name: trivy-system

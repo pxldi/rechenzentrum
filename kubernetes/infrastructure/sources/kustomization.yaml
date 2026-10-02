@@ -24,3 +24,4 @@ resources:
   - seerr.yaml
   - actions-runner-controller.yaml
   - crowdsec.yaml
+  - aquasecurity.yaml

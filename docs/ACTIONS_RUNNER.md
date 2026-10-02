@@ -1,7 +1,11 @@
 # Internal Actions runners
 
-ARC remains deployed for `pxldi-labs`. This public GitOps repository uses
-GitHub-hosted runners; public PR code must not run on the homelab runner.
+Being retired. The `homelab` runner scale set for `pxldi-labs` was removed on
+2026-10-02; the controller, its chart source and these docs follow once the
+scale set is confirmed gone from the cluster. ARC deletes the scale set's
+GitHub registration through the controller, so the controller has to outlive
+the scale set. This public GitOps repository uses GitHub-hosted runners;
+public PR code must not run on the homelab runner.
 
 | Setting | Source / value |
 | --- | --- |

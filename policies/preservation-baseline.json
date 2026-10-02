@@ -128,9 +128,6 @@
   "apps/v1/StatefulSet/obsidian-sync/obsidian-sync": {
     "kind": "StatefulSet"
   },
-  "helm.toolkit.fluxcd.io/v2/HelmRelease/arc-runners/homelab-runners": {
-    "kind": "HelmRelease"
-  },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/arc-systems/arc-controller": {
     "kind": "HelmRelease"
   },

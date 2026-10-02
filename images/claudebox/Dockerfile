@@ -13,8 +13,8 @@
 # the command that needed it.
 #
 # So the toolchain moves here, where it is reviewed, pinned and rebuilt rather
-# than accumulated. /toolbin stays for the three things that genuinely change
-# weekly — the multica CLI and the two agent CLIs — and this image holds
+# than accumulated. /toolbin stays for the things that genuinely change
+# weekly — today the Claude Code and Codex CLIs — and this image holds
 # everything that does not.
 #
 # Debian 13 (trixie) rather than 12, and the reason is PostgreSQL: trixie ships

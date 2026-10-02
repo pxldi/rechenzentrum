@@ -1,4 +1,32 @@
-{ ... }:
+{ pkgs, ... }:
+
+let
+  # healthchecks.io pings for the upgrade below: a start ping before it runs,
+  # then success or failure from systemd's OnSuccess=/OnFailure=. A morning
+  # where the timer never fires, or the node is down, shows as a missed ping
+  # on a service that does not live on this node.
+  #
+  # The key is read from a root-only file, not the Nix store, which every
+  # user on the box can read. Created once by hand (scripts/healthchecks-setup.sh
+  # prints the command); until it exists every ping is a no-op, so this
+  # changes nothing on a host that has not been set up. A ping that fails is
+  # ignored: it must never fail or delay the upgrade itself.
+  pingKeyFile = "/var/lib/healthchecks/ping-key";
+  hcPing = pkgs.writeShellScript "healthchecks-ping" ''
+    [ -r ${pingKeyFile} ] || exit 0
+    key=$(${pkgs.coreutils}/bin/tr -d '[:space:]' < ${pingKeyFile})
+    [ -n "$key" ] || exit 0
+    ${pkgs.curl}/bin/curl -fsS -o /dev/null --max-time 10 --retry 3 \
+      "https://hc-ping.com/$key/$1" || true
+  '';
+  pingUnit = suffix: {
+    description = "healthchecks.io ping: nixos-upgrade${suffix}";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${hcPing} nixos-upgrade${suffix}";
+    };
+  };
+in
 
 {
   # Merging to main already deploys the cluster (Flux). This makes it deploy
@@ -49,4 +77,17 @@
     rebootWindow = { lower = "04:45"; upper = "05:10"; };
     persistent = true;
   };
+
+  systemd.services.nixos-upgrade = {
+    # "-": a failed start ping must not stop the upgrade from running.
+    serviceConfig.ExecStartPre = [ "-${hcPing} nixos-upgrade/start" ];
+    unitConfig = {
+      OnSuccess = [ "healthchecks-nixos-upgrade-success.service" ];
+      OnFailure = [ "healthchecks-nixos-upgrade-fail.service" ];
+    };
+  };
+  systemd.services.healthchecks-nixos-upgrade-success = pingUnit "";
+  systemd.services.healthchecks-nixos-upgrade-fail = pingUnit "/fail";
+
+  systemd.tmpfiles.rules = [ "d /var/lib/healthchecks 0700 root root -" ];
 }

@@ -180,7 +180,23 @@ spec:
                   else
                     echo "docker hub: no credential, requests are rate limited" >&2
                   fi
-                  exec renovate
+
+                  # healthchecks.io, the one alert that does not depend on this
+                  # node being up. A start ping, then the exit status, so the
+                  # check goes red on a failed run, on a run that hangs past its
+                  # grace time, and on a night where no run happens at all --
+                  # the case nothing in-cluster can see. A failed ping never
+                  # fails the run, and an empty key skips it.
+                  hc() {
+                    [ -n "${HC_PING_KEY:-}" ] || return 0
+                    curl -fsS -o /dev/null --max-time 10 --retry 3 \
+                      "https://hc-ping.com/${HC_PING_KEY}/renovate$1" || true
+                  }
+                  hc /start
+                  rc=0
+                  renovate || rc=$?
+                  hc "/$rc"
+                  exit "$rc"
               env:
                 - name: RENOVATE_PLATFORM
                   value: "github"
@@ -209,6 +225,12 @@ spec:
                     secretKeyRef:
                       name: renovate-app
                       key: DOCKER_HUB_PASSWORD
+                      optional: true
+                - name: HC_PING_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: healthchecks
+                      key: ping-key
                       optional: true
               securityContext:
                 allowPrivilegeEscalation: false

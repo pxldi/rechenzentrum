@@ -54,17 +54,20 @@ ARG GOOSE_VERSION=3.27.3
 ARG KUBECTL_VERSION=1.33.13
 ARG HELM_VERSION=3.21.3
 ARG FLUX_VERSION=2.9.3
-ARG KUSTOMIZE_VERSION=5.8.1
+ARG KUSTOMIZE_VERSION=5.8.2
 ARG STERN_VERSION=1.34.0
 ARG K9S_VERSION=0.51.0
 ARG KUBECONFORM_VERSION=0.8.0
 ARG SOPS_VERSION=3.13.3
-ARG AGE_VERSION=1.3.1
+ARG AGE_VERSION=1.3.2
 ARG CRANE_VERSION=0.21.9
 ARG HADOLINT_VERSION=2.15.1
 ARG PLAYWRIGHT_VERSION=1.62.1
 ARG TEMURIN_VERSION=17.0.20+8
 ARG ANDROID_CMDLINE_TOOLS_BUILD=15859902
+# Replaces the Bouncy Castle jars cmdline-tools bundles; see the Android SDK
+# stage for why.
+ARG BOUNCYCASTLE_VERSION=1.86
 # 37.0, not 37. Android platform packages carry a minor now — the repository
 # publishes android-36.1, android-37.0 and android-37.1, and there is no bare
 # android-37 to install. foscal's compileSdk = 37 names no minor, which is .0.
@@ -100,6 +103,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # createcluster.conf comes first because postgresql-common's postinst otherwise
 # initdb's a main cluster nobody will ever connect to. The daemon's tests bring
 # up their own throwaway clusters; a 40 MB one baked into the image is waste.
+#
+# libunbound8 is not asked for by anything here; it arrives as a dependency.
+# It is pinned anyway because the version it otherwise resolves to carries
+# fixable critical CVEs (CVE-2026-50252 and others), and the image scan fails
+# on those.
 RUN set -euo pipefail; \
     mkdir -p /etc/postgresql-common; \
     echo 'create_main_cluster = false' > /etc/postgresql-common/createcluster.conf; \
@@ -118,7 +126,8 @@ RUN set -euo pipefail; \
         rsync=3.4.1+ds1-5+deb13u4 \
         shellcheck=0.10.0-1 \
         sqlite3=3.46.1-7+deb13u2 \
-        skopeo=1.18.0+ds1-1+b5; \
+        skopeo=1.18.0+ds1-1+b5 \
+        libunbound8=1.26.1-0+deb13u1; \
     rm -rf /var/lib/apt/lists/*
 
 # PostgreSQL's server binaries live in a versioned directory Debian keeps off
@@ -204,7 +213,7 @@ RUN set -euo pipefail; \
     tar -xzf flux.tgz flux; \
     \
     get "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
-        kustomize.tgz 029a7f0f4e1932c52a0476cf02a0fd855c0bb85694b82c338fc648dcb53a819d; \
+        kustomize.tgz 06af0a202c2b831207d0173f9c9cdb1b30abceca0747cb3fbb72792d26055c95; \
     tar -xzf kustomize.tgz kustomize; \
     \
     get "https://github.com/stern/stern/releases/download/v${STERN_VERSION}/stern_${STERN_VERSION}_linux_amd64.tar.gz" \
@@ -220,7 +229,7 @@ RUN set -euo pipefail; \
     tar -xzf kubeconform.tgz kubeconform; \
     \
     get "https://github.com/FiloSottile/age/releases/download/v${AGE_VERSION}/age-v${AGE_VERSION}-linux-amd64.tar.gz" \
-        age.tgz bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377; \
+        age.tgz cbe24006683f8eb669266162894b9a522a1af52f2665fbc63a4bb032ed26ac10; \
     tar -xzf age.tgz --strip-components=1 age/age age/age-keygen; \
     \
     get "https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_x86_64.tar.gz" \
@@ -318,6 +327,27 @@ RUN set -euo pipefail; \
     # sdkmanager insists on living at cmdline-tools/<channel>/bin and refuses to
     # run from the path the zip actually unpacks to.
     mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"; \
+    # The pinned cmdline-tools build bundles Bouncy Castle 1.79, which has
+    # fixable critical CVEs (CVE-2025-14813, CVE-2026-8763). The three jars are
+    # swapped for the same artifacts from Maven Central, in place: the files
+    # keep their names, so the launcher's classpath still finds them, and
+    # only the contents change. It happens
+    # before sdkmanager first runs, so the licence and package installs below
+    # are the proof that sdkmanager works on the new jars. Remove this once a
+    # cmdline-tools build ships Bouncy Castle 1.85 or later.
+    swap_bc() { \
+        jar="${1}-jdk18on-${BOUNCYCASTLE_VERSION}.jar"; \
+        curl -fsSL -o "/tmp/$jar" \
+            "https://repo1.maven.org/maven2/org/bouncycastle/${1}-jdk18on/${BOUNCYCASTLE_VERSION}/$jar"; \
+        echo "$2  /tmp/$jar" | sha256sum -c -; \
+        mapfile -t old < <(find "$ANDROID_HOME/cmdline-tools/latest/lib" -name "${1}-jdk18on-*.jar"); \
+        test "${#old[@]}" -eq 1; \
+        install -m 0644 "/tmp/$jar" "${old[0]}"; \
+        rm -f "/tmp/$jar"; \
+    }; \
+    swap_bc bcprov 2af190b300cbb0b35e248ccf5f4a06b6072030aeb3da7a98ec73abe5b4cb371f; \
+    swap_bc bcpkix 8d8b41a4b149bdae8d331f059a578870954d1e3ff29f8269a9eb3ee19a7e4ef7; \
+    swap_bc bcutil 1c268e15f785aafb1e4670d8d6e5f856f69475e96c162dadcd1ff9b350e9139f; \
     # pipefail is on for every RUN here (see SHELL above) and disagrees with
     # `yes |`: sdkmanager stops reading once the last licence is answered, yes
     # takes SIGPIPE, and the pipeline reports 141 even though sdkmanager

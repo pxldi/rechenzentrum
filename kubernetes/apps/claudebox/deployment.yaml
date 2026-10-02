@@ -165,10 +165,11 @@ spec:
         # the operator's ChatGPT subscription, stored under ~/.codex on the PVC
         # — no API key, same shape as the Claude login.
         #
-        # Pinned as plain env values: the Kubernetes Renovate manager only
-        # reads `image:` fields, so these are bumped by hand. Check with
-        #   npm view @anthropic-ai/claude-code version
-        #   npm view @openai/codex version
+        # Pinned as plain env values. The Kubernetes Renovate manager only
+        # reads `image:` fields, so the `# renovate:` comments below feed a
+        # regex manager in renovate.json instead. Both land in one nightly PR,
+        # so a bump restarts the pod at most once a night.
+        #
         # Do not go below 2.1.224 — Remote Control's resume flags need 2.1.200
         # and a stale-token bug that made startup fail intermittently was fixed
         # in 2.1.224.
@@ -188,8 +189,10 @@ spec:
               echo "installed:" && ls -l /toolbin/npm/bin
           env:
             - name: CLAUDE_CODE_VERSION
+              # renovate: datasource=npm depName=@anthropic-ai/claude-code
               value: "2.1.280"
             - name: CODEX_VERSION
+              # renovate: datasource=npm depName=@openai/codex
               value: "0.153.4"
             # npm's default cache is $HOME/.npm and HOME is / for uid 0 here.
             - name: npm_config_cache

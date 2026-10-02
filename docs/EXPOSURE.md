@@ -26,8 +26,11 @@ as it always did for every app without such a route. They were removed on
 
 - **Snacky** (`snacky.pxldi.de`) stays Authentik-only. Its owner opens it on
   the phone on mobile data, without the tailnet. The MCP port has no route.
-- **Karakeep** (`links.pxldi.de`) stays Authentik-only. It is shared with someone
-  who has an account but no device on the tailnet.
+- **Karakeep** (`links.pxldi.de`) stays Authentik-only, through Karakeep's own
+  OIDC login rather than forward-auth: its password form is off, and the browser
+  extension and phone apps send bearer tokens to `/api`, which a forward-auth
+  redirect would break. It is shared with someone who has an account but no
+  device on the tailnet.
 - **Schall's API route** (`schall.pxldi.de` with a Bearer header) stays public so
   a client that cannot follow a login redirect works away from home. Schall
   validates the token and answers 401 to anything it did not mint. No proxy key
@@ -69,6 +72,58 @@ decided per app:
 
 The phone on the tailnet is not always connected to it, so "gate it, the phone
 is on Tailscale" is not an answer on its own.
+
+## Audit of the public routes, 2026-10-02
+
+Read from the repository at `3a1e313`, not from the live cluster, so it shows
+what Flux applies, not what DNS or the router expose. Nothing here changes a
+route: every "Proposed" entry waits for the owner's decision, because friends
+and family use some of these apps.
+
+What every public route already has: TLS at Traefik, and the CrowdSec bouncer
+on the `websecure` entrypoint (since #273). CrowdSec runs only the
+`crowdsecurity/traefik` collection, so it bans scanners and known CVE probes
+seen in Traefik's access log. It does not read any app's own log, so password
+guessing against an app's login is limited only by what that app does itself.
+Authentik is the one route with a Traefik rate limit (50/s, burst 100).
+
+"Users" is what the repository and earlier decisions say; anything marked
+*ask* is unknown and needs the owner's answer.
+
+| Route | Users | Non-browser clients | Protection today | Proposed |
+| --- | --- | --- | --- | --- |
+| `auth.pxldi.de` | everyone who logs in | none | Authentik login, MFA per user, rate limit | Leave |
+| `branding.pxldi.de` | login page assets | none | static files | Leave |
+| `cloud.pxldi.de` | *ask* | desktop and phone sync, CalDAV/CardDAV, public share links | Nextcloud login, its built-in brute-force throttle | Leave public. Enforce TOTP for every account and app passwords for clients; optionally Authentik OIDC (`user_oidc`) for the browser login |
+| `photos.pxldi.de` | *ask* | Immich phone backup, shared-album links | Immich login | Leave public. Switch Immich to Authentik OAuth (the phone app supports it) and turn its password login off once every user has moved |
+| `jellyfin.pxldi.de` | *ask*, possibly other people | TV and phone players, Quick Connect | Jellyfin login | If only the household: tailnet-only. If others watch: leave public, set Jellyfin's failed-login lockout, add a rate limit on `/Users/AuthenticateByName` |
+| `music.pxldi.de` | *ask* | Subsonic clients on `/rest`, share links on `/share` | Navidrome login, its built-in login rate limit | Forward-auth on the web UI, with `/rest` and `/share` bypassed, if every user has an Authentik account; otherwise leave |
+| `request.pxldi.de` | *ask* (Jellyfin users) | none, browser only | Seerr login with Jellyfin accounts | Forward-auth if every requester has an Authentik account; otherwise follows Jellyfin's decision |
+| `home.pxldi.de` | household | Home Assistant companion app, webhooks | HA login | Leave public. Turn on `ip_ban_enabled` and `login_attempts_threshold` in the `http:` block (both off today) and require MFA for every HA user |
+| `gotify.pxldi.de` | owner's phones | phones hold a push socket on `/stream`, senders post to `/message` with app tokens | Gotify login (basic auth), token per client | Leave public, add a Traefik rate limit; gating only the web UI is not worth the path list |
+| `paperless.pxldi.de` | *ask* | phone scanner app with a token on `/api/` | Paperless login | Schall pattern: forward-auth on the host, plus a public route for `/api/` that requires an `Authorization` header |
+| `recipes.pxldi.de` | household | none, browser and PWA | Tandoor login | Forward-auth (or Tandoor OIDC) if the household has Authentik accounts; otherwise leave |
+| `books.pxldi.de` | *ask* | e-reader on OPDS and KOReader sync | Grimmory login | Forward-auth on the web UI with the OPDS and KOReader paths bypassed; the exact paths need checking against Grimmory 3.5 before any change |
+| `obsidian.pxldi.de` | owner | Obsidian LiveSync on desktop and phone | CouchDB basic auth, admin-only `_security` per database | Leave sync public. Put CouchDB's admin UI (`/_utils`) and server endpoints (`/_config`, `/_node`) behind `internal-only`, add a rate limit |
+| `travel.pxldi.de` | *ask* | none known, browser only | AdventureLog login | Forward-auth if only Authentik users use it; otherwise leave. Separately, its images run the unpinned `beta` tag |
+| `links.pxldi.de` | owner and one other person | browser extension, phone apps with bearer tokens | Karakeep OIDC only, password form off | Leave |
+| `gym.pxldi.de` | owner | phone at the gym | passkey-only login, invite-only signup, guest mode off | Leave |
+| `schall.pxldi.de` `/api/` + Bearer | owner's clients | yes | Schall's own token check | Leave |
+| `vault-mcp.pxldi.de` | claude.ai | yes | Anthropic range allowlist and an Authentik-issued token | Leave |
+
+Two non-HTTP LoadBalancers expect a router forward: Palworld (8211/udp, for
+friends) and Minecraft (25565/tcp). Minecraft is scaled to zero, so its router
+forward, if still set, and its LoadBalancer can go unless the world comes back.
+
+### Questions for the owner
+
+1. Who outside the household uses Jellyfin, Navidrome, Seerr, Nextcloud,
+   Immich, Paperless, Grimmory and AdventureLog?
+2. Does each of those people have an Authentik account, or would they need one?
+
+Every *ask* row above is decided by those two answers. The changes that do not
+depend on them (Home Assistant's ban settings, the CouchDB admin paths, rate
+limits on Gotify and Jellyfin's login) are safe to make first.
 
 ## Known issues
 
@@ -132,3 +187,4 @@ is on Tailscale" is not an answer on its own.
 | adventurelog | `travel.pxldi.de (PathPrefix(`/media`) \|\| PathPrefix(`/static`) \|\| PathPr` | public | add-trailing-slash,adventurelog-headers |
 | monitoring | `uptime.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | velero | `velero.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| chatops | `vault-mcp.pxldi.de` (`/mcp`, `/.well-known/` only) | Anthropic range and house | anthropic-and-house |

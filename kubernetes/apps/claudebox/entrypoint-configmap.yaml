@@ -245,7 +245,7 @@ data:
     # read-only precisely so a session running without prompts cannot edit them.
     #
     # The session name prefix is the repository, so the app shows
-    # schall-brave-otter rather than the pod's random hostname. Each server
+    # schall-brave-otter rather than the hostname. Each server
     # logs to its own file under /tmp, because several servers redrawing their
     # status onto one stdout make the pod log unreadable; the projects-root
     # server keeps stdout so `kubectl logs` shows at least one of them. Logs
@@ -269,7 +269,7 @@ data:
         claude remote-control \
           --spawn same-dir \
           --no-create-session-in-dir \
-          --capacity "${CLAUDEBOX_SESSION_CAPACITY:-2}" \
+          --capacity "${CLAUDEBOX_SESSION_CAPACITY:-4}" \
           --permission-mode auto \
           --remote-control-session-name-prefix "$prefix" >>"$log" 2>&1 &
         child=$!

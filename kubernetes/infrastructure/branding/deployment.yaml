@@ -37,7 +37,20 @@ spec:
             - -c
             - |
               set -eu
-              apk add --no-cache rsync >/dev/null
+
+              # rsync -a --delete with what the image already has. It used to
+              # `apk add rsync` at start, which fetched a package from the
+              # internet into a running container and made every sync loop trip
+              # Falco's "Drop and execute new binary in container". Copies the
+              # contents, never the directory itself, so the destination keeps
+              # its inode; then removes what git no longer has.
+              mirror() {
+                src=$1 dst=$2
+                cp -a "$src/." "$dst/" || return 1
+                (cd "$dst" && find . -depth -mindepth 1) | while IFS= read -r p; do
+                  [ -e "$src/$p" ] || [ -L "$src/$p" ] || rm -rf "${dst:?}/$p"
+                done
+              }
 
               sync_once() {
                 rm -rf /tmp/repo
@@ -48,13 +61,13 @@ spec:
                 # subPath into the nginx container below. Anything else under
                 # branding/ in the repo is not published.
                 #
-                # rsync --delete rather than cp, so a file deleted in git leaves
+                # A mirror rather than a plain cp, so a file deleted in git leaves
                 # the site. It also has to write into the existing directory: the
                 # subPath mounts below bind these three by inode, and replacing a
                 # directory would leave nginx serving the old one.
                 for dir in icons wallpapers fonts; do
                   mkdir -p "/assets/$dir"
-                  rsync -a --delete "/tmp/repo/branding/$dir/" "/assets/$dir/" || return 1
+                  mirror "/tmp/repo/branding/$dir" "/assets/$dir" || return 1
                 done
 
                 rm -rf /tmp/repo

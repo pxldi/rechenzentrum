@@ -33,6 +33,16 @@
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+tag: (?<currentValue>\\S+)"
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "claudebox installs Claude Code and the Codex CLI with npm in an init container, pinned as env values that no built-in manager reads",
+      "fileMatch": [
+        "^kubernetes/apps/claudebox/deployment\\.yaml$"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+value: \"(?<currentValue>[^\"]+)\""
+      ]
     }
   ],
   "packageRules": [
@@ -95,6 +105,21 @@
       ],
       "automerge": false,
       "description": "Every Nextcloud bump migrates the database and the app-store apps, and the pod reports Ready while it is half done: status.php answers 200 with needsDbUpgrade true. Patch 35.0.1 was automerged on 2026-09-25 and returned 503 to every client for 19 hours. Renovate proposes these; a human merges them and checks status.php afterwards."
+    },
+    {
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "matchFileNames": [
+        "kubernetes/apps/claudebox/deployment.yaml"
+      ],
+      "matchPackageNames": [
+        "@anthropic-ai/claude-code",
+        "@openai/codex"
+      ],
+      "groupName": "claudebox CLI tools",
+      "minimumReleaseAge": "2 days",
+      "description": "Both CLIs ship several releases a day. Grouped so a bump restarts claudebox, and the sessions running in it, at most once a night. The two-day age skips releases that upstream pulls or hotfixes, and keeps a freshly published npm package from reaching a pod that holds cluster and GitHub credentials the same day."
     }
   ],
   "prHourlyLimit": 0,

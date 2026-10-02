@@ -23,7 +23,6 @@ resources:
   - palworld
   - claudebox
   - minecraft
-  - actions-runner
   - excalidraw
   - karakeep
   - opengym

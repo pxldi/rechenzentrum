@@ -73,15 +73,6 @@
     },
     {
       "matchPackageNames": [
-        "ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set",
-        "ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller"
-      ],
-      "groupName": "actions-runner-controller",
-      "automerge": false,
-      "description": "ARC refuses to run a controller and a scale set on different chart versions, so the two must land in one PR. Not automerged: these are 0.x, where a minor bump has broken the runner API before, and merging here changes the live cluster."
-    },
-    {
-      "matchPackageNames": [
         "getmeili/meilisearch",
         "lscr.io/linuxserver/mariadb",
         "postgis/postgis"

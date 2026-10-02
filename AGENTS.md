@@ -59,7 +59,7 @@ applications and persistent data while completing the user's request.
   selectors or pod templates. Helm-generated pods need chart values/postRenderers.
 - Use explicit image versions/digests. Updates flow through PRs and required CI.
 - Public PR workflows run on GitHub-hosted runners without cluster credentials.
-  Never execute public PR code on the internal ARC runners.
+  Never execute public PR code on self-hosted runners with cluster access.
 
 ## Validation
 

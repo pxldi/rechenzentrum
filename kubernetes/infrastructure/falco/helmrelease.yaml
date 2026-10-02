@@ -70,6 +70,26 @@ spec:
       json_output: true
       priority: notice
 
+    # Exceptions for expected matches, each narrowed to one namespace, image
+    # and process, never a disabled rule. Loaded from /etc/falco/rules.d after
+    # the upstream ruleset, so `override: append` adds to its exceptions.
+    #
+    # adventurelog-db: the readiness and liveness probes run pg_isready, which
+    # in the postgis image is Debian's perl wrapper running as root, and it
+    # reads /etc/shadow on every probe (observed 2026-10-02: every hit of
+    # "Read sensitive file untrusted" came from it).
+    customRules:
+      rechenzentrum-exceptions.yaml: |-
+        - rule: Read sensitive file untrusted
+          exceptions:
+            - name: adventurelog_pg_isready_probe
+              fields: [k8s.ns.name, container.image.repository, proc.name, fd.name]
+              comps: [=, in, =, =]
+              values:
+                - [adventurelog, [postgis/postgis, docker.io/postgis/postgis], pg_isready, /etc/shadow]
+          override:
+            exceptions: append
+
     metrics:
       enabled: true
       interval: 15m

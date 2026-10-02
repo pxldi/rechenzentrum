@@ -7,3 +7,4 @@ resources:
   - homelab-mcp-actions.yaml
   - require-pinned-images.yaml
   - require-requests.yaml
+  - restore-tests.yaml

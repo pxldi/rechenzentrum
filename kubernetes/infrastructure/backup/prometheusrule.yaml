@@ -155,3 +155,95 @@ spec:
               No velero_backup_* series for 30m. Velero is down, or the
               ServiceMonitor stopped matching. Backups are unmonitored and
               possibly not running at all.
+---
+# The weekly restore tests: three CNPG recoveries and one Velero restore, each
+# a CronJob named restore-test (docs/BACKUPS.md). A backup that has never been
+# restored is a hope, and a restore test nobody hears from is the same hope.
+#
+# Each rule resolves on the next successful run, which a failed Job object does
+# not: failedJobsHistoryLimit keeps the failed Job around, so an alert on
+# kube_job_status_failed would keep firing for a week after the fix.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: restore-tests
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero
+spec:
+  groups:
+    - name: backup.restore-tests
+      rules:
+        # A run started more than 5h ago and nothing has succeeded since, or
+        # nothing ever has. The longest test (immich) is killed at 4h, so 5h
+        # means failed, not slow.
+        - alert: RestoreTestFailed
+          expr: |
+            (time() - kube_cronjob_status_last_schedule_time{cronjob="restore-test"} > 5 * 3600)
+            and on (namespace, cronjob)
+            (
+              kube_cronjob_status_last_schedule_time{cronjob="restore-test"}
+                > on (namespace, cronjob)
+              kube_cronjob_status_last_successful_time{cronjob="restore-test"}
+              or
+              kube_cronjob_status_last_schedule_time{cronjob="restore-test"}
+                unless on (namespace, cronjob)
+              kube_cronjob_status_last_successful_time{cronjob="restore-test"}
+            )
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "The weekly restore test in {{ $labels.namespace }} failed"
+            description: >-
+              The backup in {{ $labels.namespace }} did not restore cleanly this
+              week. The failed Job's log names the step: remove-leftover,
+              restore, wait-ready or verify for a database; wait-restore,
+              wait-volume-data or wait-app-ready for velero-restore-test. Its
+              leftover copy stays until the next run removes it.
+
+        # No success in over eight days: the test is not running at all
+        # (suspended, deleted, never scheduled), or failed twice.
+        - alert: RestoreTestStale
+          expr: |
+            time() - kube_cronjob_status_last_successful_time{cronjob="restore-test"} > 8 * 86400
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "No successful restore test in {{ $labels.namespace }} for over 8 days"
+            description: >-
+              The last successful run was {{ $value | humanizeDuration }} ago.
+              The tests run Wednesdays from 10:00 Europe/Berlin.
+
+        # last_successful_time is absent until the first success, which the
+        # rule above therefore cannot see.
+        - alert: RestoreTestNeverSucceeded
+          expr: |
+            (time() - kube_cronjob_created{cronjob="restore-test"} > 8 * 86400)
+            unless on (namespace, cronjob)
+            kube_cronjob_status_last_successful_time{cronjob="restore-test"}
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "The restore test in {{ $labels.namespace }} has never succeeded"
+            description: >-
+              The CronJob has existed for over 8 days without one successful
+              run. Check its Jobs in {{ $labels.namespace }}.
+
+        # Without this the three rules above fail open: a deleted CronJob takes
+        # its series with it and every expression returns nothing.
+        - alert: RestoreTestMissing
+          expr: |
+            count(kube_cronjob_created{cronjob="restore-test"}) < 4
+            or absent(kube_cronjob_created{cronjob="restore-test"})
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "A weekly restore test CronJob is missing"
+            description: >-
+              Expected restore-test CronJobs in tandoor, immich, media and
+              velero-restore-test. If one was removed on purpose, lower the
+              count in this rule.

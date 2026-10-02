@@ -9,7 +9,15 @@ import subprocess
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+EMBEDDED = "rechenzentrum.dev/embedded-manifests"
 documents = [d for d in yaml.safe_load_all((ROOT / ".build/all.yaml").read_text()) if isinstance(d, dict)]
+# A ConfigMap carrying manifests that a Job applies later (the weekly restore
+# tests) opts in with this annotation, so those manifests are held to the same
+# schemas as the ones Flux applies.
+for doc in list(documents):
+    if doc.get("kind") == "ConfigMap" and (doc.get("metadata", {}).get("annotations") or {}).get(EMBEDDED) == "true":
+        for value in (doc.get("data") or {}).values():
+            documents += [d for d in yaml.safe_load_all(value) if isinstance(d, dict)]
 for doc in documents:
     if not isinstance(doc, dict):
         continue

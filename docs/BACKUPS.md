@@ -18,6 +18,48 @@ a pod annotation, so its files have no backup at all. Only its database does.
 restore of the gotify volume into an isolated namespace were verified the same
 day; see below.
 
+## Weekly automated restore test
+
+Every Wednesday morning (Europe/Berlin) four CronJobs named `restore-test`
+restore the newest backups and check what came back. Each run starts by removing
+whatever the previous one left, and ends by deleting its copy.
+
+| CronJob | Time | Restores | Passes when |
+| --- | --- | --- | --- |
+| `tandoor/restore-test` | 10:00 | `tandoor-postgresql`, newest base backup plus all archived WAL | Cluster Ready, same table count as live, at least 90% of live rows, a write reads back |
+| `media/restore-test` | 10:15 | `cantus-postgresql`, likewise | likewise |
+| `immich/restore-test` | 10:30 | `immich-postgresql`, likewise | likewise |
+| `velero-restore-test/restore-test` | 10:45 | gotify's `data` volume from the newest `daily-critical-backup` | Restore `Completed`, PodVolumeRestore `Completed`, gotify Ready on the restored database |
+
+The database tests create a Cluster named `restore-test` in the source
+namespace, because that is where the ObjectStore and its B2 credential already
+are; copying the credential elsewhere would mean decrypting it. The recovery
+Cluster has no `spec.plugins`, so it never archives. The Velero test restores
+only gotify's pod and claim into `velero-restore-test`, which has default-deny
+networking and no Service or route.
+
+What may be created is held twice: RBAC limits deletes to the test object's
+name, and the `restore-tests` admission policy refuses any Cluster or Restore
+from the test accounts that is not the test object (a different name, a WAL
+archiver, superuser access, another namespace's data). `tests/test_restore_tests.py`
+fails when a recovery Cluster drifts from its production image, archive or
+credentials, and `scripts/schema-check.py` validates the embedded manifests.
+
+Results reach Gotify through the `restore-tests` PrometheusRule in the velero
+namespace: `RestoreTestFailed` when a run has not succeeded five hours after it
+started, `RestoreTestStale` after eight days without a success,
+`RestoreTestNeverSucceeded`, and `RestoreTestMissing` when a CronJob disappears.
+Each resolves on the next successful run. The verify step prints only table,
+row and size counts, never row content. To run one now:
+
+```sh
+kubectl create job -n <namespace> --from=cronjob/restore-test restore-test-manual
+```
+
+This is the routine check. It does not replace the manual procedures below,
+which compare against a snapshot taken at a known time and test the app against
+the restored database.
+
 ## Restore acceptance
 
 1. Recover age, B2 and Kopia credentials from storage independent of the cluster.

@@ -26,6 +26,9 @@ spec:
       # and its alert database holds request paths with query strings, some
       # carrying API keys. Nothing there is worth an off-site copy.
       - crowdsec
+      # The weekly restore test's throwaway copy of gotify. Empty except on
+      # Wednesday mornings, or after a failed run.
+      - velero-restore-test
 
     # Backup all resources
     includedResources:

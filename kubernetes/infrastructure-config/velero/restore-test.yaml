@@ -1,0 +1,363 @@
+---
+# Weekly Velero restore test: gotify's volume from the newest
+# daily-critical-backup, restored into velero-restore-test and started there.
+# See docs/BACKUPS.md, "Weekly automated restore test".
+#
+# Gotify because it is small, it is in the daily schedule, and its volume
+# holds a SQLite database the app opens on start: a pod that turns Ready on
+# the restored volume has read real data, not just found a directory.
+#
+# Velero's file-system restore only runs for pods it restores itself, so the
+# Restore includes gotify's pod as well as its claim. Restoring only the claim
+# gives an empty volume that looks like success. The PodVolumeRestore wait
+# below is what tells the two apart: no PodVolumeRestore means no data came
+# back, and the wait fails.
+#
+# Only pods and claims. No Service, route or NetworkPolicy is restored, so the
+# copy cannot take traffic, and it carries velero.io/restore-name, which is
+# what every cleanup step selects on.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: restore-test-manifests
+  namespace: velero-restore-test
+  annotations:
+    # scripts/schema-check.py validates the Restore below like any other.
+    rechenzentrum.dev/embedded-manifests: "true"
+data:
+  restore.yaml: |
+    apiVersion: velero.io/v1
+    kind: Restore
+    metadata:
+      name: velero-restore-test-gotify
+      namespace: velero
+    spec:
+      # The newest completed backup of the schedule.
+      scheduleName: daily-critical-backup
+      includedNamespaces: [gotify]
+      namespaceMapping:
+        gotify: velero-restore-test
+      includedResources: [pods, persistentvolumeclaims]
+      resourceModifier:
+        kind: ConfigMap
+        name: velero-restore-test-modifier
+---
+# The copy is a test pod. Gotify's own pod runs at rechenzentrum-critical,
+# which would let the copy preempt real workloads on a full node.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: velero-restore-test-modifier
+  namespace: velero
+data:
+  modifier.yaml: |
+    version: v1
+    resourceModifierRules:
+      - conditions:
+          groupResource: pods
+        patches:
+          - operation: remove
+            path: /spec/priorityClassName
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: restore-test
+  namespace: velero-restore-test
+---
+# Create the one Restore and follow it. Delete is held to its name. What the
+# Restore may contain is held by the velero-restore-test admission policy:
+# without it, this grant could restore any namespace's secrets into one this
+# account can read.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: velero-restore-test
+  namespace: velero
+rules:
+  - apiGroups: ["velero.io"]
+    resources: ["restores"]
+    verbs: ["create", "get", "list", "watch"]
+  - apiGroups: ["velero.io"]
+    resources: ["restores"]
+    resourceNames: ["velero-restore-test-gotify"]
+    verbs: ["delete"]
+  - apiGroups: ["velero.io"]
+    resources: ["podvolumerestores"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: velero-restore-test
+  namespace: velero
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: velero-restore-test
+subjects:
+  - kind: ServiceAccount
+    name: restore-test
+    namespace: velero-restore-test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: restore-test
+  namespace: velero-restore-test
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: restore-test
+  namespace: velero-restore-test
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: restore-test
+subjects:
+  - kind: ServiceAccount
+    name: restore-test
+    namespace: velero-restore-test
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: restore-test
+  namespace: velero-restore-test
+spec:
+  # Wednesdays after the three database tests (10:00-10:30), in daylight so an
+  # alert lands while someone is awake.
+  schedule: "45 10 * * 3"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      # One attempt; every run starts by removing what the last one left.
+      backoffLimit: 0
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: restore-test
+        spec:
+          serviceAccountName: restore-test
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          # Init containers run in order, because rancher/kubectl is the kubectl
+          # binary alone, with no shell to sequence the steps in. A failing step
+          # ends the Job and leaves the copy for the next run's first steps.
+          initContainers:
+            # Foreground, so the old run's PodVolumeRestores (owned by the
+            # Restore) are gone before the new run waits on that label.
+            - name: remove-leftover-restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - restores.velero.io/velero-restore-test-gotify
+                - --namespace=velero
+                - --cascade=foreground
+                - --ignore-not-found
+                - --wait
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: remove-leftover-copy
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - pods,persistentvolumeclaims
+                - --selector=velero.io/restore-name=velero-restore-test-gotify
+                - --ignore-not-found
+                - --wait
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args: [create, -f, /manifests/restore.yaml]
+              volumeMounts:
+                - name: manifests
+                  mountPath: /manifests
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            # PartiallyFailed and Failed never satisfy this, so they time out
+            # and fail the Job.
+            - name: wait-restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - restores.velero.io/velero-restore-test-gotify
+                - --namespace=velero
+                - --for=jsonpath={.status.phase}=Completed
+                - --timeout=30m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            # Fails with "no matching resources" when Velero restored the claim
+            # but wrote no data into it.
+            - name: wait-volume-data
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - podvolumerestores.velero.io
+                - --namespace=velero
+                - --selector=velero.io/restore-name=velero-restore-test-gotify
+                - --for=jsonpath={.status.phase}=Completed
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            # Gotify opens and migrates its database before it serves /, so
+            # Ready means the restored SQLite file is readable by the app.
+            - name: wait-app-ready
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - pods
+                - --selector=velero.io/restore-name=velero-restore-test-gotify
+                - --for=condition=Ready
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          containers:
+            - name: remove-copy
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - pods,persistentvolumeclaims
+                - --selector=velero.io/restore-name=velero-restore-test-gotify
+                - --wait
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: manifests
+              configMap:
+                name: restore-test-manifests
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: velero-restore-test
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: velero-restore-test
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+# The test Job's kubectl. The address is the node's, as in
+# components/allow-egress-to-apiserver: egress rules match after the API
+# Service is rewritten.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-restore-test-to-apiserver
+  namespace: velero-restore-test
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: restore-test
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.8.226/32
+      ports:
+        - protocol: TCP
+          port: 6443

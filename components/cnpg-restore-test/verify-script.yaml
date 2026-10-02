@@ -1,0 +1,48 @@
+---
+# Runs in the source database's own Postgres image, after the restored Cluster
+# reports Ready. Ready only says Postgres started; this says the data came back.
+#
+# It counts the same thing on both sides: the user tables the database owner
+# can read, and the exact rows in them (count(*), not the planner's estimate,
+# which a fresh restore has not collected yet). The restored copy must have
+# every table the live one has and at least MIN_ROW_PERCENT of its rows. The
+# restore replays WAL to the newest archived segment, so the two differ only by
+# what was written in the minutes since; a big gap means a stale base backup or
+# WAL that never arrived. Then a write on the copy, which a cluster stuck in
+# recovery refuses.
+#
+# Only counts are printed. No row content leaves the database.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: restore-test-verify
+data:
+  verify.sh: |
+    set -eu
+    export PGDATABASE="$DB" PGCONNECT_TIMEOUT=10 PGAPPNAME=restore-test
+    q() { psql -X -A -t -q -v ON_ERROR_STOP=1 -h "$1" -c "$2"; }
+    counts="select count(*) || ' ' || coalesce(sum((xpath('/row/c/text()',
+      query_to_xml(format('select count(*) as c from %I.%I', schemaname, relname),
+      false, true, '')))[1]::text::bigint), 0)
+      from pg_stat_user_tables where has_table_privilege(relid, 'SELECT')"
+
+    restored=$(q restore-test-rw "$counts")
+    live=$(q "$LIVE_HOST" "$counts")
+    size=$(q restore-test-rw "select pg_size_pretty(pg_database_size(current_database()))")
+    recovering=$(q restore-test-rw "select pg_is_in_recovery()")
+    written=$(q restore-test-rw "create temp table restore_test_rw as select 42 as v; select v from restore_test_rw")
+
+    r_tables=${restored% *} r_rows=${restored#* }
+    l_tables=${live% *} l_rows=${live#* }
+    echo "restored $DB: $size, $r_tables tables, $r_rows rows"
+    echo "live     $DB: $l_tables tables, $l_rows rows"
+
+    fail=0
+    check() { if ! eval "$1"; then echo "FAIL: $2"; fail=1; fi; }
+    check '[ "$l_tables" -gt 0 ] && [ "$l_rows" -gt 0 ]' "live database reports no data; the comparison means nothing"
+    check '[ "$r_tables" -eq "$l_tables" ]' "restored copy has $r_tables tables, live has $l_tables"
+    check '[ $((r_rows * 100)) -ge $((l_rows * MIN_ROW_PERCENT)) ]' "restored copy has fewer than $MIN_ROW_PERCENT% of live rows"
+    check '[ "$recovering" = f ]' "restored cluster is still in recovery"
+    check '[ "$written" = 42 ]' "write on the restored cluster did not read back"
+    [ "$fail" -eq 0 ] && echo "PASS: $DB restored and verified"
+    exit "$fail"

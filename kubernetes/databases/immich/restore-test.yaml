@@ -1,0 +1,207 @@
+---
+# Weekly restore test for immich-postgresql. The shared parts (account, network
+# paths, verify script) are in components/cnpg-restore-test; see
+# docs/BACKUPS.md, "Weekly automated restore test".
+#
+# The recovery Cluster is a file the Job creates, not an object Flux applies:
+# it must exist only while the test runs. It reads the same ObjectStore the
+# production cluster archives to and has no spec.plugins entry, so it can
+# never archive WAL and overwrite the history it was restored from. The
+# cnpg-restore-test admission policy refuses one that could.
+#
+# imageName must stay on the production cluster's image, or recovery refuses
+# the data directory. tests/test_restore_tests.py holds the two equal.
+#
+# The largest of the three, so it gets the longest deadline. Its storage size
+# mirrors production; local-ssd does not reserve it, so the disk only has to
+# hold the database's real size for the length of the test. One instance, not
+# two: a replica proves nothing about the backup.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: restore-test-cluster
+  annotations:
+    # scripts/schema-check.py validates the Cluster below like any other.
+    rechenzentrum.dev/embedded-manifests: "true"
+data:
+  cluster.yaml: |
+    apiVersion: postgresql.cnpg.io/v1
+    kind: Cluster
+    metadata:
+      name: restore-test
+    spec:
+      instances: 1
+      imageName: ghcr.io/tensorchord/cloudnative-pgvecto.rs:16-v0.3.0
+      # Velero must not copy the throwaway data if a backup ever overlaps a
+      # run.
+      inheritedMetadata:
+        annotations:
+          backup.velero.io/backup-volumes-excludes: pgdata,pg-wal,shm,scratch-data,plugins
+      postgresql:
+        shared_preload_libraries:
+          - vectors.so
+      bootstrap:
+        recovery:
+          source: origin
+          # The owner and its password come back with the data. Naming the
+          # live secret stops the operator inventing an "app" owner with a
+          # new password, so the verify step logs in as the real one.
+          database: immich
+          owner: immich
+          secret:
+            name: immich-credentials
+      externalClusters:
+        - name: origin
+          plugin:
+            name: barman-cloud.cloudnative-pg.io
+            parameters:
+              barmanObjectName: immich-postgresql-backup
+              serverName: immich-postgresql
+      resources:
+        requests:
+          memory: "512Mi"
+          cpu: "100m"
+      storage:
+        storageClass: local-ssd
+        size: 200Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: restore-test
+spec:
+  # Wednesdays, in daylight, so an alert lands while someone is awake. Clear of
+  # the nightly base backups, velero (02:00, Sunday 03:00) and the WAN drop at
+  # 03:00. The three databases are staggered so their restores do not share
+  # the uplink.
+  schedule: "30 10 * * 3"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      # One attempt. A retry would hide a flaky restore, and every run starts
+      # by deleting whatever the last one left.
+      backoffLimit: 0
+      activeDeadlineSeconds: 14400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: restore-test
+        spec:
+          serviceAccountName: restore-test
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          # The steps are init containers because rancher/kubectl is the
+          # kubectl binary alone, with no shell to sequence them in. A failing
+          # step ends the Job before the cleanup container runs; the first step
+          # of the next run removes the leftover instead.
+          initContainers:
+            - name: remove-leftover
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args: [delete, clusters.postgresql.cnpg.io/restore-test, --ignore-not-found, --wait, --timeout=10m]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args: [create, -f, /manifests/cluster.yaml]
+              volumeMounts:
+                - name: manifests
+                  mountPath: /manifests
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: wait-ready
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args: [wait, clusters.postgresql.cnpg.io/restore-test, --for=condition=Ready, --timeout=210m]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: verify
+              # The source's own image, for a psql that matches the server.
+              image: ghcr.io/tensorchord/cloudnative-pgvecto.rs:16-v0.3.0
+              command: [sh, /scripts/verify.sh]
+              env:
+                - name: DB
+                  value: immich
+                - name: LIVE_HOST
+                  value: immich-postgresql-rw
+                - name: MIN_ROW_PERCENT
+                  value: "90"
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: immich-credentials
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: immich-credentials
+                      key: password
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          containers:
+            - name: remove
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args: [delete, clusters.postgresql.cnpg.io/restore-test, --wait, --timeout=10m]
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: manifests
+              configMap:
+                name: restore-test-cluster
+            - name: scripts
+              configMap:
+                name: restore-test-verify

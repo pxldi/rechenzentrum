@@ -16,16 +16,6 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "The ARC runner's docker:dind pin lives inside a Flux postRenderer patch, which is an opaque string to the flux and kubernetes managers",
-      "fileMatch": [
-        "^kubernetes/apps/actions-runner/helmrelease-runners\\.yaml$"
-      ],
-      "matchStrings": [
-        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+value: \\S+:(?<currentValue>\\S+)"
-      ]
-    },
-    {
-      "customType": "regex",
       "description": "immich's chart-wide image tag has no sibling repository key - server and machine-learning each supply their own and inherit the tag - so the helm-values manager has no depName and cannot track it",
       "fileMatch": [
         "^kubernetes/apps/immich/helmrelease\\.yaml$"

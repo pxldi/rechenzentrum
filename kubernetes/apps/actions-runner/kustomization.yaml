@@ -11,7 +11,6 @@ resources:
   - networkpolicy.yaml
   - secret.yaml
   - helmrelease-controller.yaml
-  - helmrelease-runners.yaml
 
 # Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
 labels:

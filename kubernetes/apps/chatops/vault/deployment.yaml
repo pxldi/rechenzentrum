@@ -116,7 +116,7 @@ spec:
             limits:
               memory: 512Mi
         - name: vault-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-85df190fd0b2383922b3baff53b011e022f4c57e
+          image: ghcr.io/pxldi/homelab-mcp:sha-feea6fed13aa0fe3191cca6310fed8c4563b51ec
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "vault_mcp"]
           ports:
@@ -171,7 +171,7 @@ spec:
         # (oauth.py in the image). Writes may land in ops/, the specs, tasks
         # and ideas a chat is meant to produce, and nowhere else.
         - name: vault-mcp-claude
-          image: ghcr.io/pxldi/homelab-mcp:sha-85df190fd0b2383922b3baff53b011e022f4c57e
+          image: ghcr.io/pxldi/homelab-mcp:sha-feea6fed13aa0fe3191cca6310fed8c4563b51ec
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "vault_mcp"]
           ports:

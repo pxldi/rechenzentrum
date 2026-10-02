@@ -100,13 +100,18 @@ jobs:
           image-ref: ${{ env.IMAGE }}:sha-${{ env.SHA }}
           severity: HIGH,CRITICAL
           format: table
-      - name: Gate on fixable critical vulnerabilities
+      # Reports, does not block (owner's decision, 2026-10-02). Unlike the
+      # other images, claudebox bundles upstream release binaries (age,
+      # kustomize, the Android SDK's bouncycastle) whose fixes arrive when
+      # upstream rebuilds them. The findings stay visible in this step and,
+      # once the image runs, in Trivy Operator's ImageCriticalVulnerabilities.
+      - name: Report fixable critical vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ env.IMAGE }}:sha-${{ env.SHA }}
           severity: CRITICAL
           ignore-unfixed: true
-          exit-code: "1"
+          exit-code: "0"
           format: table
           skip-setup-trivy: true
 

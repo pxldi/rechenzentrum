@@ -27,7 +27,6 @@
 #
 #   privileged      device-plugins  generic-device-plugin hands /dev/dri to pods
 #                   home-assistant  otbr (Thread border router: radio, tun, nft)
-#                   arc-runners     docker:dind in every ephemeral runner
 #                   openebs         localpv helper pods create and wipe volume dirs
 #   hostPath        device-plugins  /dev, kubelet device-plugin socket
 #                   home-assistant  otbr: the ZBT-2 radio, /dev/net/tun, dbus
@@ -63,7 +62,7 @@ spec:
         resources: [pods, pods/ephemeralcontainers]
   variables:
     - name: privilegedNamespaces
-      expression: "['device-plugins', 'home-assistant', 'arc-runners', 'openebs']"
+      expression: "['device-plugins', 'home-assistant', 'openebs']"
     - name: hostPathNamespaces
       expression: "['device-plugins', 'home-assistant', 'openebs', 'observability', 'velero', 'falco']"
     - name: hostNamespaceNamespaces
@@ -157,8 +156,8 @@ metadata:
 spec:
   policyName: workload-baseline
   # Warn first, then Deny. The offline render cannot see the TrueCharts media
-  # charts, seerr, or pods that controllers create at runtime (ARC listeners,
-  # CNPG instances, Velero data movers, OpenEBS helpers). Warn surfaces any of
+  # charts, seerr, or pods that controllers create at runtime (CNPG instances,
+  # Velero data movers, OpenEBS helpers). Warn surfaces any of
   # them that would be refused, and WorkloadBaselineViolation in
   # prometheusrule.yaml pages on it. Switch to [Deny, Audit] once that alert
   # has stayed quiet for a week that includes a scheduled backup and a

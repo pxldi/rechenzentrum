@@ -53,18 +53,13 @@ Every application namespace except the two at the end of this section.
 | `tandoor` | own namespace, internet, API server | Postgres here; recipe import; CNPG |
 | `whisper-cpp` | nothing | Transcription happens in the pod; the model is already on the PVC |
 
-### Two namespaces deliberately left alone
+### One namespace deliberately left alone
 
 **`home-assistant`.** Its pods run with `hostNetwork: true`, and NetworkPolicy
 does not apply to a host-network pod, so every component here would be inert.
 Its own `networkpolicy.yaml` already says so. It also talks to Zigbee, Thread and
 Matter devices all over the LAN, which is exactly what `allow-internet-egress`
 excludes, so the rule would be wrong for it even if it did apply.
-
-**`actions-runner`.** It already carries `runners-egress-internet-only`, which is
-`allow-internet-egress` plus DNS under another name, and it is the one app here
-whose kustomization has no `namespace:`, because it spans `arc-systems` and
-`arc-runners`. Nothing to add.
 
 ## The components
 

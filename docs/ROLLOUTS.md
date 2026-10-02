@@ -9,7 +9,6 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | adventurelog | Deployment/adventurelog-backend | Recreate | adventurelog-media | yes |
 | adventurelog | Deployment/adventurelog-db | Recreate | adventurelog-db | yes |
 | adventurelog | Deployment/adventurelog-frontend | RollingUpdate | none | yes |
-| arc-systems | Deployment/arc-controller-gha-rs-controller | RollingUpdate | none | no |
 | authentik | StatefulSet/authentik-postgresql | RollingUpdate | none | yes |
 | authentik | Deployment/authentik-server | RollingUpdate | none | yes |
 | authentik | Deployment/authentik-worker | RollingUpdate | none | yes |

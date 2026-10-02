@@ -128,9 +128,6 @@
   "apps/v1/StatefulSet/obsidian-sync/obsidian-sync": {
     "kind": "StatefulSet"
   },
-  "helm.toolkit.fluxcd.io/v2/HelmRelease/arc-systems/arc-controller": {
-    "kind": "HelmRelease"
-  },
   "helm.toolkit.fluxcd.io/v2/HelmRelease/authentik/authentik": {
     "kind": "HelmRelease"
   },
@@ -207,12 +204,6 @@
     "spec_sha256": "b679dbe2d9ffbf480ddf7ba682cb6562894c38e9b2b35ee90de5db302b5ff9de"
   },
   "v1/Namespace//adventurelog": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//arc-runners": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//arc-systems": {
     "kind": "Namespace"
   },
   "v1/Namespace//authentik": {

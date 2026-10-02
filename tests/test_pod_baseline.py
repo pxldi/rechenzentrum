@@ -28,8 +28,12 @@ class PodBaseline(unittest.TestCase):
     def test_privileged_refused_outside_exception(self):
         self.assertTrue(self.check(pod(containers=container(privileged=True))))
 
-    def test_privileged_allowed_for_dind_runners(self):
-        self.assertEqual(self.check(pod('arc-runners', containers=container(privileged=True))), [])
+    def test_privileged_allowed_for_device_plugins(self):
+        self.assertEqual(self.check(pod('device-plugins', containers=container(privileged=True))), [])
+
+    def test_privileged_refused_for_retired_runner_namespace(self):
+        # arc-runners lost its dind exception with the ARC removal on 2026-10-02.
+        self.assertTrue(self.check(pod('arc-runners', containers=container(privileged=True))))
 
     def test_exception_is_per_check(self):
         # observability may mount the host for node-exporter, but not run privileged.

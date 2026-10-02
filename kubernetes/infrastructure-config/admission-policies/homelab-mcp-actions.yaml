@@ -1,0 +1,104 @@
+# The second lock on the Telegram bot's three cluster writes. RBAC lets the
+# homelab-mcp ServiceAccount delete pods, patch Flux objects and create Velero
+# Backups; on its own, a patch on a HelmRelease could rewrite its values and
+# run anything, and a Backup hook runs a command inside the pods it backs up.
+# This policy holds each grant to the one thing the tool does, whatever the
+# code in the image says:
+#
+#   pods delete         not in the protected namespaces, not a CNPG instance
+#   Flux patch          spec, labels and every other annotation unchanged;
+#                       only reconcile.fluxcd.io/requestedAt may differ
+#   Backup create       in velero, no hooks, the default storage location,
+#                       no resource policy but the volume policy
+#
+# It matches nothing but requests from that ServiceAccount.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: homelab-mcp-actions
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [DELETE]
+        resources: [pods]
+      - apiGroups: [kustomize.toolkit.fluxcd.io]
+        apiVersions: ["*"]
+        operations: [UPDATE]
+        resources: [kustomizations]
+      - apiGroups: [helm.toolkit.fluxcd.io]
+        apiVersions: ["*"]
+        operations: [UPDATE]
+        resources: [helmreleases]
+      - apiGroups: [velero.io]
+        apiVersions: ["*"]
+        operations: [CREATE]
+        resources: [backups]
+  matchConditions:
+    - name: homelab-mcp-only
+      expression: request.userInfo.username == 'system:serviceaccount:chatops:homelab-mcp'
+  variables:
+    - name: protectedNamespaces
+      expression: >-
+        ['kube-system', 'kube-public', 'kube-node-lease', 'flux-system',
+         'cnpg-system', 'chatops']
+    - name: isPod
+      expression: request.resource.resource == 'pods'
+    - name: isFlux
+      expression: request.resource.resource in ['kustomizations', 'helmreleases']
+    - name: isBackup
+      expression: request.resource.resource == 'backups'
+    - name: newAnnotations
+      expression: >-
+        variables.isFlux && has(object.metadata.annotations)
+          ? object.metadata.annotations : {}
+    - name: oldAnnotations
+      expression: >-
+        variables.isFlux && has(oldObject.metadata.annotations)
+          ? oldObject.metadata.annotations : {}
+  validations:
+    - expression: >-
+        !variables.isPod || !(request.namespace in variables.protectedNamespaces)
+      messageExpression: >-
+        'the bot may not restart pods in ' + request.namespace
+      reason: Forbidden
+    - expression: >-
+        !variables.isPod || !has(oldObject.metadata.labels) ||
+        !('cnpg.io/cluster' in oldObject.metadata.labels)
+      message: The bot may not delete a CNPG instance; the operator manages those.
+      reason: Forbidden
+    - expression: >-
+        !variables.isFlux || (
+          object.spec == oldObject.spec &&
+          (has(object.metadata.labels) ? object.metadata.labels : {}) ==
+            (has(oldObject.metadata.labels) ? oldObject.metadata.labels : {}) &&
+          variables.newAnnotations.all(k, k == 'reconcile.fluxcd.io/requestedAt' ||
+            (k in variables.oldAnnotations && variables.oldAnnotations[k] == variables.newAnnotations[k])) &&
+          variables.oldAnnotations.all(k, k == 'reconcile.fluxcd.io/requestedAt' ||
+            k in variables.newAnnotations))
+      message: >-
+        The bot may only set reconcile.fluxcd.io/requestedAt on a Flux object.
+      reason: Forbidden
+    - expression: >-
+        !variables.isBackup || (
+          request.namespace == 'velero' &&
+          !has(object.spec.hooks) &&
+          (!has(object.spec.storageLocation) || object.spec.storageLocation == 'default') &&
+          (!has(object.spec.resourcePolicy) || object.spec.resourcePolicy.name == 'velero-volume-policy'))
+      message: >-
+        A backup from the bot must run in velero, without hooks, to the default
+        storage location, with no resource policy but velero-volume-policy.
+      reason: Forbidden
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: homelab-mcp-actions
+spec:
+  policyName: homelab-mcp-actions
+  # Deny from the start: nothing uses these permissions yet, so there is
+  # nothing to break, and the grants must never exist without it.
+  validationActions: [Deny, Audit]
+  matchResources: {}

@@ -6,6 +6,8 @@ resources:
   - sources
   - networking
   - crowdsec
+  - trivy-operator
+  - falco
   - authentik
   - backup
   - velero-ui

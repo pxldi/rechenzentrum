@@ -91,6 +91,9 @@ always_ask = [
   # remove numbers that were already logged or that define the goal.
   "snacky__log_estimate", "snacky__update_entry", "snacky__delete_entry",
   "snacky__set_goal",
+  # The only cluster writes: a pod restart, a Flux reconcile, a backup run.
+  # Each changes the live cluster, so each asks every time.
+  "homelab__restart_workload", "homelab__reconcile_flux", "homelab__backup_now",
 ]
 
 # The image is distroless: no sh anywhere. ZeroClaw's native runtime still

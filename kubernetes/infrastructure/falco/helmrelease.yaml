@@ -1,0 +1,85 @@
+---
+# Falco watches every syscall on the node through the modern eBPF probe and
+# matches it against the upstream stable ruleset: a shell spawned in a
+# container, a write below /etc or a binary directory, a read of a sensitive
+# file by a process that has no business with it, a container escape attempt.
+# The probe ships inside Falco; nothing is compiled or loaded into the kernel,
+# and it needs the kernel's BTF, which NixOS kernels carry.
+#
+# leastPrivileged: four capabilities instead of a privileged container.
+#
+# Rules come from falcoctl at pod start (falco-rules:5, the ruleset's current
+# major). The follow sidecar is off, so they change only when the pod
+# restarts, not under a running Falco.
+#
+# Matches are counted per rule and priority and scraped by Prometheus;
+# FalcoWarningEvents in prometheusrule.yaml sends Warning and above to Gotify.
+# The event itself, with process, container and pod, is in the pod log:
+#   kubectl logs -n falco ds/falco -c falco | grep -v '"priority":"Notice"'
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: falco
+  namespace: falco
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: falco
+      version: 9.2.0
+      sourceRef:
+        kind: HelmRepository
+        name: falcosecurity
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    driver:
+      kind: modern_ebpf
+      modernEbpf:
+        leastPrivileged: true
+
+    collectors:
+      enabled: true
+      containerEngine:
+        enabled: true
+        engines:
+          docker:
+            enabled: false
+          podman:
+            enabled: false
+          containerd:
+            enabled: false
+          # k3s runs its own containerd and puts the socket here.
+          cri:
+            enabled: true
+            sockets: ["/run/k3s/containerd/containerd.sock"]
+
+    falcoctl:
+      artifact:
+        follow:
+          enabled: false
+
+    falco:
+      json_output: true
+      priority: notice
+
+    metrics:
+      enabled: true
+      interval: 15m
+    serviceMonitor:
+      create: true
+
+    podPriorityClassName: rechenzentrum-critical
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 1Gi

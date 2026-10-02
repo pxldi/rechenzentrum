@@ -1,0 +1,131 @@
+---
+# Scans the image of every running workload for known vulnerabilities and
+# keeps the result next to it as a VulnerabilityReport:
+#
+#   kubectl get vulnerabilityreports -A
+#   kubectl get vulnerabilityreport -n <ns> <name> -o yaml
+#
+# Only what a version bump can fix is reported (ignoreUnfixed), because that is
+# the only kind this repository can act on: a Renovate PR or a pinned digest.
+# The counts go to Prometheus, and ImageCriticalVulnerabilities in
+# prometheusrule.yaml says which workload has a fixable critical.
+#
+# Sized for one node. One scan job at a time, against a built-in Trivy server
+# that downloads the database once instead of once per job. The server keeps
+# the database on an emptyDir and fetches it again after a restart. Off:
+# node-collector (CIS checks need hostPath on the node), compliance reports,
+# SBOMs and secret scanning, which cost memory and would page on noise.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: trivy-operator
+  namespace: trivy-system
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: trivy-operator
+      version: 0.36.0
+      sourceRef:
+        kind: HelmRepository
+        name: aquasecurity
+        namespace: flux-system
+      interval: 12h
+  install:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  upgrade:
+    crds: CreateReplace
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    operator:
+      builtInTrivyServer: true
+      scanJobsConcurrentLimit: 1
+      scanJobTimeout: 10m
+      scanJobTTL: 10m
+      vulnerabilityScannerEnabled: true
+      vulnerabilityScannerScanOnlyCurrentRevisions: true
+      configAuditScannerEnabled: true
+      rbacAssessmentScannerEnabled: true
+      infraAssessmentScannerEnabled: false
+      clusterComplianceEnabled: false
+      sbomGenerationEnabled: false
+      exposedSecretScannerEnabled: false
+      # Rescan a day after the last report, so a CVE published against a
+      # running image shows up without a new rollout.
+      scannerReportTTL: 24h
+      # Off: with it the chart grants get/create/update on Secrets in every
+      # namespace, so the operator can copy pull secrets into scan jobs. That
+      # would make it the one pod that can read every credential here. Images
+      # behind a pull secret go unscanned instead.
+      accessGlobalSecretsAndServiceAccount: false
+
+    trivy:
+      ignoreUnfixed: true
+      severity: HIGH,CRITICAL
+      # The server's database lives on an emptyDir; no PVC to keep.
+      storageClassEnabled: false
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256M
+        limits:
+          memory: 1G
+      server:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            memory: 1Gi
+        podSecurityContext:
+          runAsUser: 65534
+          runAsNonRoot: true
+          fsGroup: 65534
+          seccompProfile:
+            type: RuntimeDefault
+        securityContext:
+          privileged: false
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+
+    trivyOperator:
+      scanJobPodTemplatePodSecurityContext:
+        runAsUser: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      scanJobPodTemplateContainerSecurityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+
+    priorityClassName: rechenzentrum-bulk
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+    podSecurityContext:
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+    securityContext:
+      privileged: false
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: ["ALL"]
+
+    serviceMonitor:
+      enabled: true

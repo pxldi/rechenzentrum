@@ -1,0 +1,14 @@
+---
+# privileged, because baseline refuses what Falco is made of: hostPath mounts
+# of /proc, /etc, /usr, /boot, /lib/modules, /sys/kernel and the containerd
+# socket, and the BPF, PERFMON, SYS_RESOURCE and SYS_PTRACE capabilities.
+# workload-baseline still holds the rest here: no privileged container, no
+# host namespaces, no hostPort.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: falco
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: v1.33
+    kubernetes.io/metadata.name: falco

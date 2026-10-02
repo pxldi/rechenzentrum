@@ -19,6 +19,10 @@ spec:
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: "OnRootMismatch"
+        # The one setting restricted asked for that this pod lacked; with it
+        # the namespace enforces restricted.
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: searxng
           image: ghcr.io/searxng/searxng:2026.3.6-68ff08f22

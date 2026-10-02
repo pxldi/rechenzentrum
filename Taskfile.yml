@@ -23,6 +23,10 @@ tasks:
   policy:test:
     cmds:
       - python3 scripts/check-policies.py
+  policy:live:
+    desc: Running pods that workload-baseline would refuse (read-only)
+    cmds:
+      - python3 scripts/pod_baseline.py --live
   flux:status:
     cmds:
       - flux get all -A

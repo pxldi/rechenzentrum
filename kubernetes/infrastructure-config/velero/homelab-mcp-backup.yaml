@@ -1,0 +1,28 @@
+---
+# homelab-mcp's backup_now tool (kubernetes/apps/chatops/mcp/rbac.yaml has
+# the rest). Here rather than beside it because that kustomization rewrites
+# every namespace to chatops. Backups are created in velero and nowhere else,
+# and the homelab-mcp-actions policy refuses one with hooks.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: homelab-mcp-backup
+  namespace: velero
+rules:
+  - apiGroups: ["velero.io"]
+    resources: ["backups"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: homelab-mcp-backup
+  namespace: velero
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: homelab-mcp-backup
+subjects:
+  - kind: ServiceAccount
+    name: homelab-mcp
+    namespace: chatops

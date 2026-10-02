@@ -79,10 +79,13 @@ Configured does not mean live or restore-tested.
 | Namespaces | Separate Flux owner; namespace deletion stays explicit |
 | Components/labels | Metadata-only app labels; opt-in rollout, hardening, DNS/egress components |
 | Rollout pilot | Excalidraw has a startup probe and zero-unavailable rolling update |
-| Admission | Existing policies retained; additional Pod checks in Audit/Warn |
+| Admission | PSA enforces restricted in cert-manager, cnpg-system, flux-system, traefik, monitoring, renovate, searxng and snacky, baseline in the other labelled namespaces. `workload-baseline` narrows the namespaces labelled privileged to the checks each needs: Warn/Audit from 2026-10-02, Deny after a quiet week of `WorkloadBaselineViolation`. The restricted checks in `workload-security-audit` stay Audit/Warn |
 | Exposure | Decided and applied 2026-09-13: 19 routes require LAN or tailnet plus Authentik, see [EXPOSURE.md](EXPOSURE.md). Karakeep and the Schall API stay public on purpose |
 | Backups | CNPG and Velero restores verified 2026-09-12, see [BACKUPS.md](BACKUPS.md); Schall audio files are deliberately excluded, see [BACKUPS.md](BACKUPS.md#cantus) |
 | Image automation | Retired 2026-09-18. Renovate covers image tags; Schall follows a mutable development tag on purpose |
+| Image scanning | Trivy Operator in `trivy-system` rescans running images daily for fixable HIGH/CRITICAL CVEs, `ImageCriticalVulnerabilities` alerts per workload. The four images built here fail CI on a fixable CRITICAL and are signed keyless with cosign on push; nothing verifies signatures at admission yet |
+| Runtime detection | Falco (modern eBPF, four capabilities, no privileged container) watches syscalls with the upstream stable rules; `FalcoWarningEvents` alerts on Warning and above, `FalcoNotReporting` when it goes quiet |
 | Schall namespace | slskd moved out 2026-09-13 and `media` is baseline; Schall stays, see [SCHALL_ISOLATION.md](SCHALL_ISOLATION.md) |
 | Edge/egress expansion | Done for every application namespace, see [EGRESS.md](EGRESS.md). `home-assistant` is hostNetwork so policy does not apply; `actions-runner` already had an equivalent rule |
+| Bot actions | `restart_workload`, `reconcile_flux` and `backup_now` in homelab-mcp from 2026-10-02, asked in the chat every time and held by RBAC plus the `homelab-mcp-actions` admission policy; live once the image tag is bumped |
 | ZeroClaw/MCP | Deployed 2026-09-18, see [CHATOPS.md](CHATOPS.md): ZeroClaw on Telegram with a Tandoor MCP server and a read-only homelab MCP server. Needs its four credentials in `chatops-credentials` to come alive |

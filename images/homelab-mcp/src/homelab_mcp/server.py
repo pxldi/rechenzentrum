@@ -7,6 +7,7 @@ from kubernetes import client, config
 from mcp.server import MCPServer
 from pydantic import Field
 
+from homelab_mcp import actions
 from serve import guarded
 
 mcp = MCPServer("homelab")
@@ -276,3 +277,63 @@ def backups(limit: int = Field(20, ge=1, le=100)) -> dict:
         for s in scheds
     ]
     return {"backups": rows[-limit:], "schedules": schedules}
+
+
+# --- actions -----------------------------------------------------------------
+#
+# Three writes, each asked for in the chat before it runs (always_ask in
+# ZeroClaw's config). The ServiceAccount may delete pods, patch Flux objects
+# and create Velero Backups, and the homelab-mcp-actions admission policy
+# narrows that again: Flux patches may only set the reconcile annotation, and
+# a Backup may not carry hooks or name another storage location.
+
+
+@mcp.tool()
+@guarded(client.ApiException, RuntimeError)
+def restart_workload(namespace: str, name: str) -> dict:
+    """Restart a Deployment or StatefulSet by deleting its pods, so the controller starts fresh ones. Expect a short outage for single-replica apps."""
+    apps, core = _apps(), _core()
+    obj: Any = None
+    for getter in (apps.read_namespaced_deployment, apps.read_namespaced_stateful_set):
+        try:
+            obj = getter(name, namespace)
+            break
+        except client.ApiException as e:
+            if e.status != 404:
+                raise
+    if obj is None:
+        raise RuntimeError(f"no Deployment or StatefulSet {namespace}/{name}")
+    selector = ",".join(f"{k}={v}" for k, v in (obj.spec.selector.match_labels or {}).items())
+    if not selector:
+        raise RuntimeError("the workload selects its pods by expression only; restart it from a terminal")
+    pods = core.list_namespaced_pod(namespace, label_selector=selector).items
+    actions.check_restartable(namespace, [p.metadata.labels for p in pods])
+    for p in pods:
+        core.delete_namespaced_pod(p.metadata.name, namespace)
+    return {"namespace": namespace, "workload": name, "deleted_pods": [p.metadata.name for p in pods]}
+
+
+@mcp.tool()
+@guarded(client.ApiException, RuntimeError)
+def reconcile_flux(
+    kind: str = Field(description="kustomization or helmrelease"),
+    namespace: str = Field(description="Usually flux-system for Kustomizations, the app's namespace for HelmReleases."),
+    name: str = Field(description="As flux_status lists it."),
+) -> dict:
+    """Ask Flux to reconcile one Kustomization or HelmRelease now instead of at its next interval, like `flux reconcile`."""
+    group, version, plural = actions.flux_kind(kind)
+    _custom().patch_namespaced_custom_object(
+        group, version, namespace, plural, name, actions.reconcile_patch(datetime.now(timezone.utc))
+    )
+    return {"kind": kind, "namespace": namespace, "name": name, "requested": True}
+
+
+@mcp.tool()
+@guarded(client.ApiException, RuntimeError)
+def backup_now(schedule: str = Field(description="A Velero schedule name, as backups lists it.")) -> dict:
+    """Start a Velero backup now with exactly the scope and retention of an existing schedule."""
+    cu = _custom()
+    sched = cu.get_namespaced_custom_object("velero.io", "v1", "velero", "schedules", schedule)
+    body = actions.manual_backup(sched, datetime.now(timezone.utc))
+    cu.create_namespaced_custom_object("velero.io", "v1", "velero", "backups", body)
+    return {"backup": body["metadata"]["name"], "schedule": schedule, "namespaces": body["spec"].get("includedNamespaces", [])}

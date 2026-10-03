@@ -190,10 +190,10 @@ spec:
           env:
             - name: CLAUDE_CODE_VERSION
               # renovate: datasource=npm depName=@anthropic-ai/claude-code
-              value: "2.1.280"
+              value: "2.1.286"
             - name: CODEX_VERSION
               # renovate: datasource=npm depName=@openai/codex
-              value: "0.153.4"
+              value: "0.159.3"
             # npm's default cache is $HOME/.npm and HOME is / for uid 0 here.
             - name: npm_config_cache
               value: /tmp/npm-cache

@@ -170,8 +170,8 @@ as the `haus` agent, in Europe/Berlin time:
 | Job | When | What |
 | --- | --- | --- |
 | `planning_nudge` | 16:00 on Sunday, Tuesday and Thursday | If nothing is planned for today or tomorrow: two or three numbered recipe suggestions, leftovers first. A reply with the number plans it and puts the missing ingredients on the shopping list. |
-| `evening_check` | 20:00 daily | If something is planned for today: "Hast du X gekocht?". "Ja" logs it and asks for a rating; "Nein" offers to move it to tomorrow. After the confirmation it also asks how many portions were eaten and logs them in Snacky with the cook log id; if the day's protein is under the goal it adds one line with the gap and a vegan option or two. |
-| `weekly_review` | 19:00 on Sunday | Calls Snacky's `week_summary` and sends a short message: days logged, average protein against the goal, training days and weight trend if present, one encouraging observation. `NO_REPLY` when the week has no entries. |
+| `evening_check` | 20:00 daily | If something is planned for today: "Hast du X gekocht?". "Ja" logs it and asks for a rating; "Nein" offers to move it to tomorrow. After the confirmation it also asks how many portions were eaten and logs them in Snacky with the cook log id; if the day's protein is under the goal it adds one line with the gap and an option or two. |
+| `weekly_review` | 19:00 on Sunday | Calls Snacky's `week_summary` and sends a short message whose content is defined in a vault note (`ops/haus/ernaehrung.md`), as are the diet rules. `NO_REPLY` when the week has no entries. |
 
 Snacky is a separate app ([pxldi/snacky](https://github.com/pxldi/snacky)) with its own image, so it is not in `wait-for-mcp`'s `MCP_URLS`: that script waits for each URL's `/health` build to equal its own image build. The `zeroclaw-egress` policy allows port 8000 to pods labelled `app: snacky` in the `snacky` namespace. Goals and body data live in Snacky's database, not in this repository.
 

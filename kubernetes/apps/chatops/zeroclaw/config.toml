@@ -45,9 +45,13 @@ path = "/zeroclaw-data/zeroclaw/agents/haus/workspace"
 level = "supervised"
 # deliver_file sends a file from the workspace to the chat; the only files
 # that land there are what MCP tools return (a Paperless page picture).
-allowed_tools = ["memory_recall", "memory_store", "memory_search", "time", "deliver_file"]
+# web_search_tool asks the in-cluster SearXNG (see [web_search]) and returns
+# titles, links and snippets; reading a found page stays with the MCP tools
+# (a recipe link goes through tandoor__preview_recipe_from_url).
+allowed_tools = ["memory_recall", "memory_store", "memory_search", "time", "deliver_file", "web_search_tool"]
 auto_approve = [
   "memory_recall", "memory_store", "memory_search", "time", "deliver_file",
+  "web_search_tool",
   "tandoor__search_recipes", "tandoor__get_recipe", "tandoor__list_meal_plan",
   "tandoor__list_meal_types", "tandoor__list_keywords",
   "tandoor__leftovers", "tandoor__recipes_for_leftovers", "tandoor__log_cooked",
@@ -174,6 +178,18 @@ max_duration_secs = 300
 [transcription.local_whisper]
 url = "http://whisper-cpp.whisper-cpp.svc.cluster.local:8080/inference"
 timeout_secs = 540
+
+# Web search. The Codex backend only gets ZeroClaw's own function tools, not
+# ChatGPT's hosted search, so searching is this built-in tool. It is on by
+# default but allowed_tools filtered it out, and its default provider scrapes
+# DuckDuckGo, which blocks scrapers. SearXNG runs in the cluster with the JSON
+# format on; the matching ingress rule lives in kubernetes/apps/searxng.
+[web_search]
+enabled = true
+search_provider = "searxng"
+searxng_instance_url = "http://searxng.searxng.svc.cluster.local:8080"
+max_results = 8
+timeout_secs = 20
 
 [memory]
 # No embedding provider is configured, so keyword search rather than a hybrid

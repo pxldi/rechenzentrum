@@ -47,6 +47,7 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 | files | `send_to_paperless` | approve/deny keyboard in the chat first |
 | snacky | `search_food`, `log_food`, `log_barcode`, `log_label`, `log_recipe_portion`, `day_summary`, `week_summary`, `add_serving` | runs on its own |
 | snacky | `log_estimate`, `update_entry`, `delete_entry`, `set_goal` | approve/deny keyboard in the chat first |
+| built-in | `web_search_tool` (titles, links and snippets from the in-cluster SearXNG) | runs on its own |
 | homelab | `list_services`, `list_workloads`, `workload_status`, `pod_logs`, `events`, `flux_status`, `backups` | runs on its own |
 | homelab | `restart_workload` (deletes a Deployment's or StatefulSet's pods), `reconcile_flux`, `backup_now` (a Velero backup from an existing schedule's template) | approve/deny keyboard in the chat, every time |
 

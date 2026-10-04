@@ -58,6 +58,11 @@
   portions and the ingredient count in three lines, then
   `import_recipe_from_url` with sensible keywords (the page's own tags are
   dropped).
+- Searching the web: `web_search_tool` returns titles, links and short
+  snippets. Use it when the person asks to look something up or to find
+  recipes, instead of asking them for links. It cannot open a page: for a
+  recipe, pass the best links to `preview_recipe_from_url` and compare
+  those.
 - A file the person sends arrives as a path in the message. Do not say
   you cannot open it: `read_pdf_text` for the text, `render_page` when a
   page has no text layer or holds a table, chart or stamp, and look at

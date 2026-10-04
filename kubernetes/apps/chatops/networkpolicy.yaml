@@ -31,8 +31,8 @@ spec:
 ---
 # The agent dials out to api.telegram.org, to chatgpt.com (the Codex backend)
 # and auth.openai.com (token refresh), to its MCP servers next door (Snacky in its
-# own namespace), and to
-# whisper-cpp for voice notes. Nothing else.
+# own namespace), to
+# whisper-cpp for voice notes and to SearXNG for web searches. Nothing else.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -75,6 +75,17 @@ spec:
       ports:
         - protocol: TCP
           port: 443
+    # Web searches go to SearXNG, which asks the search engines.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: searxng
+          podSelector:
+            matchLabels:
+              app: searxng
+      ports:
+        - protocol: TCP
+          port: 8080
     # Voice notes go to whisper-server for transcription.
     - to:
         - namespaceSelector:

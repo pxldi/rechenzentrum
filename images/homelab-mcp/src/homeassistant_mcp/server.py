@@ -100,7 +100,7 @@ async def _switch(entity_id: str, service: str, extra: dict | None = None) -> di
 @mcp.tool()
 @guarded(httpx.HTTPError, RuntimeError)
 async def turn_on(
-    entity_id: str = Field(..., description="e.g. light.wohnzimmer or switch.eve_energy_20ebo8301"),
+    entity_id: str = Field(..., description="e.g. light.wohnzimmer or switch.plug"),
     brightness_percent: int | None = Field(None, ge=1, le=100, description="Lights only."),
 ) -> dict:
     """Switch a light, plug, fan or input boolean on. Returns the new state."""

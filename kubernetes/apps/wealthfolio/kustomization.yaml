@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: wealthfolio
 resources:
   - secret.yaml
+  - healthchecks-secret.yaml
   - deployment.yaml
   - backup.yaml
   - ingress.yaml

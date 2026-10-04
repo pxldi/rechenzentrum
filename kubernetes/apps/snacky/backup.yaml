@@ -45,7 +45,27 @@ spec:
                 - python
                 - -c
                 - |
-                  import datetime, glob, os, sqlite3, sys
+                  import atexit, datetime, glob, os, sqlite3, sys, time, urllib.request
+
+                  # healthchecks.io: a start ping, then success or fail from atexit, which
+                  # runs on sys.exit() and on an uncaught exception alike. Same contract as
+                  # karakeep's job: failed pings are ignored and an empty key skips them.
+                  def hc(suffix):
+                      key = os.environ.get("HC_PING_KEY", "")
+                      if not key:
+                          return
+                      for _ in range(3):
+                          try:
+                              urllib.request.urlopen(
+                                  "https://hc-ping.com/" + key + "/snacky-db-backup" + suffix, timeout=10
+                              ).close()
+                              return
+                          except Exception:
+                              time.sleep(5)
+
+                  done = False
+                  atexit.register(lambda: hc("" if done else "/fail"))
+                  hc("/start")
 
                   src_path = os.environ["SNACKY_DB"]
                   # connect() would quietly create an empty database here.
@@ -78,9 +98,17 @@ spec:
                   others.sort(key=os.path.getmtime, reverse=True)
                   for stale in others[2:]:
                       os.remove(stale)
+
+                  done = True
               env:
                 - name: SNACKY_DB
                   value: /data/snacky.sqlite
+                - name: HC_PING_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: healthchecks
+                      key: ping-key
+                      optional: true
               securityContext:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true

@@ -104,7 +104,7 @@ spec:
     # --- Alertmanager ---
     alertmanager:
       # Route alerts to Gotify via the gotify-bridge instances.
-      # Watchdog (always-firing dead-man's switch) is dropped to null.
+      # Watchdog (always-firing dead-man's switch) goes to healthchecks.io.
       config:
         # The WAN drops for about a minute at 03:00 every night, and every
         # flux source that fetches then fails DNS. A source that is still
@@ -123,7 +123,21 @@ spec:
           repeat_interval: 4h
           receiver: gotify-warning
           routes:
-            - receiver: "null"
+            # Watchdog fires for as long as Prometheus and Alertmanager both
+            # work, and every notification is a ping to healthchecks.io. When
+            # the pings stop -- node down, WAN down, k3s down, Prometheus or
+            # Alertmanager broken -- healthchecks.io alerts from outside. Every
+            # other alert here travels node -> Gotify, so it shares the fate
+            # of the thing it would report; this one does not.
+            #
+            # A repeat every 2m against a 5m period with 10m grace on the
+            # check (scripts/healthchecks-setup.sh): the minute-long WAN drop
+            # at 03:00 costs at most one ping and stays silent, an outage
+            # pages within about a quarter of an hour.
+            - receiver: healthchecks-watchdog
+              group_wait: 0s
+              group_interval: 1m
+              repeat_interval: 2m
               matchers:
                 - alertname = "Watchdog"
             # InfoInhibitor is a meta-alert whose only job is to inhibit other
@@ -165,6 +179,16 @@ spec:
                 - severity =~ "warning|info"
         receivers:
           - name: "null"
+          # url_file, not url: the ping URL carries the project's ping key, and
+          # these values are rendered into plain Git. The file is the
+          # `healthchecks` Secret, mounted by alertmanagerSpec.secrets below.
+          # healthchecks.io takes the webhook POST as a ping; the body is
+          # ignored. send_resolved is off: Watchdog resolving means the
+          # pipeline died, and that is what the missing pings already say.
+          - name: healthchecks-watchdog
+            webhook_configs:
+              - url_file: /etc/alertmanager/secrets/healthchecks/watchdog-url
+                send_resolved: false
           - name: gotify-critical
             webhook_configs:
               - url: http://gotify-bridge-critical.observability.svc.cluster.local:8080/gotify_webhook
@@ -219,6 +243,10 @@ spec:
               - alertname =~ "KubePodNotReady|KubeDeploymentReplicasMismatch|KubeDeploymentRolloutStuck|KubeStatefulSetReplicasMismatch"
             equal: ["namespace"]
       alertmanagerSpec:
+        # Mounted at /etc/alertmanager/secrets/healthchecks/ for the Watchdog
+        # receiver above.
+        secrets:
+          - healthchecks
         storage:
           volumeClaimTemplate:
             spec:

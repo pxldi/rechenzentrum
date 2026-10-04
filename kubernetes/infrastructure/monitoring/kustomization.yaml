@@ -5,6 +5,7 @@ resources:
   - namespace.yaml
   - secret.yaml
   - gotify-bridge-secret.yaml
+  - healthchecks-secret.yaml
   - helmrelease.yaml
   - ingressroute.yaml
   - gotify-bridge.yaml

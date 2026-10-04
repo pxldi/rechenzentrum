@@ -154,7 +154,7 @@ job_type = "agent"
 schedule = { kind = "cron", expr = "0 19 * * 0", tz = "Europe/Berlin" }
 session_target = "main"
 prompt = """Es ist Sonntagabend. Rufe snacky__week_summary auf. Wenn die Woche keine Einträge hat, antworte mit exakt NO_REPLY und sonst nichts.
-Sonst schreibe eine kurze Nachricht: an wie vielen Tagen geloggt wurde, das durchschnittliche Protein gegen das Ziel, die Trainingstage und der Gewichtstrend (nur wenn die Daten da sind), und eine ermutigende Beobachtung. Fortschritt zählt mehr als Perfektion, keine Belehrung, alles vegan. Höchstens 6 Zeilen, keine Einleitung."""
+Sonst lies mit vault__read_note die Notiz ops/haus/ernaehrung.md und schreibe den Wochenrückblick so, wie sie es unter "Wochenrückblick" vorgibt."""
 delivery = { mode = "announce", channel = "telegram.home", to = "@TELEGRAM_CHAT_ID@", best_effort = true }
 
 # Telegram voice notes are transcribed before the agent sees them, by the

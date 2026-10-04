@@ -1,6 +1,6 @@
 ---
-# Public, because the phone is used at the gym, off the LAN and not always on
-# the tailnet. openGym's own login is passkey only (no password to guess),
+# Public, because its clients are used off the LAN and not always on the
+# tailnet. openGym's own login is passkey only (no password to guess),
 # signup needs an invite code and guest mode is off (deployment.yaml).
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute

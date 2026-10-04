@@ -1,19 +1,9 @@
 { ... }:
 
 {
-  # A private network for the node, the workstation, the laptop and the KVM.
-  #
-  # The point is not convenience, it is closing 48222. Right now sshd is one of
-  # exactly two things reachable from the internet, and while a pubkey-only,
-  # root-disabled sshd on a non-standard port is a defensible thing to expose, a
-  # closed port is strictly better than a well-configured open one. Once this is
-  # up and proven, the forward can be deleted on the router and the node's only
-  # inbound path from the internet is 443 to Traefik.
-  #
-  # It also gives the GL.iNet Comet KVM somewhere to live that is not the
-  # internet and not a vendor's cloud relay. That device emulates a keyboard
-  # attached to this machine; it should never be port-forwarded, and with a
-  # tailnet it does not have to be.
+  # A private network for the node and the admin devices, so management access
+  # (sshd, the API server, out-of-band consoles) needs no port forward and the
+  # node's only inbound path from the internet can be 443 to Traefik.
   services.tailscale = {
     enable = true;
     # Opens UDP 41641 for direct connections. Without it traffic still works but

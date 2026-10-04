@@ -2,9 +2,8 @@
 name: Flake Update
 
 # Answers the audit's "who bumps the flake input", where the answer had been
-# nobody: nixpkgs sat pinned at 2026-04-21 until 2026-08-25, four months of
-# unpatched kernel, openssh, systemd and containerd on a node with 443 and
-# 48222 open to the internet.
+# nobody: nixpkgs sat pinned for four months without kernel, openssh, systemd
+# or containerd fixes.
 #
 # Renovate cannot do this one. Its `nix` manager shells out to the `nix` binary
 # to update a flake.lock, and the renovate/renovate image does not ship it — so

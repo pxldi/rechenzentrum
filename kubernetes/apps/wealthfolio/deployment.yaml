@@ -1,15 +1,6 @@
 ---
-# Wealthfolio: net worth across bank accounts and the Scalable depot, with
-# performance and dividends. Chosen over Firefly on 2026-09-26: the goal is the
-# total, not spending categories.
-#
-# Where the numbers come from, and why by hand:
-# - The depot: Scalable's transaction CSV, imported about once a month. No
-#   self-hosted tool can sync a German depot automatically; PSD2 covers payment
-#   accounts only, and services like Finanzfluss Copilot use a licensed
-#   aggregator (finAPI). Quotes update on their own.
-# - Volksbank and Revolut: their balances, entered at the same time as cash
-#   accounts. Automating two numbers a month was not worth a second app.
+# Wealthfolio: net worth and investment performance. Data is imported by hand
+# (broker CSV exports, balances entered manually); quotes update on their own.
 #
 # Login is authentik's forward-auth in front of a house-only route, so the app
 # runs with WF_AUTH_REQUIRED=false; the server refuses to start without either

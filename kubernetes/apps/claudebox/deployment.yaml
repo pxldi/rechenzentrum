@@ -114,6 +114,14 @@ spec:
       # coarser grant than it looks.
       serviceAccountName: claudebox
       automountServiceAccountToken: true
+      # A fixed hostname, because Remote Control registers each server under
+      # the machine's hostname. With the Deployment's generated pod name
+      # (claudebox-<hash>-<id>) every rollout showed up on claude.ai as a new
+      # device, and a project's chosen default device went stale with it.
+      # replicas: 1 with Recreate means two pods never hold the name at once.
+      # The environment itself is reused across restarts through the bridge
+      # pointer each server keeps under ~/.claude on the PVC.
+      hostname: claudebox
       securityContext:
         fsGroup: 1000
       initContainers:
@@ -177,7 +185,7 @@ spec:
         # Same image as the runtime container, so the pod pulls one image rather
         # than two and this step already has the node and npm it needs.
         - name: install-tools
-          image: ghcr.io/pxldi/claudebox:sha-ce9a241f5abcc0e3b5d513e153d7e13d162dac10
+          image: ghcr.io/pxldi/claudebox:sha-7bb9e634ebbd38cd89734d1d4e599c4fdcb365af
           command:
             - bash
             - -c
@@ -259,7 +267,7 @@ spec:
               mountPath: /rendered
       containers:
         - name: claudebox
-          image: ghcr.io/pxldi/claudebox:sha-ce9a241f5abcc0e3b5d513e153d7e13d162dac10
+          image: ghcr.io/pxldi/claudebox:sha-7bb9e634ebbd38cd89734d1d4e599c4fdcb365af
           imagePullPolicy: IfNotPresent
           command: ["sh", "/entrypoint/entrypoint.sh"]
           # So that an interactive `kubectl exec ... -- claude` starts in the
@@ -307,8 +315,12 @@ spec:
             # Concurrent sessions each server will hand out. A cap, not a
             # reservation. See entrypoint.sh for the measured memory numbers,
             # and for why four cores rather than 6Gi is the limit that bites.
+            # 4, up from 2: a finished project-thread session keeps its slot
+            # until it is stopped, so at 2 a folder filled up after two
+            # threads and the next one hung or was refused. Five servers at
+            # 4 idle sessions each is ~5.4Gi, still inside the 6Gi limit.
             - name: CLAUDEBOX_SESSION_CAPACITY
-              value: "2"
+              value: "4"
             # Idle servers cost ~165Mi each; more repositories than this get a
             # log line instead of a server.
             - name: CLAUDEBOX_MAX_REPO_SERVERS

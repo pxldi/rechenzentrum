@@ -185,8 +185,10 @@ spec:
             # Notifications outside weekly-digest are muted, not queued, and
             # the group only re-evaluates every group_interval. So that must
             # tick exactly once inside the one-hour window: 1h. The repeat is
-            # 160h, not 168h, because a repeat of exactly a week lands a few
-            # milliseconds short at next Monday's tick and skips that week.
+            # under the 120h notification-log retention, or Alertmanager warns
+            # that it cannot honour it. Any value between a day and 120h gives
+            # one message a week: every tick after it outside the window is
+            # muted, and the next Monday tick sends.
             # A digest that starts on a Tuesday waits for the next Monday.
             - receiver: "null"
               matchers:
@@ -195,7 +197,7 @@ spec:
               group_by: ["alertname"]
               group_wait: 1m
               group_interval: 1h
-              repeat_interval: 160h
+              repeat_interval: 119h
               active_time_intervals: ["weekly-digest"]
               matchers:
                 - alertname = "ImageVulnerabilityDigest"

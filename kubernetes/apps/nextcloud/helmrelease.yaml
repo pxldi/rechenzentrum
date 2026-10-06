@@ -109,24 +109,18 @@ spec:
             memory: "256Mi"
             cpu: "200m"
 
+    # redis.yaml runs the cache on the official image. The bitnami subchart
+    # is pinned to bitnamilegacy/redis, which no longer gets security fixes.
     redis:
+      enabled: false
+    externalRedis:
       enabled: true
-      auth:
+      host: nextcloud-cache
+      port: "6379"
+      existingSecret:
         enabled: true
-        existingSecret: nextcloud-credentials
-        # Both the nextcloud container env helper and the bitnami redis
-        # subchart read the password from existingSecretPasswordKey; the
-        # redis-password key is the one the redis server already uses.
-        existingSecretPasswordKey: redis-password
-      master:
-        persistence:
-          enabled: true
-          storageClass: local-ssd
-          size: 1Gi
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
+        secretName: nextcloud-credentials
+        passwordKey: redis-password
 
     persistence:
       enabled: true

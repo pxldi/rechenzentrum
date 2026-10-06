@@ -34,7 +34,9 @@ spec:
         serverName: cantus-postgresql
 
   instances: 1
-  imageName: ghcr.io/cloudnative-pg/postgresql:17.6
+  # The plain tag is the Debian bullseye build this data directory was
+  # created on. Other bases change glibc collations; see renovate.json.
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11@sha256:70664ebcfa1100361b5bdc28bbf06fdbe08db2dc4ad7bd14de33c5e05fe8ea8e
 
   postgresql:
     shared_preload_libraries: []

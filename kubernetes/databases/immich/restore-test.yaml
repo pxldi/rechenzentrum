@@ -31,7 +31,7 @@ data:
       name: restore-test
     spec:
       instances: 1
-      imageName: ghcr.io/tensorchord/cloudnative-pgvecto.rs:16-v0.3.0
+      imageName: ghcr.io/tensorchord/cloudnative-vectorchord:16.15-1.1.1@sha256:f5a17fa05faf25e81304ee95e9f920d8ae077ac4a4ef0a1251e09c7197cbb236
       # Velero must not copy the throwaway data if a backup ever overlaps a
       # run.
       inheritedMetadata:
@@ -39,7 +39,7 @@ data:
           backup.velero.io/backup-volumes-excludes: pgdata,pg-wal,shm,scratch-data,plugins
       postgresql:
         shared_preload_libraries:
-          - vectors.so
+          - vchord.so
       bootstrap:
         recovery:
           source: origin
@@ -150,7 +150,7 @@ spec:
                   drop: ["ALL"]
             - name: verify
               # The source's own image, for a psql that matches the server.
-              image: ghcr.io/tensorchord/cloudnative-pgvecto.rs:16-v0.3.0
+              image: ghcr.io/tensorchord/cloudnative-vectorchord:16.15-1.1.1@sha256:f5a17fa05faf25e81304ee95e9f920d8ae077ac4a4ef0a1251e09c7197cbb236
               command: [sh, /scripts/verify.sh]
               env:
                 - name: DB

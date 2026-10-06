@@ -197,11 +197,11 @@
   },
   "postgresql.cnpg.io/v1/Cluster/media/cantus-postgresql": {
     "kind": "Cluster",
-    "spec_sha256": "98066bb88336862b364ffb69f04cfa11a96055df38481b184ef9c764f38c4118"
+    "spec_sha256": "4b8a4355241046b2e2fbc4277b00e80f8c2b7cefa3d4f5ffb1a767a9fd7f2c2b"
   },
   "postgresql.cnpg.io/v1/Cluster/tandoor/tandoor-postgresql": {
     "kind": "Cluster",
-    "spec_sha256": "b679dbe2d9ffbf480ddf7ba682cb6562894c38e9b2b35ee90de5db302b5ff9de"
+    "spec_sha256": "b9c190945d44f2db29f31d752bacf2ff25660f8462afce0fd80a7833f71fc58c"
   },
   "v1/Namespace//adventurelog": {
     "kind": "Namespace"

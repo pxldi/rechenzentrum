@@ -7,8 +7,8 @@
 #
 # Only what a version bump can fix is reported (ignoreUnfixed), because that is
 # the only kind this repository can act on: a Renovate PR or a pinned digest.
-# The counts go to Prometheus, and ImageCriticalVulnerabilities in
-# prometheusrule.yaml says which workload has a fixable critical.
+# The counts go to Prometheus. prometheusrule.yaml tracks each affected
+# workload and sends a weekly digest of what Renovate has not fixed in a week.
 #
 # Sized for one node. One scan job at a time, against a built-in Trivy server
 # that downloads the database once instead of once per job. The server keeps

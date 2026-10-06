@@ -60,8 +60,7 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | wealthfolio | Deployment/wealthfolio | Recreate | wealthfolio-data | yes |
 | nextcloud | Deployment/nextcloud | Recreate | nextcloud-nextcloud, nextcloud-data-pvc | no |
 | nextcloud | StatefulSet/nextcloud-postgresql | RollingUpdate | none | yes |
-| nextcloud | StatefulSet/nextcloud-redis-master | RollingUpdate | none | yes |
-| nextcloud | StatefulSet/nextcloud-redis-replicas | RollingUpdate | none | yes |
+| nextcloud | Deployment/nextcloud-cache | RollingUpdate | none | yes |
 | observability | StatefulSet/alertmanager-kube-prometheus-stack-alertmanager | RollingUpdate | none | no |
 | observability | Deployment/gotify-bridge-critical | RollingUpdate | none | yes |
 | observability | Deployment/gotify-bridge-flux | RollingUpdate | none | yes |

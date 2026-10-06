@@ -116,6 +116,13 @@ spec:
                   - start_time: "02:55"
                     end_time: "03:15"
                 location: Europe/Berlin
+          - name: weekly-digest
+            time_intervals:
+              - weekdays: ["monday"]
+                times:
+                  - start_time: "09:00"
+                    end_time: "10:00"
+                location: Europe/Berlin
         route:
           group_by: ["alertname", "namespace"]
           group_wait: 30s
@@ -171,6 +178,27 @@ spec:
               mute_time_intervals: ["nightly-wan-drop"]
               matchers:
                 - severity = "error"
+            # Image CVEs: the per-image alert only records state, and the
+            # digest summarises it once a week (trivy-operator/
+            # prometheusrule.yaml).
+            #
+            # Notifications outside weekly-digest are muted, not queued, and
+            # the group only re-evaluates every group_interval. So that must
+            # tick exactly once inside the one-hour window: 1h. The repeat is
+            # 160h, not 168h, because a repeat of exactly a week lands a few
+            # milliseconds short at next Monday's tick and skips that week.
+            # A digest that starts on a Tuesday waits for the next Monday.
+            - receiver: "null"
+              matchers:
+                - alertname = "ImageCriticalVulnerabilities"
+            - receiver: gotify-warning
+              group_by: ["alertname"]
+              group_wait: 1m
+              group_interval: 1h
+              repeat_interval: 160h
+              active_time_intervals: ["weekly-digest"]
+              matchers:
+                - alertname = "ImageVulnerabilityDigest"
             - receiver: gotify-critical
               matchers:
                 - severity = "critical"

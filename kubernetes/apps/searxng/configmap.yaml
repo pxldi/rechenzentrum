@@ -46,9 +46,17 @@ data:
       - 'Unit Converter'
 
     engines:
+      # General web engines. With only DuckDuckGo, Brave, Qwant and
+      # Startpage, one burst of queries from the chat bot got all four
+      # rate-limited or CAPTCHA'd at once and every search came back empty,
+      # so the load is spread wider. Startpage and Mojeek stay off: both now
+      # answer with a proof-of-work CAPTCHA and upstream marks them inactive.
       - name: duckduckgo
         disabled: false
         weight: 1.5
+
+      - name: duckduckgo web
+        disabled: false
 
       - name: brave
         disabled: false
@@ -57,23 +65,20 @@ data:
       - name: qwant
         disabled: false
 
-      - name: startpage
-        disabled: false
-        weight: 1.2
-
       - name: google
-        disabled: true
+        disabled: false
 
       - name: bing
-        disabled: true
+        disabled: false
+
+      - name: yahoo
+        disabled: false
 
       - name: wikipedia
         disabled: false
       - name: github
         disabled: false
       - name: stackoverflow
-        disabled: false
-      - name: reddit
         disabled: false
 
       - name: archwiki

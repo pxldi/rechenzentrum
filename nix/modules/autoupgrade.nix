@@ -65,11 +65,16 @@ in
   system.autoUpgrade = {
     enable = true;
     operation = "switch";
-    # `?dir=nix` because the flake sits in a subdirectory of the repo; nix
-    # clones the repo and reads the flake from there. `ref=main` pins the
-    # branch, and the module adds --refresh so the fetch is not served from
-    # the flake cache.
-    flake = "git+https://github.com/pxldi/rechenzentrum?dir=nix&ref=main";
+    # `?dir=nix` because the flake sits in a subdirectory of the repo, and
+    # `/main` pins the branch; the module adds --refresh so the fetch is not
+    # served from the flake cache.
+    #
+    # No `&` anywhere in this string. The module pastes it into the unit's
+    # shell script unquoted, so `?dir=nix&ref=main` backgrounded a rebuild of
+    # `?dir=nix` and then ran `ref=main --upgrade` as a command: exit 127,
+    # every morning, from the day this URL was introduced. The github: form
+    # carries the branch in the path and needs only one query parameter.
+    flake = "github:pxldi/rechenzentrum/main?dir=nix";
     dates = "04:45";
     # Spread nothing: the window above was chosen on purpose.
     randomizedDelaySec = "0";

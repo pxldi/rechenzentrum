@@ -193,7 +193,7 @@
   },
   "postgresql.cnpg.io/v1/Cluster/immich/immich-postgresql": {
     "kind": "Cluster",
-    "spec_sha256": "6401e8421c5ca813e3b819a33ffa3145d0c498a8a7a3752e3aa8a1db2853a216"
+    "spec_sha256": "92966a3c293a2a804079657bca480c3f871da193e3db54c77a1061879b7b6368"
   },
   "postgresql.cnpg.io/v1/Cluster/media/cantus-postgresql": {
     "kind": "Cluster",

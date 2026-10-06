@@ -78,6 +78,19 @@ spec:
     # in the postgis image is Debian's perl wrapper running as root, and it
     # reads /etc/shadow on every probe (observed 2026-10-02: every hit of
     # "Read sensitive file untrusted" came from it).
+    #
+    # NixOS activation (host, not a container): every `nixos-rebuild switch`
+    # runs update-users-groups.pl under activate/dry-activate, the activate
+    # script itself, and systemd's re-exec, which read /etc/shadow and
+    # /etc/pam.d/systemd-user. Each rebuild raised six Warnings (2026-10-06).
+    #
+    # API server clients by design (2026-10-06: 99% of all Notice events):
+    # velero-ui reads Velero resources, the CNPG barman-cloud sidecar reads
+    # its ObjectStore, authentik's worker manages its outposts, and fredy's
+    # restart CronJob restarts fredy. claudebox's kubectl stays visible.
+    #
+    # nextcloud: apache2 runs `sh -c -- command -v -- <binary>` to find
+    # libreoffice; only that exact command line is excepted.
     customRules:
       rechenzentrum-exceptions.yaml: |-
         - rule: Read sensitive file untrusted
@@ -87,6 +100,56 @@ spec:
               comps: [=, in, =, =]
               values:
                 - [adventurelog, [postgis/postgis, docker.io/postgis/postgis], pg_isready, /etc/shadow]
+            - name: nixos_update_users_groups
+              fields: [container.id, proc.name, proc.pname, proc.cmdline, fd.name]
+              comps: [=, =, in, contains, =]
+              values:
+                - [host, perl, [activate, dry-activate], update-users-groups.pl, /etc/shadow]
+            - name: nixos_activate
+              fields: [container.id, proc.name, proc.pname, fd.name]
+              comps: [=, =, =, =]
+              values:
+                - [host, activate, .switch-to-conf, /etc/shadow]
+            - name: nixos_systemd_reexec
+              fields: [container.id, proc.pname, proc.cmdline, fd.name]
+              comps: [=, =, contains, =]
+              values:
+                - [host, systemd, --deserialize, /etc/pam.d/systemd-user]
+          override:
+            exceptions: append
+
+        - rule: Contact K8S API Server From Container
+          exceptions:
+            - name: velero_ui
+              fields: [k8s.ns.name, container.name, container.image.repository, proc.name]
+              comps: [=, =, endswith, =]
+              values:
+                - [velero, velero-ui, otwld/velero-ui, node]
+            - name: cnpg_barman_cloud_sidecar
+              fields: [k8s.ns.name, container.name, container.image.repository, proc.name]
+              comps: [in, =, endswith, =]
+              values:
+                - [[media, immich, tandoor], plugin-barman-cloud, plugin-barman-cloud-sidecar, manager]
+            - name: authentik_worker
+              fields: [k8s.ns.name, container.name, container.image.repository, proc.pname]
+              comps: [=, =, endswith, =]
+              values:
+                - [authentik, worker, goauthentik/server, authentik]
+            - name: fredy_restart_cronjob
+              fields: [k8s.ns.name, container.name, container.image.repository, proc.cmdline]
+              comps: [=, =, endswith, =]
+              values:
+                - [fredy, kubectl, rancher/kubectl, kubectl rollout restart deployment/fredy -n fredy]
+          override:
+            exceptions: append
+
+        - rule: Run shell untrusted
+          exceptions:
+            - name: nextcloud_command_lookup
+              fields: [k8s.ns.name, container.image.repository, proc.pname, proc.cmdline]
+              comps: [=, endswith, =, =]
+              values:
+                - [nextcloud, nextcloud, apache2, "sh -c -- command -v -- 'libreoffice'"]
           override:
             exceptions: append
 

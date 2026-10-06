@@ -109,7 +109,14 @@ always_ask = [
 [runtime]
 shell = "/usr/local/bin/zeroclaw"
 
+# max_tool_iterations caps the model-and-tool rounds in one answer; past it
+# the turn stops with "reached maximum tool iterations". Upstream's 10 guards
+# against runaway loops, but one recipe search (search, preview a few links,
+# check Tandoor, nutrition) already needs more. The other guards stay: the
+# loop detector stops repeated identical calls, and the channel's whole-turn
+# timeout is 300 s x min(iterations, 4) = 20 minutes either way.
 [runtime_profiles.default]
+max_tool_iterations = 25
 
 [channels.telegram.home]
 enabled = true

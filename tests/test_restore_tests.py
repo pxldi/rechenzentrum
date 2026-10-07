@@ -111,5 +111,59 @@ class VeleroRestoreGetsANewVolume(unittest.TestCase):
                          {"pods", "persistentvolumeclaims", "persistentvolumes"})
 
 
+class MonthlyVolumeRestores(unittest.TestCase):
+    VELERO = ROOT / "kubernetes/infrastructure-config/velero"
+
+    def setUp(self):
+        self.docs = load(self.VELERO / "restore-test-monthly.yaml")
+        manifests = one(self.docs, "ConfigMap", "restore-test-monthly-manifests")["data"]
+        self.restores = {k: yaml.safe_load(v) for k, v in manifests.items()}
+
+    def test_each_restore_gets_new_volumes_and_its_own_modifier(self):
+        for key, restore in self.restores.items():
+            with self.subTest(key):
+                spec = restore["spec"]
+                self.assertEqual(set(spec["includedResources"]),
+                                 {"pods", "persistentvolumeclaims", "persistentvolumes"})
+                self.assertTrue(spec["orLabelSelectors"])
+                modifier = one(self.docs, "ConfigMap", spec["resourceModifier"]["name"])
+                self.assertEqual(modifier["metadata"]["namespace"], "velero")
+
+    def test_cronjob_creates_the_restore_it_cleans_up(self):
+        for key, restore in self.restores.items():
+            with self.subTest(key):
+                cron = one(self.docs, "CronJob", f"restore-test-{key[:-len('.yaml')]}")
+                pod = cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]
+                args = [" ".join(c["args"]) for c in pod["initContainers"] + pod["containers"]]
+                name = restore["metadata"]["name"]
+                self.assertIn(f"create -f /manifests/{key}", args)
+                self.assertTrue(all(name in a for a in args if "restore-name" in a or "restores.velero.io" in a))
+
+    def test_rbac_and_admission_allow_exactly_these_names(self):
+        rbac = load(self.VELERO / "restore-test.yaml")
+        role = one(rbac, "Role", "velero-restore-test")
+        deletable = next(r["resourceNames"] for r in role["rules"] if "resourceNames" in r)
+        policy = (ROOT / "kubernetes/infrastructure-config/admission-policies/restore-tests.yaml").read_text()
+        for restore in self.restores.values():
+            name = restore["metadata"]["name"]
+            ns = restore["spec"]["includedNamespaces"][0]
+            with self.subTest(name):
+                self.assertIn(name, deletable)
+                self.assertIn(f"'{name}': '{ns}'", policy)
+
+    def test_check_replaces_the_app_containers(self):
+        for doc in self.docs:
+            if doc["kind"] != "ConfigMap" or "modifier.yaml" not in doc.get("data", {}):
+                continue
+            with self.subTest(doc["metadata"]["name"]):
+                rules = yaml.safe_load(doc["data"]["modifier.yaml"])["resourceModifierRules"]
+                patch = yaml.safe_load(rules[0]["strategicPatches"][0]["patchData"])
+                containers = patch["spec"]["containers"]
+                kept = [c for c in containers if c.get("$patch") != "delete"]
+                self.assertEqual([c["name"] for c in kept], ["check"])
+                self.assertIn("@sha256:", kept[0]["image"])
+                self.assertIsNone(patch["spec"]["priorityClassName"])
+
+
 if __name__ == "__main__":
     unittest.main()

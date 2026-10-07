@@ -7,3 +7,4 @@ resources:
   - volume-policy-configmap.yaml
   - homelab-mcp-backup.yaml
   - restore-test.yaml
+  - restore-test-monthly.yaml

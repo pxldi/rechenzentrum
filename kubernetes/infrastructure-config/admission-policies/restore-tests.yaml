@@ -14,12 +14,13 @@
 #   Cluster create   named restore-test, one instance, bootstrapped by recovery,
 #                    no spec.plugins (so no WAL archiver), no spec.backup, no
 #                    superuser access, no extra env or projected volumes
-#   Restore create   in velero, named velero-restore-test-gotify, gotify into
-#                    velero-restore-test only, pods, claims and their PVs
+#   Restore create   in velero, one of three names, each restoring its one
+#                    source namespace (gotify weekly; immich and nextcloud
+#                    monthly) into velero-restore-test only, pods, claims and their PVs
 #                    only (Velero never creates a file-system-backed PV; it
 #                    needs to see it to provision a new one), no hooks, never
 #                    overwriting what exists
-#   delete           only those two names (RBAC says the same)
+#   delete           only those names (RBAC says the same)
 #
 # It matches nothing but requests from the four test ServiceAccounts.
 apiVersion: admissionregistration.k8s.io/v1
@@ -54,6 +55,12 @@ spec:
     - name: name
       expression: >-
         request.operation == 'DELETE' ? oldObject.metadata.name : object.metadata.name
+    # Each test Restore and the one namespace it may read.
+    - name: restoreSources
+      expression: >-
+        {'velero-restore-test-gotify': 'gotify',
+         'velero-restore-test-immich-library': 'immich',
+         'velero-restore-test-nextcloud-data': 'nextcloud'}
   validations:
     # RBAC grants no update; this keeps it that way if a Role ever widens.
     - expression: request.operation != 'UPDATE'
@@ -65,10 +72,10 @@ spec:
       reason: Forbidden
     - expression: >-
         !variables.isRestore || (request.namespace == 'velero' &&
-          variables.name == 'velero-restore-test-gotify')
+          variables.name in variables.restoreSources)
       message: >-
-        A restore test may only create or delete the Restore named
-        velero-restore-test-gotify in velero.
+        A restore test may only create or delete its own named Restores in
+        velero.
       reason: Forbidden
     - expression: >-
         !variables.isCluster || request.operation != 'CREATE' || (
@@ -86,18 +93,20 @@ spec:
     - expression: >-
         !variables.isRestore || request.operation != 'CREATE' || (
           has(object.spec.includedNamespaces) &&
-          object.spec.includedNamespaces == ['gotify'] &&
+          object.spec.includedNamespaces == [variables.restoreSources[variables.name]] &&
           has(object.spec.namespaceMapping) &&
-          object.spec.namespaceMapping == {'gotify': 'velero-restore-test'} &&
+          object.spec.namespaceMapping == {variables.restoreSources[variables.name]: 'velero-restore-test'} &&
           has(object.spec.includedResources) &&
           size(object.spec.includedResources) > 0 &&
           object.spec.includedResources.all(r, r in ['pods', 'persistentvolumeclaims', 'persistentvolumes']) &&
           !has(object.spec.hooks) &&
+          (!has(object.spec.resourceModifier) ||
+            object.spec.resourceModifier.name.startsWith('velero-restore-test-')) &&
           (!has(object.spec.existingResourcePolicy) ||
             object.spec.existingResourcePolicy == 'none'))
       message: >-
-        A restore test Restore may only bring gotify's pods, claims and PVs into
-        velero-restore-test, without hooks, overwriting nothing.
+        A restore test Restore may only bring its own app's pods, claims and
+        PVs into velero-restore-test, without hooks, overwriting nothing.
       reason: Forbidden
 ---
 apiVersion: admissionregistration.k8s.io/v1

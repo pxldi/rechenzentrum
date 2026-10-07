@@ -87,7 +87,11 @@ rules:
     verbs: ["create", "get", "list", "watch"]
   - apiGroups: ["velero.io"]
     resources: ["restores"]
-    resourceNames: ["velero-restore-test-gotify"]
+    resourceNames:
+      - velero-restore-test-gotify
+      # restore-test-monthly.yaml
+      - velero-restore-test-immich-library
+      - velero-restore-test-nextcloud-data
     verbs: ["delete"]
   - apiGroups: ["velero.io"]
     resources: ["podvolumerestores"]

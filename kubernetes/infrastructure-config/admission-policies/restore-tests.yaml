@@ -42,9 +42,9 @@ spec:
     - name: restore-test-accounts-only
       expression: >-
         request.userInfo.username in [
-          'system:serviceaccount:tandoor:restore-test',
-          'system:serviceaccount:immich:restore-test',
-          'system:serviceaccount:media:restore-test',
+          'system:serviceaccount:tandoor:restore-test-runner',
+          'system:serviceaccount:immich:restore-test-runner',
+          'system:serviceaccount:media:restore-test-runner',
           'system:serviceaccount:velero-restore-test:restore-test']
   variables:
     - name: isCluster

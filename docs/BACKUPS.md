@@ -70,6 +70,37 @@ This is the routine check. It does not replace the manual procedures below,
 which compare against a snapshot taken at a known time and test the app against
 the restored database.
 
+## Monthly full volume restore test
+
+The two volumes that hold files nothing else can recreate are restored in full
+once a month from the newest `daily-critical-backup`:
+
+| CronJob in `velero-restore-test` | When (Europe/Berlin) | Restores | Passes when |
+| --- | --- | --- | --- |
+| `restore-test-immich-library` | 1st, 11:00 | immich's photo library (`immich-library-pvc`) | Restore `Completed`, PodVolumeRestore `Completed`, all six `.immich` folder markers present, at least 1000 files, 200 random files read back |
+| `restore-test-nextcloud-data` | 2nd, 11:00 | Nextcloud's data and app volumes | Restore and PodVolumeRestores `Completed`, `data/.ocdata` and `config/config.php` present, at least 100 files, 200 random files read back |
+
+Each restores the app's pod and claims into `velero-restore-test`, selected by
+label so the database pods beside them stay out. A resource modifier replaces
+the pod's containers with a busybox check before the pod is created, so the app
+never runs in the test namespace and needs none of its secrets. The check prints
+counts only, and turns Ready when it passes; on a failure its log names what was
+missing. The copy is deleted at the end, and its volume with it.
+
+A full run downloads the whole volume from B2: about 100 GB for immich and
+30 GB for Nextcloud (October 2026). Monthly keeps that well inside B2's free
+egress. The copy lands on `local-hdd1` next to the original, so that disk needs
+the volume's size free for the run.
+
+`RestoreTestMonthlyFailed`, `RestoreTestMonthlyStale` (33 days),
+`RestoreTestMonthlyNeverSucceeded` and `RestoreTestMonthlyMissing` report them,
+like the weekly rules. To run one now:
+
+```sh
+kubectl create job -n velero-restore-test --from=cronjob/restore-test-immich-library restore-test-immich-library-manual
+```
+
+
 ## Offline copy
 
 `scripts/b2-offline-copy.sh` mirrors the B2 buckets (`rechenzentrum-backups`,

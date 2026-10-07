@@ -247,3 +247,74 @@ spec:
               Expected restore-test CronJobs in tandoor, immich, media and
               velero-restore-test. If one was removed on purpose, lower the
               count in this rule.
+
+    # The monthly full volume restores in velero-restore-test
+    # (infrastructure-config/velero/restore-test-monthly.yaml): immich's photo
+    # library on the 1st, Nextcloud's data on the 2nd. Same shape as the weekly
+    # rules, on a monthly clock. A Job is killed at 8h, so 9h means failed.
+    - name: backup.restore-tests-monthly
+      rules:
+        - alert: RestoreTestMonthlyFailed
+          expr: |
+            (time() - kube_cronjob_status_last_schedule_time{cronjob=~"restore-test-(immich-library|nextcloud-data)"} > 9 * 3600)
+            and on (namespace, cronjob)
+            (
+              kube_cronjob_status_last_schedule_time{cronjob=~"restore-test-(immich-library|nextcloud-data)"}
+                > on (namespace, cronjob)
+              kube_cronjob_status_last_successful_time{cronjob=~"restore-test-(immich-library|nextcloud-data)"}
+              or
+              kube_cronjob_status_last_schedule_time{cronjob=~"restore-test-(immich-library|nextcloud-data)"}
+                unless on (namespace, cronjob)
+              kube_cronjob_status_last_successful_time{cronjob=~"restore-test-(immich-library|nextcloud-data)"}
+            )
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: "The monthly {{ $labels.cronjob }} restore test failed"
+            description: >-
+              This month's full restore did not complete. The failed Job's log
+              in velero-restore-test names the step: wait-restore,
+              wait-volume-data or wait-check, and the check container's log
+              says what was missing. The copy stays until the next run removes
+              it.
+
+        - alert: RestoreTestMonthlyStale
+          expr: |
+            time() - kube_cronjob_status_last_successful_time{cronjob=~"restore-test-(immich-library|nextcloud-data)"} > 33 * 86400
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "No successful {{ $labels.cronjob }} restore test for over 33 days"
+            description: >-
+              The last successful run was {{ $value | humanizeDuration }} ago.
+              The tests run on the 1st (immich) and 2nd (Nextcloud) at 11:00
+              Europe/Berlin.
+
+        - alert: RestoreTestMonthlyNeverSucceeded
+          expr: |
+            (time() - kube_cronjob_created{cronjob=~"restore-test-(immich-library|nextcloud-data)"} > 33 * 86400)
+            unless on (namespace, cronjob)
+            kube_cronjob_status_last_successful_time{cronjob=~"restore-test-(immich-library|nextcloud-data)"}
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "The {{ $labels.cronjob }} restore test has never succeeded"
+            description: >-
+              The CronJob has existed for over 33 days without one successful
+              run. Check its Jobs in velero-restore-test.
+
+        - alert: RestoreTestMonthlyMissing
+          expr: |
+            count(kube_cronjob_created{cronjob=~"restore-test-(immich-library|nextcloud-data)"}) < 2
+            or absent(kube_cronjob_created{cronjob=~"restore-test-(immich-library|nextcloud-data)"})
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "A monthly restore test CronJob is missing"
+            description: >-
+              Expected restore-test-immich-library and
+              restore-test-nextcloud-data in velero-restore-test.

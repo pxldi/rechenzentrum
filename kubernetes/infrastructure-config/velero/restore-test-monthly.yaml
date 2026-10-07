@@ -1,0 +1,592 @@
+---
+# Monthly Velero restore tests of the two volumes that hold irreplaceable
+# files: immich's photo library and Nextcloud's data. The weekly gotify test
+# (restore-test.yaml) proves the mechanism; these prove the big volumes, end to
+# end, from B2. See docs/BACKUPS.md, "Monthly full volume restore test".
+#
+# Each restores the app's pod and its claims from the newest daily-critical
+# backup into velero-restore-test. Velero's file-system restore only fills
+# volumes of pods it restores itself, so the pod comes back too, but a resource
+# modifier swaps its containers for a busybox check before it is created: the
+# app itself never runs here, needs none of its secrets or services, and
+# cannot reach anything (default-deny). The check confirms the app's own
+# markers, counts the files and reads a random sample back, then turns Ready.
+#
+# persistentvolumes is included for the same reason as in the gotify test: the
+# claim only gets a new volume when Velero sees the file-system-backed PV.
+# orLabelSelectors keeps the restore to the app pod and its claims; the
+# database pods next to them are left alone.
+#
+# A full restore downloads the whole volume: about 100 GB for immich and 30 GB
+# for Nextcloud in October 2026, once a month each, inside B2's free egress.
+# The copy lands on local-hdd1 beside the original and is deleted at the end.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: restore-test-monthly-manifests
+  namespace: velero-restore-test
+  annotations:
+    # scripts/schema-check.py validates the Restores below like any other.
+    rechenzentrum.dev/embedded-manifests: "true"
+data:
+  immich-library.yaml: |
+    apiVersion: velero.io/v1
+    kind: Restore
+    metadata:
+      name: velero-restore-test-immich-library
+      namespace: velero
+    spec:
+      scheduleName: daily-critical-backup
+      includedNamespaces:
+      - immich
+      namespaceMapping:
+        immich: velero-restore-test
+      includedResources:
+      - pods
+      - persistentvolumeclaims
+      - persistentvolumes
+      orLabelSelectors:
+      - matchLabels:
+          app.kubernetes.io/instance: immich
+          app.kubernetes.io/name: server
+      - matchLabels:
+          app.kubernetes.io/instance: immich
+          app.kubernetes.io/name: immich
+      resourceModifier:
+        kind: ConfigMap
+        name: velero-restore-test-immich-modifier
+  nextcloud-data.yaml: |
+    apiVersion: velero.io/v1
+    kind: Restore
+    metadata:
+      name: velero-restore-test-nextcloud-data
+      namespace: velero
+    spec:
+      scheduleName: daily-critical-backup
+      includedNamespaces:
+      - nextcloud
+      namespaceMapping:
+        nextcloud: velero-restore-test
+      includedResources:
+      - pods
+      - persistentvolumeclaims
+      - persistentvolumes
+      orLabelSelectors:
+      - matchLabels:
+          app.kubernetes.io/instance: nextcloud
+          app.kubernetes.io/name: nextcloud
+      resourceModifier:
+        kind: ConfigMap
+        name: velero-restore-test-nextcloud-modifier
+---
+# The immich-server pod becomes the check. Its own ServiceAccount is not
+# restored, so it runs as default without a token.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: velero-restore-test-immich-modifier
+  namespace: velero
+data:
+  modifier.yaml: |
+    version: v1
+    resourceModifierRules:
+    - conditions:
+        groupResource: pods
+        resourceNameRegex: ^immich-server-.*$
+      strategicPatches:
+      - patchData: |
+          spec:
+            priorityClassName: null
+            serviceAccountName: default
+            serviceAccount: default
+            automountServiceAccountToken: false
+            containers:
+            - name: main
+              $patch: delete
+            - name: check
+              image: busybox:1.38@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+              command:
+              - sh
+              - -c
+              - |-
+                set -eu
+                cd /data
+                fail=0
+                # Immich refuses to start unless each of its folders holds a .immich marker.
+                for d in library upload thumbs encoded-video profile backups; do
+                  if [ -f "$d/.immich" ]; then echo "marker $d/.immich present"; else echo "FAIL: $d/.immich missing"; fail=1; fi
+                done
+                files=$(find . -type f | wc -l)
+                kib=$(du -sk . | cut -f1)
+                echo "restored library: $files files, $kib KiB"
+                [ "$files" -ge "$MIN_FILES" ] || { echo "FAIL: fewer than $MIN_FILES files"; fail=1; }
+                # Read a random sample back in full, so the files are there, not just named.
+                unread=$(find upload library -type f | shuf -n 200 | while read -r f; do cat "$f" >/dev/null 2>&1 || echo "$f"; done | wc -l)
+                [ "$unread" -eq 0 ] || { echo "FAIL: $unread of 200 sampled files unreadable"; fail=1; }
+                [ "$fail" -eq 0 ]
+                echo "PASS: immich library restored"
+                touch /tmp/ok
+                exec sleep 86400
+              env:
+              - name: MIN_FILES
+                value: '1000'
+              volumeMounts:
+              - name: data
+                mountPath: /data
+                readOnly: true
+              readinessProbe:
+                exec:
+                  command:
+                  - test
+                  - -f
+                  - /tmp/ok
+                periodSeconds: 10
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 32Mi
+                limits:
+                  memory: 256Mi
+              securityContext:
+                runAsUser: 0
+                runAsGroup: 0
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                  - ALL
+---
+# The Nextcloud pod becomes the check, running as www-data (33), which owns
+# the data. The database wait and the ConfigMap volumes go: neither exists
+# here, and a missing ConfigMap would keep the pod from starting at all.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: velero-restore-test-nextcloud-modifier
+  namespace: velero
+data:
+  modifier.yaml: |
+    version: v1
+    resourceModifierRules:
+    - conditions:
+        groupResource: pods
+        resourceNameRegex: ^nextcloud-.*$
+      strategicPatches:
+      - patchData: |
+          spec:
+            priorityClassName: null
+            automountServiceAccountToken: false
+            initContainers:
+            - name: postgresql-isready
+              $patch: delete
+            volumes:
+            - name: nextcloud-config
+              $patch: delete
+            - name: nextcloud-phpconfig
+              $patch: delete
+            containers:
+            - name: nextcloud
+              $patch: delete
+            - name: nextcloud-cron
+              $patch: delete
+            - name: check
+              image: busybox:1.38@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+              command:
+              - sh
+              - -c
+              - |-
+                set -eu
+                fail=0
+                # .ocdata marks a Nextcloud data directory; Nextcloud refuses to start
+                # without it. config.php lives on the other volume.
+                [ -f /nc-data/data/.ocdata ] && echo "marker data/.ocdata present" || { echo "FAIL: data/.ocdata missing"; fail=1; }
+                [ -s /nc-main/config/config.php ] && echo "config/config.php present" || { echo "FAIL: config/config.php missing"; fail=1; }
+                cd /nc-data/data
+                files=$(find . -type f | wc -l)
+                kib=$(du -sk . | cut -f1)
+                echo "restored data: $files files, $kib KiB"
+                [ "$files" -ge "$MIN_FILES" ] || { echo "FAIL: fewer than $MIN_FILES files"; fail=1; }
+                unread=$(find . -path ./appdata_\* -prune -o -type f -print | shuf -n 200 | while read -r f; do cat "$f" >/dev/null 2>&1 || echo "$f"; done | wc -l)
+                [ "$unread" -eq 0 ] || { echo "FAIL: $unread of 200 sampled files unreadable"; fail=1; }
+                [ "$fail" -eq 0 ]
+                echo "PASS: nextcloud data restored"
+                touch /tmp/ok
+                exec sleep 86400
+              env:
+              - name: MIN_FILES
+                value: '100'
+              volumeMounts:
+              - name: nextcloud-data
+                mountPath: /nc-data
+                readOnly: true
+              - name: nextcloud-main
+                mountPath: /nc-main
+                readOnly: true
+              readinessProbe:
+                exec:
+                  command:
+                  - test
+                  - -f
+                  - /tmp/ok
+                periodSeconds: 10
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 32Mi
+                limits:
+                  memory: 256Mi
+              securityContext:
+                runAsUser: 33
+                runAsGroup: 33
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                  - ALL
+---
+# On the 1st, 11:00, clear of the Wednesday tests (10:00-10:45). Five hours
+# for Velero: 100 GB down from B2 and onto the HDD.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: restore-test-immich-library
+  namespace: velero-restore-test
+spec:
+  schedule: "0 11 1 * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 28800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: restore-test
+        spec:
+          serviceAccountName: restore-test
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          initContainers:
+            - name: remove-leftover-restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - restores.velero.io/velero-restore-test-immich-library
+                - --namespace=velero
+                - --cascade=foreground
+                - --ignore-not-found
+                - --wait
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: remove-leftover-copy
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - pods,persistentvolumeclaims
+                - --selector=velero.io/restore-name=velero-restore-test-immich-library
+                - --ignore-not-found
+                - --wait
+                - --timeout=30m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - create
+                - -f
+                - /manifests/immich-library.yaml
+              volumeMounts:
+                - name: manifests
+                  mountPath: /manifests
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: wait-restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - restores.velero.io/velero-restore-test-immich-library
+                - --namespace=velero
+                - --for=jsonpath={.status.phase}=Completed
+                - --timeout=5h
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: wait-volume-data
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - podvolumerestores.velero.io
+                - --namespace=velero
+                - --selector=velero.io/restore-name=velero-restore-test-immich-library
+                - --for=jsonpath={.status.phase}=Completed
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: wait-check
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - pods
+                - --selector=velero.io/restore-name=velero-restore-test-immich-library
+                - --for=condition=Ready
+                - --timeout=2h
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          containers:
+            - name: remove-copy
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - pods,persistentvolumeclaims
+                - --selector=velero.io/restore-name=velero-restore-test-immich-library
+                - --wait
+                - --timeout=30m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: manifests
+              configMap:
+                name: restore-test-monthly-manifests
+---
+# On the 2nd, so the two downloads never share the uplink.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: restore-test-nextcloud-data
+  namespace: velero-restore-test
+spec:
+  schedule: "0 11 2 * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 21600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: restore-test
+        spec:
+          serviceAccountName: restore-test
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          initContainers:
+            - name: remove-leftover-restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - restores.velero.io/velero-restore-test-nextcloud-data
+                - --namespace=velero
+                - --cascade=foreground
+                - --ignore-not-found
+                - --wait
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: remove-leftover-copy
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - pods,persistentvolumeclaims
+                - --selector=velero.io/restore-name=velero-restore-test-nextcloud-data
+                - --ignore-not-found
+                - --wait
+                - --timeout=30m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - create
+                - -f
+                - /manifests/nextcloud-data.yaml
+              volumeMounts:
+                - name: manifests
+                  mountPath: /manifests
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: wait-restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - restores.velero.io/velero-restore-test-nextcloud-data
+                - --namespace=velero
+                - --for=jsonpath={.status.phase}=Completed
+                - --timeout=3h
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: wait-volume-data
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - podvolumerestores.velero.io
+                - --namespace=velero
+                - --selector=velero.io/restore-name=velero-restore-test-nextcloud-data
+                - --for=jsonpath={.status.phase}=Completed
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: wait-check
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - pods
+                - --selector=velero.io/restore-name=velero-restore-test-nextcloud-data
+                - --for=condition=Ready
+                - --timeout=2h
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          containers:
+            - name: remove-copy
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - pods,persistentvolumeclaims
+                - --selector=velero.io/restore-name=velero-restore-test-nextcloud-data
+                - --wait
+                - --timeout=30m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: manifests
+              configMap:
+                name: restore-test-monthly-manifests

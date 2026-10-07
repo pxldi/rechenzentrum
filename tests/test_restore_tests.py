@@ -87,6 +87,14 @@ class RecoveryClusterMatchesProduction(unittest.TestCase):
                 for key in ("PGUSER", "PGPASSWORD"):
                     self.assertEqual(env[key]["valueFrom"]["secretKeyRef"]["name"], expected)
 
+    def test_account_is_not_named_after_the_cluster(self):
+        # CNPG rewrites the ServiceAccount, Role and RoleBinding named after a
+        # Cluster for its instances; the test's own account must not be them.
+        for directory, _, test, cron, _ in self.pairs():
+            with self.subTest(directory):
+                pod = cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]
+                self.assertNotEqual(pod["serviceAccountName"], test["metadata"]["name"])
+
     def test_storage_matches(self):
         for directory, prod, test, _, _ in self.pairs():
             with self.subTest(directory):

@@ -70,6 +70,25 @@ This is the routine check. It does not replace the manual procedures below,
 which compare against a snapshot taken at a known time and test the app against
 the restored database.
 
+## Offline copy
+
+`scripts/b2-offline-copy.sh` mirrors the B2 buckets (`rechenzentrum-backups`,
+`rechenzentrum-cnpg`, `rechenzentrum-tf-state`) onto a local disk such as an
+external drive, as raw objects. Run it from an operator machine with an rclone
+remote holding a read-only B2 application key:
+
+```sh
+scripts/b2-offline-copy.sh --init /path/to/drive/b2   # once
+scripts/b2-offline-copy.sh /path/to/drive/b2          # each time after
+```
+
+Objects that vanish from or change in B2 move to `.replaced/` on the copy and
+are pruned after 90 days, so an emptied bucket does not empty the copy. Kopia
+data stays encrypted, but CNPG base backups and WAL are only gzipped, so the
+drive itself must be encrypted. Restoring from the copy needs the Kopia
+repository password, the SOPS age key and the database ObjectStore settings,
+none of which are on the drive. Run it outside the nightly backup window.
+
 ## Restore acceptance
 
 1. Recover age, B2 and Kopia credentials from storage independent of the cluster.

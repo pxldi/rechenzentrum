@@ -159,6 +159,26 @@ spec:
                 - alertname = "KubeJobFailed"
                 - namespace = "velero"
                 - job_name =~ ".*maintain-job.*"
+            # Source fetch failures only page when they persist. The upstream
+            # resolvers or GitHub stall for under a minute every day or two
+            # outside the nightly drop too, and the next fetch recovers. Each
+            # of those used to arrive as a Gotify message about nothing.
+            #
+            # A one-off failure posts once and expires after resolve_timeout
+            # (5m). When group_wait ends 15m later the group holds no firing
+            # alert, and a group never notified sends nothing. A source still
+            # failing keeps re-posting (notification-controller repeats an
+            # identical event at most every 5m), so it is firing at the flush
+            # and gets through. Applying a broken revision is caught by the
+            # Kustomization/HelmRelease route below, without the delay.
+            - receiver: gotify-flux
+              group_wait: 15m
+              group_interval: 30m
+              repeat_interval: 12h
+              mute_time_intervals: ["nightly-wan-drop"]
+              matchers:
+                - severity = "error"
+                - kind =~ "GitRepository|HelmRepository|OCIRepository|Bucket"
             # flux's alertmanager provider labels its events severity=error,
             # which matches neither of the matchers below. It would fall through
             # to the top-level default receiver and work by accident; state it

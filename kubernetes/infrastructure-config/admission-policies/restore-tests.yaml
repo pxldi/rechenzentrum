@@ -15,8 +15,10 @@
 #                    no spec.plugins (so no WAL archiver), no spec.backup, no
 #                    superuser access, no extra env or projected volumes
 #   Restore create   in velero, named velero-restore-test-gotify, gotify into
-#                    velero-restore-test only, pods and claims only, no hooks,
-#                    never overwriting what exists
+#                    velero-restore-test only, pods, claims and their PVs
+#                    only (Velero never creates a file-system-backed PV; it
+#                    needs to see it to provision a new one), no hooks, never
+#                    overwriting what exists
 #   delete           only those two names (RBAC says the same)
 #
 # It matches nothing but requests from the four test ServiceAccounts.
@@ -89,12 +91,12 @@ spec:
           object.spec.namespaceMapping == {'gotify': 'velero-restore-test'} &&
           has(object.spec.includedResources) &&
           size(object.spec.includedResources) > 0 &&
-          object.spec.includedResources.all(r, r in ['pods', 'persistentvolumeclaims']) &&
+          object.spec.includedResources.all(r, r in ['pods', 'persistentvolumeclaims', 'persistentvolumes']) &&
           !has(object.spec.hooks) &&
           (!has(object.spec.existingResourcePolicy) ||
             object.spec.existingResourcePolicy == 'none'))
       message: >-
-        A restore test Restore may only bring gotify's pods and claims into
+        A restore test Restore may only bring gotify's pods, claims and PVs into
         velero-restore-test, without hooks, overwriting nothing.
       reason: Forbidden
 ---

@@ -13,7 +13,14 @@
 # below is what tells the two apart: no PodVolumeRestore means no data came
 # back, and the wait fails.
 #
-# Only pods and claims. No Service, route or NetworkPolicy is restored, so the
+# persistentvolumes must be included too, although no PV is ever created.
+# Velero only learns that gotify's PV was file-system backed when it processes
+# the PV; then it skips it and clears the claim's volumeName so a new, empty
+# volume is provisioned for the data. Without it the claim keeps the live PV's
+# name, stays Pending ("already bound to a different claim"), the pod never
+# schedules and no PodVolumeRestore is made. That is how the first run failed.
+#
+# Only pods, claims and that PV. No Service, route or NetworkPolicy is restored, so the
 # copy cannot take traffic, and it carries velero.io/restore-name, which is
 # what every cleanup step selects on.
 apiVersion: v1
@@ -37,7 +44,7 @@ data:
       includedNamespaces: [gotify]
       namespaceMapping:
         gotify: velero-restore-test
-      includedResources: [pods, persistentvolumeclaims]
+      includedResources: [pods, persistentvolumeclaims, persistentvolumes]
       resourceModifier:
         kind: ConfigMap
         name: velero-restore-test-modifier

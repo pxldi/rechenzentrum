@@ -93,5 +93,15 @@ class RecoveryClusterMatchesProduction(unittest.TestCase):
                 self.assertEqual(test["spec"]["storage"], prod["spec"]["storage"])
 
 
+class VeleroRestoreGetsANewVolume(unittest.TestCase):
+    def test_includes_persistentvolumes(self):
+        # Without the PV Velero keeps the claim on the live gotify volume, the
+        # claim stays Pending and no PodVolumeRestore is ever made.
+        docs = load(ROOT / "kubernetes/infrastructure-config/velero/restore-test.yaml")
+        restore = yaml.safe_load(one(docs, "ConfigMap", "restore-test-manifests")["data"]["restore.yaml"])
+        self.assertEqual(set(restore["spec"]["includedResources"]),
+                         {"pods", "persistentvolumeclaims", "persistentvolumes"})
+
+
 if __name__ == "__main__":
     unittest.main()

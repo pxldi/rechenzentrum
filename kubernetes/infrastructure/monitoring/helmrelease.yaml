@@ -159,6 +159,18 @@ spec:
                 - alertname = "KubeJobFailed"
                 - namespace = "velero"
                 - job_name =~ ".*maintain-job.*"
+            # The weekly restore tests report through RestoreTestFailed, which
+            # names the namespace and the failing step. Their failed Jobs and
+            # the gotify copy that never turns Ready would repeat that once per
+            # Job and pod, so drop those.
+            - receiver: "null"
+              matchers:
+                - alertname = "KubeJobFailed"
+                - job_name =~ "restore-test-.*"
+            - receiver: "null"
+              matchers:
+                - alertname =~ "KubePodNotReady|KubeDeploymentReplicasMismatch"
+                - namespace = "velero-restore-test"
             # flux's alertmanager provider labels its events severity=error,
             # which matches neither of the matchers below. It would fall through
             # to the top-level default receiver and work by accident; state it

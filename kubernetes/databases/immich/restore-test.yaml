@@ -159,6 +159,12 @@ spec:
                   value: immich-postgresql-rw
                 - name: MIN_ROW_PERCENT
                   value: "90"
+                # Immich's vector search: the extension at the live version and
+                # every vchordrq index (clip and face) back and valid.
+                - name: EXTENSIONS
+                  value: vchord
+                - name: INDEX_AM
+                  value: vchordrq
                 - name: PGUSER
                   valueFrom:
                     secretKeyRef:

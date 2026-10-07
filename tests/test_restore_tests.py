@@ -87,10 +87,28 @@ class RecoveryClusterMatchesProduction(unittest.TestCase):
                 for key in ("PGUSER", "PGPASSWORD"):
                     self.assertEqual(env[key]["valueFrom"]["secretKeyRef"]["name"], expected)
 
+    def test_account_is_not_named_after_the_cluster(self):
+        # CNPG rewrites the ServiceAccount, Role and RoleBinding named after a
+        # Cluster for its instances; the test's own account must not be them.
+        for directory, _, test, cron, _ in self.pairs():
+            with self.subTest(directory):
+                pod = cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]
+                self.assertNotEqual(pod["serviceAccountName"], test["metadata"]["name"])
+
     def test_storage_matches(self):
         for directory, prod, test, _, _ in self.pairs():
             with self.subTest(directory):
                 self.assertEqual(test["spec"]["storage"], prod["spec"]["storage"])
+
+
+class VeleroRestoreGetsANewVolume(unittest.TestCase):
+    def test_includes_persistentvolumes(self):
+        # Without the PV Velero keeps the claim on the live gotify volume, the
+        # claim stays Pending and no PodVolumeRestore is ever made.
+        docs = load(ROOT / "kubernetes/infrastructure-config/velero/restore-test.yaml")
+        restore = yaml.safe_load(one(docs, "ConfigMap", "restore-test-manifests")["data"]["restore.yaml"])
+        self.assertEqual(set(restore["spec"]["includedResources"]),
+                         {"pods", "persistentvolumeclaims", "persistentvolumes"})
 
 
 if __name__ == "__main__":

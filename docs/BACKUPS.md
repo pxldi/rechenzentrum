@@ -36,7 +36,17 @@ namespace, because that is where the ObjectStore and its B2 credential already
 are; copying the credential elsewhere would mean decrypting it. The recovery
 Cluster has no `spec.plugins`, so it never archives. The Velero test restores
 only gotify's pod and claim into `velero-restore-test`, which has default-deny
-networking and no Service or route.
+networking and no Service or route. Its Restore also includes
+`persistentvolumes`: Velero never recreates a file-system-backed PV, but only
+when it sees the PV does it clear the claim's `volumeName` and provision a new
+volume. Without it the claim stays Pending on the live PV and no data is
+restored.
+
+The database tests run as the `restore-test-runner` account, not one named
+after the Cluster: CNPG owns the ServiceAccount, Role and RoleBinding named
+like each Cluster and rewrites them. Each run waits for the last run's
+`restore-test-1` claim to be gone before it creates the new Cluster, since a
+Cluster that finds a claim of its instance's name adopts it.
 
 What may be created is held twice: RBAC limits deletes to the test object's
 name, and the `restore-tests` admission policy refuses any Cluster or Restore

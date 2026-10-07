@@ -1,8 +1,13 @@
 ---
+# Not named restore-test: CNPG gives every Cluster a ServiceAccount, Role and
+# RoleBinding named after the Cluster for its instance pods, and rewrites any
+# that already exist. Sharing the test Cluster's name, this account lost its
+# delete rule the moment the Cluster came up, so the first runs restored fine
+# and then could not remove the copy.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: restore-test
+  name: restore-test-runner
 ---
 # Create a Cluster, watch it, delete it. Delete is held to the one name, so this
 # account cannot remove the production Cluster next to it. Create cannot be
@@ -11,7 +16,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: restore-test
+  name: restore-test-runner
 rules:
   - apiGroups: ["postgresql.cnpg.io"]
     resources: ["clusters"]
@@ -20,15 +25,20 @@ rules:
     resources: ["clusters"]
     resourceNames: ["restore-test"]
     verbs: ["delete"]
+  # Only to wait for the last run's instance claim to be gone.
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    resourceNames: ["restore-test-1"]
+    verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: restore-test
+  name: restore-test-runner
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: restore-test
+  name: restore-test-runner
 subjects:
   - kind: ServiceAccount
-    name: restore-test
+    name: restore-test-runner

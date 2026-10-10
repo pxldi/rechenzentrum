@@ -80,9 +80,9 @@ spec:
 
     postgresql:
       enabled: true
-      # 564Mi is the largest steady consumer in this namespace and it was
-      # BestEffort: the SSO database was first in line to be evicted, and
-      # everything behind forward-auth goes down with it.
+      # The largest steady consumer in this namespace (564Mi once, 280Mi on
+      # 2026-10-10) and it was BestEffort: the SSO database was first in line
+      # to be evicted, and everything behind forward-auth goes down with it.
       primary:
         # A database must not be evictable before the thing that needs it.
         # The comment below is the same argument one class up: this was the
@@ -90,7 +90,7 @@ spec:
         priorityClassName: rechenzentrum-critical
         resources:
           requests:
-            memory: "768Mi"
+            memory: "512Mi"
             cpu: "100m"
       auth:
         enablePostgresUser: false

@@ -6,13 +6,13 @@ metadata:
   labels:
     app: whisper-cpp
 spec:
-  # One replica is the whole feature: ZeroClaw posts every Telegram voice note
-  # here (`[transcription]` in chatops/zeroclaw/config.toml), and at zero the
-  # note fails on a refused connection with no error anywhere but the agent's
-  # log. It was parked once to save the ~1.9Gi ggml-medium keeps resident, when
-  # nothing called it. Medium stays for German accuracy; ggml-small in the args
-  # below saves ~1Gi if memory gets tight.
-  replicas: 1
+  # Parked to free the ~1.9Gi ggml-medium keeps resident while no voice notes
+  # are sent. ZeroClaw posts every Telegram voice note here
+  # (`[transcription]` in chatops/zeroclaw/config.toml), and at zero the note
+  # fails on a refused connection with no error anywhere but the agent's log.
+  # Set back to 1 before using voice notes again. Medium stays for German
+  # accuracy; ggml-small in the args below saves ~1Gi if memory gets tight.
+  replicas: 0
   strategy:
     type: Recreate
   selector:

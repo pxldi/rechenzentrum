@@ -46,6 +46,23 @@ spec:
                 - -c
                 - |
                   set -eu
+                  # healthchecks.io: a start ping, then the exit status from the
+                  # EXIT trap, so a failed copy, a hung one and a night where
+                  # the job never ran all reach a phone without this node.
+                  # busybox wget, because it is already in the image and works
+                  # before apk has fetched anything. Failed pings are ignored and
+                  # an empty key skips them.
+                  hc() {
+                    [ -n "${HC_PING_KEY:-}" ] || return 0
+                    for _ in 1 2 3; do
+                      wget -q -T 10 -O /dev/null \
+                        "https://hc-ping.com/${HC_PING_KEY}/karakeep-db-backup$1" && return 0
+                      sleep 5
+                    done
+                    return 0
+                  }
+                  trap 'hc "/$?"' EXIT
+                  hc /start
                   apk add --no-cache sqlite >/dev/null
                   mkdir -p /data/backups
                   out="/data/backups/db-$(date -u +%Y%m%dT%H%M%SZ).db"
@@ -60,6 +77,13 @@ spec:
                   # does not have.
                   ls -1t /data/backups/db-*.db 2>/dev/null | grep -v -F "$out" |
                     tail -n +3 | while read -r stale; do rm -f "$stale"; done
+              env:
+                - name: HC_PING_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: healthchecks
+                      key: ping-key
+                      optional: true
               securityContext:
                 allowPrivilegeEscalation: false
                 seccompProfile:

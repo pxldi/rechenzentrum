@@ -100,18 +100,18 @@ jobs:
           image-ref: ${{ env.IMAGE }}:sha-${{ env.SHA }}
           severity: HIGH,CRITICAL
           format: table
-      # Reports, does not block (owner's decision, 2026-10-02). Unlike the
-      # other images, claudebox bundles upstream release binaries (age,
-      # kustomize, the Android SDK's bouncycastle) whose fixes arrive when
-      # upstream rebuilds them. The findings stay visible in this step and,
-      # once the image runs, in Trivy Operator's ImageCriticalVulnerabilities.
-      - name: Report fixable critical vulnerabilities
+      # Fails on a fixable CRITICAL, like the other images. It only reported
+      # them for a while (2026-10-02) because claudebox bundles upstream
+      # release binaries (age, kustomize, the Android SDK's Bouncy Castle)
+      # whose fixes arrive when upstream rebuilds them. When that happens
+      # again, bump the release or replace the component in the Dockerfile.
+      - name: Fail on fixable critical vulnerabilities
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ env.IMAGE }}:sha-${{ env.SHA }}
           severity: CRITICAL
           ignore-unfixed: true
-          exit-code: "0"
+          exit-code: "1"
           format: table
           skip-setup-trivy: true
 

@@ -1,4 +1,32 @@
-{ ... }:
+{ pkgs, ... }:
+
+let
+  # healthchecks.io pings for the upgrade below: a start ping before it runs,
+  # then success or failure from systemd's OnSuccess=/OnFailure=. A morning
+  # where the timer never fires, or the node is down, shows as a missed ping
+  # on a service that does not live on this node.
+  #
+  # The key is read from a root-only file, not the Nix store, which every
+  # user on the box can read. Created once by hand (scripts/healthchecks-setup.sh
+  # prints the command); until it exists every ping is a no-op, so this
+  # changes nothing on a host that has not been set up. A ping that fails is
+  # ignored: it must never fail or delay the upgrade itself.
+  pingKeyFile = "/var/lib/healthchecks/ping-key";
+  hcPing = pkgs.writeShellScript "healthchecks-ping" ''
+    [ -r ${pingKeyFile} ] || exit 0
+    key=$(${pkgs.coreutils}/bin/tr -d '[:space:]' < ${pingKeyFile})
+    [ -n "$key" ] || exit 0
+    ${pkgs.curl}/bin/curl -fsS -o /dev/null --max-time 10 --retry 3 \
+      "https://hc-ping.com/$key/$1" || true
+  '';
+  pingUnit = suffix: {
+    description = "healthchecks.io ping: nixos-upgrade${suffix}";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${hcPing} nixos-upgrade${suffix}";
+    };
+  };
+in
 
 {
   # Merging to main already deploys the cluster (Flux). This makes it deploy
@@ -37,11 +65,16 @@
   system.autoUpgrade = {
     enable = true;
     operation = "switch";
-    # `?dir=nix` because the flake sits in a subdirectory of the repo; nix
-    # clones the repo and reads the flake from there. `ref=main` pins the
-    # branch, and the module adds --refresh so the fetch is not served from
-    # the flake cache.
-    flake = "git+https://github.com/pxldi/rechenzentrum?dir=nix&ref=main";
+    # `?dir=nix` because the flake sits in a subdirectory of the repo, and
+    # `/main` pins the branch; the module adds --refresh so the fetch is not
+    # served from the flake cache.
+    #
+    # No `&` anywhere in this string. The module pastes it into the unit's
+    # shell script unquoted, so `?dir=nix&ref=main` backgrounded a rebuild of
+    # `?dir=nix` and then ran `ref=main --upgrade` as a command: exit 127,
+    # every morning, from the day this URL was introduced. The github: form
+    # carries the branch in the path and needs only one query parameter.
+    flake = "github:pxldi/rechenzentrum/main?dir=nix";
     dates = "04:45";
     # Spread nothing: the window above was chosen on purpose.
     randomizedDelaySec = "0";
@@ -49,4 +82,17 @@
     rebootWindow = { lower = "04:45"; upper = "05:10"; };
     persistent = true;
   };
+
+  systemd.services.nixos-upgrade = {
+    # "-": a failed start ping must not stop the upgrade from running.
+    serviceConfig.ExecStartPre = [ "-${hcPing} nixos-upgrade/start" ];
+    unitConfig = {
+      OnSuccess = [ "healthchecks-nixos-upgrade-success.service" ];
+      OnFailure = [ "healthchecks-nixos-upgrade-fail.service" ];
+    };
+  };
+  systemd.services.healthchecks-nixos-upgrade-success = pingUnit "";
+  systemd.services.healthchecks-nixos-upgrade-fail = pingUnit "/fail";
+
+  systemd.tmpfiles.rules = [ "d /var/lib/healthchecks 0700 root root -" ];
 }

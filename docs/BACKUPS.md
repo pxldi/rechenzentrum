@@ -18,6 +18,113 @@ a pod annotation, so its files have no backup at all. Only its database does.
 restore of the gotify volume into an isolated namespace were verified the same
 day; see below.
 
+## Weekly automated restore test
+
+Every Wednesday morning (Europe/Berlin) four CronJobs named `restore-test`
+restore the newest backups and check what came back. Each run starts by removing
+whatever the previous one left, and ends by deleting its copy.
+
+| CronJob | Time | Restores | Passes when |
+| --- | --- | --- | --- |
+| `tandoor/restore-test` | 10:00 | `tandoor-postgresql`, newest base backup plus all archived WAL | Cluster Ready, same table count as live, at least 90% of live rows, a write reads back |
+| `media/restore-test` | 10:15 | `cantus-postgresql`, likewise | likewise |
+| `immich/restore-test` | 10:30 | `immich-postgresql`, likewise | likewise |
+| `velero-restore-test/restore-test` | 10:45 | gotify's `data` volume from the newest `daily-critical-backup` | Restore `Completed`, PodVolumeRestore `Completed`, gotify Ready on the restored database |
+
+The database tests create a Cluster named `restore-test` in the source
+namespace, because that is where the ObjectStore and its B2 credential already
+are; copying the credential elsewhere would mean decrypting it. The recovery
+Cluster has no `spec.plugins`, so it never archives. The Velero test restores
+only gotify's pod and claim into `velero-restore-test`, which has default-deny
+networking and no Service or route. Its Restore also includes
+`persistentvolumes`: Velero never recreates a file-system-backed PV, but only
+when it sees the PV does it clear the claim's `volumeName` and provision a new
+volume. Without it the claim stays Pending on the live PV and no data is
+restored.
+
+The database tests run as the `restore-test-runner` account, not one named
+after the Cluster: CNPG owns the ServiceAccount, Role and RoleBinding named
+like each Cluster and rewrites them. Each run waits for the last run's
+`restore-test-1` claim to be gone before it creates the new Cluster, since a
+Cluster that finds a claim of its instance's name adopts it.
+
+What may be created is held twice: RBAC limits deletes to the test object's
+name, and the `restore-tests` admission policy refuses any Cluster or Restore
+from the test accounts that is not the test object (a different name, a WAL
+archiver, superuser access, another namespace's data). `tests/test_restore_tests.py`
+fails when a recovery Cluster drifts from its production image, archive or
+credentials, and `scripts/schema-check.py` validates the embedded manifests.
+
+Results reach Gotify through the `restore-tests` PrometheusRule in the velero
+namespace: `RestoreTestFailed` when a run has not succeeded five hours after it
+started, `RestoreTestStale` after eight days without a success,
+`RestoreTestNeverSucceeded`, and `RestoreTestMissing` when a CronJob disappears.
+Each resolves on the next successful run. The verify step prints only table,
+row and size counts, never row content. To run one now:
+
+```sh
+kubectl create job -n <namespace> --from=cronjob/restore-test restore-test-manual
+```
+
+This is the routine check. It does not replace the manual procedures below,
+which compare against a snapshot taken at a known time and test the app against
+the restored database.
+
+## Monthly full volume restore test
+
+The two volumes that hold files nothing else can recreate are restored in full
+once a month from the newest `daily-critical-backup`:
+
+| CronJob in `velero-restore-test` | When (Europe/Berlin) | Restores | Passes when |
+| --- | --- | --- | --- |
+| `restore-test-immich-library` | 1st, 11:00 | immich's photo library (`immich-library-pvc`) | Restore `Completed`, PodVolumeRestore `Completed`, all six `.immich` folder markers present, at least 1000 files, 200 random files read back |
+| `restore-test-nextcloud-data` | 2nd, 11:00 | Nextcloud's data and app volumes | Restore and PodVolumeRestores `Completed`, `data/.ncdata` (or the older `.ocdata`) and `config/config.php` present, at least 100 files, 200 random files read back |
+
+Each restores the app's pod and claims into `velero-restore-test`, selected by
+label so the database pods beside them stay out. A resource modifier replaces
+the pod's containers with a busybox check before the pod is created, so the app
+never runs in the test namespace and needs none of its secrets. The check prints
+counts only and exits; on a failure its log names what was missing. The copy
+pod runs once (`restartPolicy: Never`) and has its own deadline, 7h for immich
+and 5h for Nextcloud, so a failed check or a volume restore that never finishes
+leaves a Failed pod rather than one that crashloops or waits for days. The Job
+deletes the copy, and its volume with it, when the check passes. After a failed
+run the copy stays for a day to look at, and `remove-restore-test-copies`
+deletes it on the 3rd at 11:00.
+
+A full run downloads the whole volume from B2: about 100 GB for immich and
+30 GB for Nextcloud (October 2026). Monthly keeps that well inside B2's free
+egress. The copy lands on `local-hdd1` next to the original, so that disk needs
+the volume's size free for the run.
+
+`RestoreTestMonthlyFailed`, `RestoreTestMonthlyStale` (33 days),
+`RestoreTestMonthlyNeverSucceeded` and `RestoreTestMonthlyMissing` report them,
+like the weekly rules. To run one now:
+
+```sh
+kubectl create job -n velero-restore-test --from=cronjob/restore-test-immich-library restore-test-immich-library-manual
+```
+
+
+## Offline copy
+
+`scripts/b2-offline-copy.sh` mirrors the B2 buckets (`rechenzentrum-backups`,
+`rechenzentrum-cnpg`, `rechenzentrum-tf-state`) onto a local disk such as an
+external drive, as raw objects. Run it from an operator machine with an rclone
+remote holding a read-only B2 application key:
+
+```sh
+scripts/b2-offline-copy.sh --init /path/to/drive/b2   # once
+scripts/b2-offline-copy.sh /path/to/drive/b2          # each time after
+```
+
+Objects that vanish from or change in B2 move to `.replaced/` on the copy and
+are pruned after 90 days, so an emptied bucket does not empty the copy. Kopia
+data stays encrypted, but CNPG base backups and WAL are only gzipped, so the
+drive itself must be encrypted. Restoring from the copy needs the Kopia
+repository password, the SOPS age key and the database ObjectStore settings,
+none of which are on the drive. Run it outside the nightly backup window.
+
 ## Restore acceptance
 
 1. Recover age, B2 and Kopia credentials from storage independent of the cluster.

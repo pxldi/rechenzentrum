@@ -13,6 +13,7 @@ configMapGenerator:
 
 resources:
   - secret.yaml
+  - healthchecks-secret.yaml
   - meilisearch.yaml
   - pvc.yaml
   - deployment.yaml

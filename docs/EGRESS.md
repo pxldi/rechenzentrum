@@ -27,7 +27,7 @@ Every application namespace except the two at the end of this section.
 
 | Namespace | Beyond DNS | Why |
 | --- | --- | --- |
-| `chatops` | per pod: the agent gets internet on 443 and its two MCP pods; homelab-mcp gets the API server; tandoor-mcp gets `tandoor` | Three pods with three jobs, see [CHATOPS.md](CHATOPS.md) |
+| `chatops` | per pod: the agent gets internet on 443, its MCP pods and SearXNG; homelab-mcp gets the API server; tandoor-mcp gets `tandoor` | Three pods with three jobs, see [CHATOPS.md](CHATOPS.md) |
 | `claudebox` | internet, API server, `obsidian-sync` | Clones repositories and drives this cluster; it carries a ServiceAccount token and RBAC. Its bridge sidecar mirrors the vault from CouchDB |
 | `crowdsec` | per pod: the agent gets the LAPI, the API server on 6443 and internet on 443; the LAPI gets internet on 443 | The agent streams Traefik's log through `pods/log`; both download hub content from the CrowdSec CDN at start. The Central API is off |
 | `excalidraw` | nothing | The pilot |
@@ -47,7 +47,7 @@ Every application namespace except the two at the end of this section.
 | `ollama` | internet | Pulls models on demand |
 | `palworld` | internet | Server list and updates |
 | `paperless` | own namespace, internet, Traefik | Postgres, Redis, Gotenberg and Tika here |
-| `searxng` | own namespace, internet | Querying upstream engines is the job |
+| `searxng` | own namespace, internet | Querying upstream engines is the job; ZeroClaw in `chatops` may query it |
 | `slskd` | own namespace, internet | gluetun's tunnel and Soulseek peers |
 | `snacky` | internet, `tandoor`, `opengym` | Open Food Facts outside; recipes and workouts by Service name. Its pod takes MCP from the chat agent only |
 | `tandoor` | own namespace, internet, API server | Postgres here; recipe import; CNPG |

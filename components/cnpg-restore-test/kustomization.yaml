@@ -1,0 +1,13 @@
+# The parts of the weekly CNPG restore test that are the same in every
+# database namespace: the ServiceAccount and what it may touch, the network
+# paths the test needs, and the script that checks the restored data. Each
+# database adds its own restore-test.yaml with the recovery Cluster and the
+# CronJob, because those carry that database's image, size and credentials.
+#
+# See docs/BACKUPS.md, "Weekly automated restore test".
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+resources:
+  - rbac.yaml
+  - networkpolicy.yaml
+  - verify-script.yaml

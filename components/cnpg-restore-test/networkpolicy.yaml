@@ -1,0 +1,41 @@
+---
+# The test Job runs kubectl. The namespace's allow-egress-to-apiserver only
+# selects CNPG instance pods, so the Job needs its own path to the API server.
+# Same address and port as that component: an egress rule matches the
+# destination after the API Service has been rewritten to the node.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-restore-test-to-apiserver
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: restore-test
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.8.226/32
+      ports:
+        - protocol: TCP
+          port: 6443
+---
+# The operator reads each instance's status endpoint. The production
+# allow-cnpg-operator selects the production cluster by name, so the restored
+# cluster gets the same rule by its own label.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-operator-restore-test
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: restore-test
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system

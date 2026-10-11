@@ -34,11 +34,21 @@ spec:
         serverName: immich-postgresql
 
   instances: 2
-  imageName: ghcr.io/tensorchord/cloudnative-pgvecto.rs:16-v0.3.0
+  # VectorChord on top of pgvector. Immich's embeddings were already pgvector
+  # columns; pgvecto.rs (the `vectors` extension) was installed but unused,
+  # and its image no longer gets security fixes.
+  #
+  # The switch on an existing database, as postgres (the immich role cannot
+  # manage extensions): DROP EXTENSION vectors; DROP SCHEMA IF EXISTS vectors;
+  # while the old image still has its library, then roll to this image, then
+  # CREATE EXTENSION vchord CASCADE; and restart immich-server, which rebuilds
+  # clip_index and face_index as vchordrq. The default collation is C, so the
+  # newer Debian base does not change sort order.
+  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:16.15-1.1.1@sha256:f5a17fa05faf25e81304ee95e9f920d8ae077ac4a4ef0a1251e09c7197cbb236
 
   postgresql:
     shared_preload_libraries:
-      - vectors.so
+      - vchord.so
 
   bootstrap:
     initdb:
@@ -47,7 +57,7 @@ spec:
       secret:
         name: immich-credentials
       postInitSQL:
-        - CREATE EXTENSION IF NOT EXISTS vectors;
+        - CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
         - CREATE EXTENSION IF NOT EXISTS earthdistance CASCADE;
 
   # Every CNPG cluster in this repo was BestEffort — no requests at all — which

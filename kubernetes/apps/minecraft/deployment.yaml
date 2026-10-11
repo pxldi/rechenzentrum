@@ -7,8 +7,8 @@ metadata:
   labels:
     app: minecraft
 spec:
-  # Scaled to zero: a friend is hosting the world now. The PVC is kept, so
-  # setting this back to 1 resumes the server with its world and modpack intact.
+  # Scaled to zero. The PVC is kept, so setting this back to 1 resumes the
+  # server with its world and modpack intact.
   replicas: 0
   selector:
     matchLabels:

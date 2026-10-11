@@ -1,0 +1,107 @@
+---
+# Nextcloud's memcache and file-locking store. It replaces the bitnami redis
+# subchart, whose image is frozen on bitnamilegacy/redis 8.0.1 and collects
+# critical CVEs that no chart release will fix.
+#
+# Nothing in it needs to survive a restart: Nextcloud rebuilds the cache, and
+# file locks carry their own TTL. So no persistence and no replicas.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextcloud-cache
+  namespace: nextcloud
+  labels:
+    app: nextcloud-cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nextcloud-cache
+  template:
+    metadata:
+      labels:
+        app: nextcloud-cache
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        # The redis user in the official image.
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: redis:8.10.2-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
+          imagePullPolicy: IfNotPresent
+          # The password is expanded by the kubelet at start, so it never
+          # appears in the pod spec. Same secret key the subchart used, so the
+          # Nextcloud side needs no new credential.
+          args:
+            - --requirepass
+            - $(REDIS_PASSWORD)
+            - --save
+            - ""
+            - --appendonly
+            - "no"
+            - --maxmemory
+            - 192mb
+            - --maxmemory-policy
+            - allkeys-lru
+            - --loglevel
+            - warning
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nextcloud-credentials
+                  key: redis-password
+          ports:
+            - containerPort: 6379
+              name: redis
+              protocol: TCP
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          livenessProbe:
+            tcpSocket:
+              port: redis
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: redis
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: data
+          emptyDir:
+            sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nextcloud-cache
+  namespace: nextcloud
+  labels:
+    app: nextcloud-cache
+spec:
+  type: ClusterIP
+  selector:
+    app: nextcloud-cache
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+      protocol: TCP

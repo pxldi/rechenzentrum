@@ -1,7 +1,20 @@
-# One alert per workload whose running image has a critical vulnerability
-# with a fix available. The operator rescans daily, so the alert clears
-# itself once the fixed image is running. `for: 6h` keeps a rollout that
-# replaces the image, and the rescan that follows, from paging.
+# Fixable critical CVEs in running images, reported as one weekly digest.
+#
+# Most of these fix themselves: Renovate automerges patch and minor image
+# bumps every night, and the operator rescans daily. A notification per image
+# every few hours mostly reported work that was already in flight, and the
+# rest were images nobody can fix by bumping (frozen upstream, or waiting on
+# a migration), which then repeated forever.
+#
+# So the per-image alert only records state. It goes pending when a fixable
+# critical CVE shows up and fires after seven days, by which time Renovate has
+# had its chance. It never notifies (Alertmanager routes it to null) but stays
+# visible in Alertmanager and Grafana with the exact image.
+#
+# The digest is what reaches Gotify: one message listing every image that is
+# still affected after a week. Alertmanager sends it on Monday mornings only
+# and repeats it weekly while anything is left (see the trivy-digest route in
+# monitoring/helmrelease.yaml). An empty list resolves it silently.
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -13,19 +26,37 @@ spec:
   groups:
     - name: images.vulnerabilities
       rules:
+        # Prometheus keeps the pending timer across its own restarts (for
+        # outages under rules.alert.for-outage-tolerance, 1h by default). A
+        # rollout that renames the workload, such as a new ReplicaSet, starts
+        # it again, which is fine: a new rollout usually means a new image.
         - alert: ImageCriticalVulnerabilities
           expr: |
             sum by (namespace, resource_kind, resource_name, image_repository, image_tag) (
               trivy_image_vulnerabilities{severity="Critical"}
             ) > 0
-          for: 6h
+          for: 7d
           labels:
-            severity: warning
+            severity: info
           annotations:
             summary: "{{ $labels.namespace }}/{{ $labels.resource_name }}: {{ $value }} fixable critical CVEs in {{ $labels.image_repository }}:{{ $labels.image_tag }}"
             description: >-
               Trivy found critical vulnerabilities with a fixed version in this
-              image. The list is in
+              image, and it has been running for over a week. The list is in
               `kubectl get vulnerabilityreports -n {{ $labels.namespace }} -o wide`.
-              Usually a Renovate PR for the image is already open; merge it, or
-              pin a newer tag or digest.
+        - alert: ImageVulnerabilityDigest
+          expr: |
+            count(
+              count by (namespace, image_repository, image_tag) (
+                ALERTS{alertname="ImageCriticalVulnerabilities", alertstate="firing"}
+              )
+            ) > 0
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $value }} images have had fixable critical CVEs for over a week"
+            description: |-
+              Renovate has not fixed these:
+              {{ range query "count by (namespace, image_repository, image_tag) (ALERTS{alertname=\"ImageCriticalVulnerabilities\", alertstate=\"firing\"})" }}
+              - {{ .Labels.namespace }}: {{ .Labels.image_repository }}:{{ .Labels.image_tag }}{{ end }}
+              Bump the image or replace it. Details: kubectl get vulnerabilityreports -A -o wide

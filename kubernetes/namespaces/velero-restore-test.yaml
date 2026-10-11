@@ -1,0 +1,18 @@
+---
+# Where the weekly Velero restore test puts its copy of gotify. Nothing here
+# serves traffic or outlives a run; see
+# kubernetes/infrastructure-config/velero/restore-test.yaml.
+#
+# baseline, matching gotify: the restored pod is gotify's own pod spec, which
+# runs as root and would not pass restricted.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: velero-restore-test
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest

@@ -1,5 +1,5 @@
 ---
-# openGym: gym and body-weight tracker, replacing Hevy. Upstream is
+# openGym: gym and body-weight tracker. Upstream is
 # gitlab.com/DuarteSantos8/opengym; its compose file runs three services, folded
 # into one pod here:
 #

@@ -1,0 +1,25 @@
+---
+# ZeroClaw in chatops sends its web searches here. SearXNG has no
+# authentication, so this rule names the one pod outside Traefik, monitoring
+# and homepage that may query it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-zeroclaw
+spec:
+  podSelector:
+    matchLabels:
+      app: searxng
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: chatops
+          podSelector:
+            matchLabels:
+              app: zeroclaw
+      ports:
+        - protocol: TCP
+          port: 8080

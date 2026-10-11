@@ -7,3 +7,6 @@ resources:
   - scheduledbackup.yaml
   - cnpg-b2-credentials-secret.yaml
   - networkpolicy.yaml
+  - restore-test.yaml
+components:
+  - ../../../components/cnpg-restore-test

@@ -33,6 +33,17 @@
       "matchStrings": [
         "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>\\S+))?\\s+value: \"(?<currentValue>[^\"]+)\""
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "CNPG Clusters name their image in imageName, which no built-in manager reads, and kubernetes/databases is outside the kubernetes manager's files. One manager for both keys keeps a Cluster and its restore test on the same image in one PR, which tests/test_restore_tests.py requires.",
+      "fileMatch": [
+        "^kubernetes/databases/.+\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "(?:imageName|image): (?<depName>ghcr\\.io/cloudnative-pg/postgresql):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
     }
   ],
   "packageRules": [
@@ -101,6 +112,13 @@
       "groupName": "claudebox CLI tools",
       "minimumReleaseAge": "2 days",
       "description": "Both CLIs ship several releases a day. Grouped so a bump restarts claudebox, and the sessions running in it, at most once a night. The two-day age skips releases that upstream pulls or hotfixes, and keeps a freshly published npm package from reaching a pod that holds cluster and GitHub credentials the same day."
+    },
+    {
+      "matchPackageNames": [
+        "ghcr.io/cloudnative-pg/postgresql"
+      ],
+      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)$",
+      "description": "Only the plain MAJOR.MINOR tags: they are the bullseye builds these data directories were initialised on. The -bookworm and -trixie variants ship a newer glibc whose collation changes need a REINDEX, so switching to one is a migration, not a bump. Minor bumps automerge through the rule above; a major version is proposed and run by hand."
     }
   ],
   "prHourlyLimit": 0,

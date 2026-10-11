@@ -24,10 +24,12 @@ as it always did for every app without such a route. They were removed on
 
 ## Deliberate exceptions
 
-- **Snacky** (`snacky.pxldi.de`) stays Authentik-only. Its owner opens it on
-  the phone on mobile data, without the tailnet. The MCP port has no route.
-- **Karakeep** (`links.pxldi.de`) stays Authentik-only. It is shared with someone
-  who has an account but no device on the tailnet.
+- **Snacky** (`snacky.pxldi.de`) stays Authentik-only, so a phone off the
+  tailnet can reach it. The MCP port has no route.
+- **Karakeep** (`links.pxldi.de`) stays Authentik-only, through Karakeep's own
+  OIDC login rather than forward-auth: its password form is off, and the browser
+  extension and phone apps send bearer tokens to `/api`, which a forward-auth
+  redirect would break.
 - **Schall's API route** (`schall.pxldi.de` with a Bearer header) stays public so
   a client that cannot follow a login redirect works away from home. Schall
   validates the token and answers 401 to anything it did not mint. No proxy key
@@ -48,21 +50,21 @@ as it always did for every app without such a route. They were removed on
 
 The 2026-09-13 rollout gated everything that had no login of its own. The
 question for what was left is not whether the app has a login but whether
-anything off the tailnet, or anyone but the operator, talks to it. Three were
+anything off the tailnet talks to it. Three were
 clear and are gated now: **Fredy**, **Overleaf** and **Ryot** are browser-only
 and single-user. The rest each have a client that cannot follow a login
-redirect or a person without a tailnet device, and stay public until that is
+redirect or a user without a tailnet device, and stay public until that is
 decided per app:
 
 | Route | Off-tailnet consumer |
 | --- | --- |
 | `cloud.pxldi.de` | Nextcloud phone sync, CalDAV/CardDAV, share links |
 | `photos.pxldi.de` | Immich phone backup, shared albums |
-| `jellyfin.pxldi.de`, `music.pxldi.de`, `request.pxldi.de` | Media clients on TVs and phones, possibly other people's |
+| `jellyfin.pxldi.de`, `music.pxldi.de`, `request.pxldi.de` | Media clients on TVs and phones |
 | `home.pxldi.de` | Home Assistant companion app and external integrations |
 | `gotify.pxldi.de` | Phones hold a push socket to it |
 | `paperless.pxldi.de` | Phone scanner app |
-| `recipes.pxldi.de` | Tandoor, shared with the household |
+| `recipes.pxldi.de` | Tandoor, shared |
 | `books.pxldi.de` | An e-reader cannot join a tailnet |
 | `obsidian.pxldi.de`, `travel.pxldi.de` | Phone apps that sync |
 | `links.pxldi.de` | Decided above |
@@ -132,3 +134,4 @@ is on Tailscale" is not an answer on its own.
 | adventurelog | `travel.pxldi.de (PathPrefix(`/media`) \|\| PathPrefix(`/static`) \|\| PathPr` | public | add-trailing-slash,adventurelog-headers |
 | monitoring | `uptime.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | velero | `velero.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| chatops | `vault-mcp.pxldi.de` (`/mcp`, `/.well-known/` only) | Anthropic range and house | anthropic-and-house |

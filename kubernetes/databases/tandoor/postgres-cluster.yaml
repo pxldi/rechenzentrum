@@ -34,7 +34,9 @@ spec:
         serverName: tandoor-postgresql
 
   instances: 1
-  imageName: ghcr.io/cloudnative-pg/postgresql:16.3
+  # The plain tag is the Debian bullseye build this data directory was
+  # created on. Other bases change glibc collations; see renovate.json.
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.15@sha256:34cd4159d07b3410a1b29da35072e2e927a0905e717a61afa3814624a2e8859a
 
   postgresql:
     shared_preload_libraries: []

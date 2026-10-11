@@ -4,7 +4,7 @@
 # that did not start.
 #
 # The apiserver counts each outcome per policy. The binding ran Warn from
-# 2026-10-02 to 2026-10-09 and Deny since; the expression matches both.
+# 2026-10-02 to 2026-10-11 and Deny since; the expression matches both.
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:

@@ -155,13 +155,14 @@ metadata:
   name: workload-baseline
 spec:
   policyName: workload-baseline
-  # Deny since 2026-10-09, after a week in Warn (from 2026-10-02) in which
-  # WorkloadBaselineViolation stayed quiet through a scheduled backup and a
-  # restart of every media app. That week covered what the offline render
-  # cannot see: the TrueCharts media charts, seerr, and pods that controllers
-  # create at runtime (CNPG instances, Velero data movers, OpenEBS helpers).
-  # The same alert now fires on a refusal. To loosen a check, add a reviewed
-  # per-namespace exception above rather than going back to Warn.
+  # Deny since 2026-10-11, after nine days in Warn (from 2026-10-02) with no
+  # warning and no WorkloadBaselineViolation, through daily Velero and CNPG
+  # backups. The TrueCharts media charts, seerr and the controller-made pods
+  # (CNPG instances, Velero data movers, OpenEBS helpers) that the offline
+  # render cannot see were covered by `task policy:live`, which passed all
+  # 218 running pods. The same alert now fires on a refusal. To loosen a
+  # check, add a reviewed per-namespace exception above rather than going
+  # back to Warn.
   validationActions: [Deny, Audit]
   matchResources:
     namespaceSelector:

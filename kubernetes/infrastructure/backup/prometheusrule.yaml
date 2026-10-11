@@ -275,7 +275,7 @@ spec:
             description: >-
               This month's full restore did not complete. The failed Job's log
               in velero-restore-test names the step: wait-restore,
-              wait-volume-data or wait-check, and the check container's log
+              check-restore, wait-volume-data or wait-check, and the check container's log
               says what was missing. The copy stays until
               remove-restore-test-copies deletes it on the 3rd.
 

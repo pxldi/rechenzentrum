@@ -10,7 +10,12 @@
 # modifier swaps its containers for a busybox check before it is created: the
 # app itself never runs here, needs none of its secrets or services, and
 # cannot reach anything (default-deny). The check confirms the app's own
-# markers, counts the files and reads a random sample back, then turns Ready.
+# markers, counts the files and reads a random sample back, then exits.
+#
+# The copy runs once (restartPolicy Never) and has a deadline of its own, so a
+# failed check or a volume restore that never finishes ends as a Failed pod
+# instead of crashlooping or waiting forever. The first run on 2026-10-07 did
+# both for days. remove-restore-test-copies deletes whatever a failed run left.
 #
 # persistentvolumes is included for the same reason as in the gotify test: the
 # claim only gets a new volume when Velero sees the file-system-backed PV.
@@ -80,7 +85,9 @@ data:
         name: velero-restore-test-nextcloud-modifier
 ---
 # The immich-server pod becomes the check. Its own ServiceAccount is not
-# restored, so it runs as default without a token.
+# restored, so it runs as default without a token. The 7h deadline counts from
+# when the pod is created, while Velero is still filling its volume, and ends
+# before the Job's 8h.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -97,6 +104,8 @@ data:
       - patchData: |
           spec:
             priorityClassName: null
+            restartPolicy: Never
+            activeDeadlineSeconds: 25200
             serviceAccountName: default
             serviceAccount: default
             automountServiceAccountToken: false
@@ -125,8 +134,6 @@ data:
                 [ "$unread" -eq 0 ] || { echo "FAIL: $unread of 200 sampled files unreadable"; fail=1; }
                 [ "$fail" -eq 0 ]
                 echo "PASS: immich library restored"
-                touch /tmp/ok
-                exec sleep 86400
               env:
               - name: MIN_FILES
                 value: '1000'
@@ -134,13 +141,6 @@ data:
               - name: data
                 mountPath: /data
                 readOnly: true
-              readinessProbe:
-                exec:
-                  command:
-                  - test
-                  - -f
-                  - /tmp/ok
-                periodSeconds: 10
               resources:
                 requests:
                   cpu: 50m
@@ -158,6 +158,7 @@ data:
 # The Nextcloud pod becomes the check, running as www-data (33), which owns
 # the data. The database wait and the ConfigMap volumes go: neither exists
 # here, and a missing ConfigMap would keep the pod from starting at all.
+# The 5h deadline ends before the Job's 6h.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -174,6 +175,8 @@ data:
       - patchData: |
           spec:
             priorityClassName: null
+            restartPolicy: Never
+            activeDeadlineSeconds: 18000
             automountServiceAccountToken: false
             initContainers:
             - name: postgresql-isready
@@ -209,8 +212,6 @@ data:
                 [ "$unread" -eq 0 ] || { echo "FAIL: $unread of 200 sampled files unreadable"; fail=1; }
                 [ "$fail" -eq 0 ]
                 echo "PASS: nextcloud data restored"
-                touch /tmp/ok
-                exec sleep 86400
               env:
               - name: MIN_FILES
                 value: '100'
@@ -221,13 +222,6 @@ data:
               - name: nextcloud-main
                 mountPath: /nc-main
                 readOnly: true
-              readinessProbe:
-                exec:
-                  command:
-                  - test
-                  - -f
-                  - /tmp/ok
-                periodSeconds: 10
               resources:
                 requests:
                   cpu: 50m
@@ -379,7 +373,7 @@ spec:
                 - wait
                 - pods
                 - --selector=velero.io/restore-name=velero-restore-test-immich-library
-                - --for=condition=Ready
+                - --for=jsonpath={.status.phase}=Succeeded
                 - --timeout=2h
               resources:
                 requests:
@@ -553,7 +547,7 @@ spec:
                 - wait
                 - pods
                 - --selector=velero.io/restore-name=velero-restore-test-nextcloud-data
-                - --for=condition=Ready
+                - --for=jsonpath={.status.phase}=Succeeded
                 - --timeout=2h
               resources:
                 requests:
@@ -590,3 +584,56 @@ spec:
             - name: manifests
               configMap:
                 name: restore-test-monthly-manifests
+---
+# The Jobs above delete their copy only when the check passes. A failed run
+# leaves it for the alert to point at, and this removes it the next day, so
+# the photos and files do not sit in a second place until the next month.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: remove-restore-test-copies
+  namespace: velero-restore-test
+spec:
+  schedule: "0 11 3 * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: restore-test
+        spec:
+          serviceAccountName: restore-test
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: remove-copies
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - pods,persistentvolumeclaims
+                - --selector=velero.io/restore-name in (velero-restore-test-immich-library,velero-restore-test-nextcloud-data)
+                - --ignore-not-found
+                - --wait
+                - --timeout=30m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]

@@ -84,8 +84,13 @@ Each restores the app's pod and claims into `velero-restore-test`, selected by
 label so the database pods beside them stay out. A resource modifier replaces
 the pod's containers with a busybox check before the pod is created, so the app
 never runs in the test namespace and needs none of its secrets. The check prints
-counts only, and turns Ready when it passes; on a failure its log names what was
-missing. The copy is deleted at the end, and its volume with it.
+counts only and exits; on a failure its log names what was missing. The copy
+pod runs once (`restartPolicy: Never`) and has its own deadline, 7h for immich
+and 5h for Nextcloud, so a failed check or a volume restore that never finishes
+leaves a Failed pod rather than one that crashloops or waits for days. The Job
+deletes the copy, and its volume with it, when the check passes. After a failed
+run the copy stays for a day to look at, and `remove-restore-test-copies`
+deletes it on the 3rd at 11:00.
 
 A full run downloads the whole volume from B2: about 100 GB for immich and
 30 GB for Nextcloud (October 2026). Monthly keeps that well inside B2's free

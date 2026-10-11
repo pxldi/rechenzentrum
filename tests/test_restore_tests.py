@@ -180,6 +180,18 @@ class MonthlyVolumeRestores(unittest.TestCase):
                 wait = next(c for c in job["template"]["spec"]["initContainers"] if c["name"] == "wait-check")
                 self.assertIn("--for=jsonpath={.status.phase}=Succeeded", wait["args"])
 
+    def test_failed_restore_ends_the_run_at_once(self):
+        # Waiting for phase=Completed sat out the full 5h when the restore
+        # ended PartiallyFailed.
+        for key in self.restores:
+            with self.subTest(key):
+                pod = one(self.docs, "CronJob", f"restore-test-{key[:-len('.yaml')]}")["spec"]["jobTemplate"]["spec"]["template"]["spec"]
+                steps = {c["name"]: c["args"] for c in pod["initContainers"]}
+                names = list(steps)
+                self.assertIn("--for=jsonpath={.status.completionTimestamp}", steps["wait-restore"])
+                self.assertEqual(names[names.index("wait-restore") + 1], "check-restore")
+                self.assertIn("--for=jsonpath={.status.phase}=Completed", steps["check-restore"])
+
     def test_cleanup_covers_every_monthly_copy(self):
         cron = one(self.docs, "CronJob", "remove-restore-test-copies")
         args = cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]["containers"][0]["args"]

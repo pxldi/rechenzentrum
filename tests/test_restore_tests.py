@@ -164,6 +164,30 @@ class MonthlyVolumeRestores(unittest.TestCase):
                 self.assertIn("@sha256:", kept[0]["image"])
                 self.assertIsNone(patch["spec"]["priorityClassName"])
 
+    def test_copy_runs_once_and_ends_before_its_job(self):
+        # A copy that restarts or waits forever alerts for days: the first run
+        # crashlooped one and left the other in PodInitializing.
+        for key, restore in self.restores.items():
+            with self.subTest(key):
+                modifier = one(self.docs, "ConfigMap", restore["spec"]["resourceModifier"]["name"])
+                rules = yaml.safe_load(modifier["data"]["modifier.yaml"])["resourceModifierRules"]
+                spec = yaml.safe_load(rules[0]["strategicPatches"][0]["patchData"])["spec"]
+                self.assertEqual(spec["restartPolicy"], "Never")
+                check = next(c for c in spec["containers"] if c["name"] == "check")
+                self.assertNotIn("sleep", check["command"][-1])
+                job = one(self.docs, "CronJob", f"restore-test-{key[:-len('.yaml')]}")["spec"]["jobTemplate"]["spec"]
+                self.assertLess(spec["activeDeadlineSeconds"], job["activeDeadlineSeconds"])
+                wait = next(c for c in job["template"]["spec"]["initContainers"] if c["name"] == "wait-check")
+                self.assertIn("--for=jsonpath={.status.phase}=Succeeded", wait["args"])
+
+    def test_cleanup_covers_every_monthly_copy(self):
+        cron = one(self.docs, "CronJob", "remove-restore-test-copies")
+        args = cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]["containers"][0]["args"]
+        selector = next(a for a in args if a.startswith("--selector="))
+        for restore in self.restores.values():
+            self.assertIn(restore["metadata"]["name"], selector)
+        self.assertNotIn("gotify", selector)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -78,7 +78,7 @@ once a month from the newest `daily-critical-backup`:
 | CronJob in `velero-restore-test` | When (Europe/Berlin) | Restores | Passes when |
 | --- | --- | --- | --- |
 | `restore-test-immich-library` | 1st, 11:00 | immich's photo library (`immich-library-pvc`) | Restore `Completed`, PodVolumeRestore `Completed`, all six `.immich` folder markers present, at least 1000 files, 200 random files read back |
-| `restore-test-nextcloud-data` | 2nd, 11:00 | Nextcloud's data and app volumes | Restore and PodVolumeRestores `Completed`, `data/.ocdata` and `config/config.php` present, at least 100 files, 200 random files read back |
+| `restore-test-nextcloud-data` | 2nd, 11:00 | Nextcloud's data and app volumes | Restore and PodVolumeRestores `Completed`, `data/.ncdata` (or the older `.ocdata`) and `config/config.php` present, at least 100 files, 200 random files read back |
 
 Each restores the app's pod and claims into `velero-restore-test`, selected by
 label so the database pods beside them stay out. A resource modifier replaces

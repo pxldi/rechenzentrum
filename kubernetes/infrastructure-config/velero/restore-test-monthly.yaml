@@ -199,9 +199,10 @@ data:
               - |-
                 set -eu
                 fail=0
-                # .ocdata marks a Nextcloud data directory; Nextcloud refuses to start
-                # without it. config.php lives on the other volume.
-                [ -f /nc-data/data/.ocdata ] && echo "marker data/.ocdata present" || { echo "FAIL: data/.ocdata missing"; fail=1; }
+                # .ncdata marks a Nextcloud data directory (.ocdata before Nextcloud 29);
+                # Nextcloud refuses to start without it. config.php lives on the
+                # other volume.
+                if [ -f /nc-data/data/.ncdata ] || [ -f /nc-data/data/.ocdata ]; then echo "data directory marker present"; else echo "FAIL: data/.ncdata missing"; fail=1; fi
                 [ -s /nc-main/config/config.php ] && echo "config/config.php present" || { echo "FAIL: config/config.php missing"; fail=1; }
                 cd /nc-data/data
                 files=$(find . -type f | wc -l)

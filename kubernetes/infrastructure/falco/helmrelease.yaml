@@ -91,6 +91,12 @@ spec:
     #
     # nextcloud: apache2 runs `sh -c -- command -v -- <binary>` to find
     # libreoffice; only that exact command line is excepted.
+    #
+    # SQLite backup CronJobs (karakeep, wealthfolio): plain alpine installs
+    # sqlite at run time with `apk add`, so the sqlite3 that takes the nightly
+    # .backup sits in the container's upper layer (2026-10-07 to 10-11: every
+    # hit of "Drop and execute new binary in container" came from these two).
+    # Excepted only for that container, binary and .backup of each database.
     customRules:
       rechenzentrum-exceptions.yaml: |-
         - rule: Read sensitive file untrusted
@@ -150,6 +156,17 @@ spec:
               comps: [=, endswith, =, =]
               values:
                 - [nextcloud, nextcloud, apache2, "sh -c -- command -v -- 'libreoffice'"]
+          override:
+            exceptions: append
+
+        - rule: Drop and execute new binary in container
+          exceptions:
+            - name: sqlite_backup_cronjobs
+              fields: [k8s.ns.name, container.name, container.image.repository, proc.pname, proc.exepath, proc.cmdline]
+              comps: [=, =, in, =, =, startswith]
+              values:
+                - [karakeep, sqlite-backup, [alpine, docker.io/library/alpine], sh, /usr/bin/sqlite3, "sqlite3 /data/db.db .backup "]
+                - [wealthfolio, sqlite-backup, [alpine, docker.io/library/alpine], sh, /usr/bin/sqlite3, "sqlite3 /data/wealthfolio.db .backup "]
           override:
             exceptions: append
 

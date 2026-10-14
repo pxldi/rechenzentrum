@@ -35,8 +35,8 @@ cron_jobs = ["planning_nudge", "evening_check", "weekly_review"]
 # into it from the ConfigMap.
 path = "/zeroclaw-data/zeroclaw/agents/haus/workspace"
 
-# Supervised: reads and the routine writes (Tandoor, shopping, calendar create
-# and move, light switching) run on their own. log_cooked, append_note and
+# Supervised: reads and the routine writes (Tandoor, Snacky, shopping, calendar
+# create and move, light switching) run on their own. log_cooked, append_note and
 # log_learned run on their own: they record a fact and are cheap to undo,
 # and the vault keeps history. write_note replaces a whole note, so it asks. allowed_tools pins the
 # built-ins to memory and the clock; MCP tools are admitted by the SDK's
@@ -79,22 +79,24 @@ auto_approve = [
   "snacky__log_label", "snacky__log_recipe_portion",
   "snacky__day_summary", "snacky__week_summary", "snacky__add_serving",
   "snacky__suggest_foods", "snacky__log_again", "snacky__recipe_nutrition",
+  # The owner chose fewer prompts for the food log (2026-10-14): an estimate,
+  # a correction, a deleted entry or a new goal is undone by the next call.
+  "snacky__log_estimate", "snacky__update_entry", "snacky__delete_entry",
+  "snacky__set_goal",
 ]
 # Three tiers. auto_approve never asks. A tool in neither list asks, and the
 # keyboard's "Always" then allows it by name until zeroclaw restarts (the
 # allowlist is in memory). always_ask asks on every call and ignores "Always",
 # although Telegram still answers "Always approved"; it is kept for writes
 # that replace, delete or file something: a whole note, a calendar entry,
-# a Paperless document.
+# a meal plan entry, a Paperless document.
 always_ask = [
   "calendar__delete_event",
   "vault__write_note",
   "paperless__update_document", "paperless__create_tag",
   "files__send_to_paperless",
-  # Snacky: a plate-photo estimate is a guess, and the other three change or
-  # remove numbers that were already logged or that define the goal.
-  "snacky__log_estimate", "snacky__update_entry", "snacky__delete_entry",
-  "snacky__set_goal",
+  # Deleting a meal plan entry also drops the shopping list items it added.
+  "tandoor__delete_meal_plan",
   # The only cluster writes: a pod restart, a Flux reconcile, a backup run.
   # Each changes the live cluster, so each asks every time.
   "homelab__restart_workload", "homelab__reconcile_flux", "homelab__backup_now",

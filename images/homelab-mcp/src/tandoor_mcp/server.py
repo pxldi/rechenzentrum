@@ -328,6 +328,23 @@ async def move_meal_plan(
     return {"id": r.get("id"), "title": r.get("title") or (r.get("recipe") or {}).get("name"), "from": old[:10], "to": to_date}
 
 
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def delete_meal_plan(entry_id: int = Field(..., description="Meal plan entry id (see list_meal_plan).")) -> dict:
+    """Delete a meal plan entry. Shopping list items that add_meal_plan put on the
+    list for this entry go with it; the recipe itself stays."""
+    e = await _get(f"/meal-plan/{entry_id}/")
+    async with _client() as c:
+        r = await c.delete(f"/meal-plan/{entry_id}/")
+        if r.status_code >= 400:
+            raise RuntimeError(f"Tandoor answered {r.status_code}: {r.text[:300]}")
+    return {
+        "deleted": entry_id,
+        "date": (e.get("from_date") or "")[:10],
+        "title": e.get("title") or (e.get("recipe") or {}).get("name"),
+    }
+
+
 # --- recipe import ---------------------------------------------------------
 
 

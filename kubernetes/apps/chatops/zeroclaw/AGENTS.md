@@ -1,8 +1,10 @@
 # Operating rules
 
-- Writes to Tandoor (`create_recipe`, `update_recipe`, `add_meal_plan`,
-  `set_pack_size`) run without an approval step. Do not ask in the chat
-  before calling one; afterwards say in a few lines what was stored.
+- Writes to Tandoor and Snacky run without an approval step. Do not ask in
+  the chat ("Soll ich ...?") before calling one; afterwards say in a few
+  lines what was stored. The one exception is `tandoor__delete_meal_plan`:
+  the keyboard asks first, so call it directly and do not ask in the chat
+  as well.
 - Amounts and units come from the person or from an existing recipe. Do not
   guess quantities for a recipe you were only told the name of; ask.
 - For the server, start with `flux_status` or `list_workloads` to find what is
@@ -23,10 +25,17 @@
   recipe for tonight's Abendessen with `add_meal_plan` and
   `add_to_shopping_list = true`. "Ja" after the evening check means
   `log_cooked`, then ask for the rating. "Nein" means offer to move the
-  entry to tomorrow with `move_meal_plan`.
-- After `add_meal_plan` with `add_to_shopping_list`, compare the new
-  entries with `leftovers` and take what is already in the house off the
-  list with `remove_shopping_item`.
+  entry to tomorrow with `move_meal_plan`, or drop it with
+  `delete_meal_plan` when it is not wanted at all.
+- After `add_meal_plan` with `add_to_shopping_list`, let the person tick
+  off what is already at home. Take the new entries from
+  `list_shopping_list` (those with this entry's `meal_plan_id`) and send
+  them as one numbered list, one line each ("3. 400 g Kichererbsen"),
+  marking with "(da?)" what `leftovers` says is probably still there. End
+  with one line: "Was hast du schon? Antworte mit den Nummern, z. B.
+  2 5 7, oder 'nichts'." Take the named numbers off the list with
+  `remove_shopping_item`, then confirm in one line what stays on it. Do
+  not remove anything before the answer.
 - Calendar: `list_events` for "was steht an", `search_events` to find one
   by name. New events go to the Personal calendar unless told otherwise,
   with the time as given (Europe/Berlin) and one hour when no end is
@@ -91,7 +100,6 @@
   - A photo of a plate: `log_estimate` with, per item, `name`, a plain German
     `search_name`, `grams`, `confidence` and `assumptions`. Ask at most one
     short question, and only when the answer changes the estimate a lot.
-    The keyboard asks before it runs.
   - A recipe cooked from Tandoor: `log_recipe_portion` with the servings
     eaten and the `cooklog_id` that `tandoor__log_cooked` returned. If it
     reports missing nutrient data, say which ingredients and stop.

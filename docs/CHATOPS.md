@@ -33,8 +33,8 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 
 | Server | Tools | Approval |
 | --- | --- | --- |
-| tandoor | `search_recipes`, `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `leftovers`, `recipes_for_leftovers`, `log_cooked`, `list_shopping_list`, `preview_recipe_from_url` | runs on its own |
-| tandoor | `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size`, `move_meal_plan`, `add_shopping_item`, `remove_shopping_item`, `import_recipe_from_url` | approve/deny keyboard in the chat first |
+| tandoor | `search_recipes`, `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `leftovers`, `recipes_for_leftovers`, `log_cooked`, `list_shopping_list`, `preview_recipe_from_url`, `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size`, `move_meal_plan`, `add_shopping_item`, `remove_shopping_item`, `import_recipe_from_url` | runs on its own |
+| tandoor | `delete_meal_plan` (also drops the shopping list items the entry added) | approve/deny keyboard in the chat, every time |
 | calendar | `list_calendars`, `list_events`, `search_events` | runs on its own |
 | calendar | `create_event`, `move_event`, `delete_event` | approve/deny keyboard in the chat first |
 | vault | `list_notes`, `read_note`, `search_notes` (whole vault), `append_note`, `log_learned` (under `Clanky/` only) | runs on its own |
@@ -45,8 +45,7 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 | homeassistant | `turn_on`, `turn_off` (light, switch, fan, input_boolean only) | approve/deny keyboard in the chat first |
 | files | `list_received_files`, `read_pdf_text`, `render_page` | runs on its own |
 | files | `send_to_paperless` | approve/deny keyboard in the chat first |
-| snacky | `search_food`, `log_food`, `log_barcode`, `log_label`, `log_recipe_portion`, `day_summary`, `week_summary`, `add_serving` | runs on its own |
-| snacky | `log_estimate`, `update_entry`, `delete_entry`, `set_goal` | approve/deny keyboard in the chat first |
+| snacky | all tools: `search_food`, `log_food`, `log_barcode`, `log_label`, `log_estimate`, `log_recipe_portion`, `log_again`, `add_serving`, `update_entry`, `delete_entry`, `set_goal`, `day_summary`, `week_summary`, `suggest_foods`, `recipe_nutrition` | runs on its own |
 | built-in | `web_search_tool` (titles, links and snippets from the in-cluster SearXNG) | runs on its own |
 | homelab | `list_services`, `list_workloads`, `workload_status`, `pod_logs`, `events`, `flux_status`, `backups` | runs on its own |
 | homelab | `restart_workload` (deletes a Deployment's or StatefulSet's pods), `reconcile_flux`, `backup_now` (a Velero backup from an existing schedule's template) | approve/deny keyboard in the chat, every time |

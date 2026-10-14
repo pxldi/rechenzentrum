@@ -92,6 +92,17 @@ spec:
             capabilities:
               drop:
                 - ALL
+          # Schall runs its database migrations before it answers health
+          # checks. A slow one on 2026-10-13 outlasted the liveness budget and
+          # the pod crash-looped for half an hour. This gives startup up to
+          # 10 minutes; liveness only starts once it has passed.
+          startupProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+            timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /api/v1/health

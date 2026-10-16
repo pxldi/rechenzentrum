@@ -57,7 +57,7 @@ spec:
   # the most-over-request pod on the node, which is what eviction ranks on.
   resources:
     requests:
-      memory: "768Mi"
+      memory: "384Mi"
       cpu: "100m"
   storage:
     storageClass: local-ssd

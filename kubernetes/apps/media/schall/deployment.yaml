@@ -59,6 +59,11 @@ spec:
                 secretKeyRef:
                   name: cantus-auth
                   key: proxy-key
+            - name: SCHALL_SOUNDCLOUD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cantus-auth
+                  key: soundcloud-token
             - name: SCHALL_LIBRARY_ALLOWED_ROOTS
               value: "/music"
             - name: SCHALL_DOWNLOAD_INBOX_PATH

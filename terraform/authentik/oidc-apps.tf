@@ -198,12 +198,13 @@ resource "authentik_policy_binding" "vault_mcp_users" {
   order  = 0
 }
 
-# --- Tandoor, Snacky and calendar MCP, for claude.ai ---
+# --- Tandoor, Snacky, calendar and openGym MCP, for claude.ai ---
 #
 # The same arrangement as the vault's, one client per server: each server
 # checks that a token's aud is its own client id, so a token issued for one
 # connector is refused by the others. Tandoor's server checks tokens itself;
 # Snacky's sits behind the gate in images/homelab-mcp/src/mcp_gate.
+# openGym's server checks tokens itself, like Tandoor's.
 locals {
   mcp_connectors = {
     tandoor-mcp = {
@@ -223,6 +224,12 @@ locals {
       name        = "Calendar MCP"
       description = "Nextcloud calendars and tasks, for claude.ai"
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/nextcloud.png"
+    }
+    opengym-mcp = {
+      client_id   = "6wV32lCFNE3rvYBwASMcHlDTOKVFDgiiBjcpS7VX"
+      name        = "openGym MCP"
+      description = "Workouts, progression and weigh-ins, for claude.ai"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/wger.png"
     }
   }
 }
@@ -271,9 +278,10 @@ resource "authentik_application" "mcp_connector" {
   meta_icon         = each.value.icon
 }
 
-# These servers write (recipes, meal plans, log entries, events, tasks) with
-# the one credential the server holds, so whoever passes this login writes as
-# the owner. Same reason as vault-mcp-users for a group of its own.
+# These servers write (recipes, meal plans, log entries, events, tasks,
+# workouts) with the one credential the server holds, so whoever passes this
+# login writes as the owner. Same reason as vault-mcp-users for a group of its
+# own.
 resource "authentik_group" "mcp_connector_users" {
   name         = "mcp-connector-users"
   is_superuser = false

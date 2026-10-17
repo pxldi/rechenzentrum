@@ -7,6 +7,7 @@ resources:
   - deployment.yaml
   - ingress.yaml
   - networkpolicy-snacky.yaml
+  - networkpolicy-chatops.yaml
 components:
   # Egress: the init container clones the exercise media from GitHub, and the
   # API sends Web Push to the browsers' push services. Nothing in the cluster.

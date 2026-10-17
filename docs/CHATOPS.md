@@ -198,11 +198,22 @@ so set the writes (`delete_meal_plan` above all) to ask first.
   on port 8001 with the `OAUTH_*` variables, behind `calendar-mcp.<domain>`.
   It holds the same Nextcloud app password as the bot's container. Events
   and tasks (VTODO) both go over CalDAV.
+- **openGym**: `opengym-mcp` runs `python -m opengym_mcp` for claude.ai only
+  (one container, `OAUTH_*` set), behind `opengym-mcp.<domain>`. It reads and
+  writes openGym's API through the openGym Service with a Bearer token from
+  openGym's device pairing flow, the one Snacky holds, in
+  `secret-opengym.yaml`. The token lasts 90 days from pairing and openGym
+  renews it only for a client that saves the renewal, which a Secret cannot;
+  when the tools say "pair again", pair once (Settings, "Pair the mobile
+  app", then `POST /api/pair/redeem` with the code) and put the new token in
+  both this Secret and Snacky's. Writes are compare-and-swap on openGym's
+  document revision, so a phone saving at the same time keeps its change.
+  Set `log_workout`, `delete_workout` and `log_bodyweight` to ask first.
 
 To connect: Add custom connector, URL `https://tandoor-mcp.<domain>/mcp`,
-`https://snacky-mcp.<domain>/mcp` or `https://calendar-mcp.<domain>/mcp`, and
-the matching client id from the tofu file under advanced settings, secret
-blank.
+`https://snacky-mcp.<domain>/mcp`, `https://calendar-mcp.<domain>/mcp` or
+`https://opengym-mcp.<domain>/mcp`, and the matching client id from the tofu
+file under advanced settings, secret blank.
 
 ## Scheduled nudges
 

@@ -24,6 +24,7 @@ resources:
   - secret-vault.yaml
   - secret-paperless.yaml
   - secret-homeassistant.yaml
+  - secret-opengym.yaml
   - zeroclaw/pvc.yaml
   - zeroclaw/deployment.yaml
   - mcp/rbac.yaml
@@ -33,6 +34,7 @@ resources:
   - mcp/paperless-mcp.yaml
   - mcp/homeassistant-mcp.yaml
   - mcp/snacky-mcp-gate.yaml
+  - mcp/opengym-mcp.yaml
   - vault/pvc.yaml
   - vault/deployment.yaml
   - vault/service.yaml

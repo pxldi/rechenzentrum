@@ -7,7 +7,8 @@
 # off and no bearer token, which these rules are the reason for. The one
 # exceptions are the servers claude.ai reaches through Traefik, which check a
 # bearer token themselves: the vault's, the recipe server's and the calendar
-# server's second containers on 8001, and the gate in front of Snacky.
+# server's second containers on 8001, the gate in front of Snacky, and the
+# openGym server.
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -376,6 +377,59 @@ spec:
       ports:
         - protocol: TCP
           port: 8000
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: authentik
+      ports:
+        - protocol: TCP
+          port: 9000
+---
+# Traefik forwards opengym-mcp.<domain> to the openGym server, which checks
+# the bearer token itself.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-opengym-mcp-from-traefik
+spec:
+  podSelector:
+    matchLabels:
+      app: opengym-mcp
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - protocol: TCP
+          port: 8000
+---
+# The openGym server reaches openGym's Service and fetches Authentik's signing
+# keys; nothing else. openGym's side of the first rule is in
+# kubernetes/apps/opengym/networkpolicy-chatops.yaml.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: opengym-mcp-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: opengym-mcp
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: opengym
+          podSelector:
+            matchLabels:
+              app: opengym
+      ports:
+        - protocol: TCP
+          port: 80
     - to:
         - namespaceSelector:
             matchLabels:

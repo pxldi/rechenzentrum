@@ -1,0 +1,24 @@
+---
+# The openGym MCP server for claude.ai reads and writes workouts through the
+# API, on the web container's port where nginx proxies /api. Only its pod.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-opengym-mcp
+spec:
+  podSelector:
+    matchLabels:
+      app: opengym
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: chatops
+          podSelector:
+            matchLabels:
+              app: opengym-mcp
+      ports:
+        - protocol: TCP
+          port: 80

@@ -7,7 +7,10 @@ metadata:
   labels:
     app: zeroclaw
 spec:
-  replicas: 1
+  # Paused: scaled to zero for now. The PVC and config stay, so setting this
+  # back to 1 resumes the bot with its data. The MCP servers the claude.ai
+  # connectors use run in their own pods and are not affected.
+  replicas: 0
   # Holds the RWO data claim with SQLite databases in it: one pod at a time.
   strategy:
     type: Recreate

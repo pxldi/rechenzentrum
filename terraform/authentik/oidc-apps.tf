@@ -197,3 +197,87 @@ resource "authentik_policy_binding" "vault_mcp_users" {
   group  = authentik_group.vault_mcp_users.id
   order  = 0
 }
+
+# --- Tandoor and Snacky MCP, for claude.ai ---
+#
+# The same arrangement as the vault's, one client per server: each server
+# checks that a token's aud is its own client id, so a token issued for one
+# connector is refused by the others. Tandoor's server checks tokens itself;
+# Snacky's sits behind the gate in images/homelab-mcp/src/mcp_gate.
+locals {
+  mcp_connectors = {
+    tandoor-mcp = {
+      client_id   = "QGbHNMokfArGxiq2I2AoeZbkqBpVvyr8d58D9Mhm"
+      name        = "Tandoor MCP"
+      description = "Recipes, meal plan and shopping list, for claude.ai"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/tandoor-recipes.png"
+    }
+    snacky-mcp = {
+      client_id   = "YDWJiIWVPrimLNEEiKrn68hJuUkbkwTMpIA9LNtI"
+      name        = "Snacky MCP"
+      description = "The nutrition log, for claude.ai"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/grocy.png"
+    }
+  }
+}
+
+resource "authentik_provider_oauth2" "mcp_connector" {
+  for_each = local.mcp_connectors
+
+  name        = each.key
+  client_id   = each.value.client_id
+  client_type = "public"
+
+  authorization_flow  = data.authentik_flow.default-authorization-flow.id
+  invalidation_flow   = data.authentik_flow.default-invalidation-flow.id
+  authentication_flow = authentik_flow.authentication.uuid
+
+  issuer_mode = "per_provider"
+  signing_key = data.authentik_certificate_key_pair.jwt.id
+
+  access_token_validity  = "hours=1"
+  refresh_token_validity = "days=30"
+
+  grant_types = ["authorization_code", "refresh_token"]
+
+  allowed_redirect_uris = [
+    {
+      matching_mode     = "strict"
+      redirect_uri_type = "authorization"
+      url               = "https://claude.ai/api/mcp/auth_callback"
+    },
+  ]
+
+  property_mappings = concat(
+    [for m in data.authentik_property_mapping_provider_scope.oidc : m.id],
+    [data.authentik_property_mapping_provider_scope.offline_access.id],
+  )
+}
+
+resource "authentik_application" "mcp_connector" {
+  for_each = local.mcp_connectors
+
+  name = each.value.name
+  # The slug is the issuer, as for the vault: OAUTH_ISSUER on the server.
+  slug              = each.key
+  protocol_provider = authentik_provider_oauth2.mcp_connector[each.key].id
+  meta_description  = each.value.description
+  meta_icon         = each.value.icon
+}
+
+# Both servers write (recipes, meal plans, log entries) with the one token
+# the server holds, so whoever passes this login writes as the owner. Same
+# reason as vault-mcp-users for a group of its own.
+resource "authentik_group" "mcp_connector_users" {
+  name         = "mcp-connector-users"
+  is_superuser = false
+  users        = [data.authentik_user.pxldi.id]
+}
+
+resource "authentik_policy_binding" "mcp_connector_users" {
+  for_each = local.mcp_connectors
+
+  target = authentik_application.mcp_connector[each.key].uuid
+  group  = authentik_group.mcp_connector_users.id
+  order  = 0
+}

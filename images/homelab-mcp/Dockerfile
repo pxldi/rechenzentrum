@@ -8,6 +8,8 @@
 #   python -m immich_mcp    photo search and shared links, holds an API key
 #   python -m karakeep_mcp  bookmarks, holds an API key
 #   python -m files_mcp     files people send the bot (sidecar in the ZeroClaw pod)
+#   python -m mcp_gate      not a server: a token check in front of one that has
+#                           none, so claude.ai can reach Snacky
 # One image because they share the SDK and the build, and because a manifest
 # that names one tag for all of them is one thing to bump.
 FROM python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d

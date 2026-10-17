@@ -15,11 +15,13 @@ on:
     branches: ["main"]
     paths:
       - "images/homelab-mcp/**"
+      - "tests/test_mcp_gate.py"
       - ".github/workflows/homelab-mcp-image.yml"
   push:
     branches: ["main"]
     paths:
       - "images/homelab-mcp/**"
+      - "tests/test_mcp_gate.py"
       - ".github/workflows/homelab-mcp-image.yml"
 
 env:
@@ -165,3 +167,60 @@ jobs:
           curl -si -X POST -H 'Content-Type: application/json' -d "$init" http://127.0.0.1:8000/mcp \
             | grep -qi '^www-authenticate: Bearer .*resource_metadata='
           docker stop vault_locked >/dev/null
+
+      # The recipe server is the second one claude.ai reaches; same contract
+      # as the vault's, without the untokened run that the first smoke test
+      # already covers.
+      - name: Smoke-test the recipe server's token check
+        run: |
+          set -euo pipefail
+          init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
+          docker run -d --rm --name tandoor_locked --read-only --user 1000:1000 \
+            -e TANDOOR_TOKEN=smoke \
+            -e OAUTH_ISSUER=https://auth.example.test/application/o/tandoor-mcp/ \
+            -e OAUTH_AUDIENCE=smoke \
+            -e OAUTH_RESOURCE_URL=http://127.0.0.1:8000/mcp \
+            -p 8000:8000 "${IMAGE}:sha-${SHA}" python -m tandoor_mcp
+          for _ in $(seq 1 20); do
+            if curl -sf http://127.0.0.1:8000/health; then echo; break; fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8000/.well-known/oauth-protected-resource/mcp \
+            | grep -q 'auth.example.test/application/o/tandoor-mcp/'
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+            -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+            -d "$init" http://127.0.0.1:8000/mcp)
+          test "$code" = 401
+          docker stop tandoor_locked >/dev/null
+
+      # The gate in front of Snacky: its unit tests need the SDK, so they run
+      # in the image; then the module must start as the Deployment runs it,
+      # refuse /mcp without a token, and refuse to start without OAUTH_ISSUER.
+      - name: Test the token gate
+        run: |
+          set -euo pipefail
+          docker run --rm --read-only --user 1000:1000 -v "$PWD/tests:/tests:ro" \
+            "${IMAGE}:sha-${SHA}" python -m unittest discover -s /tests -p 'test_mcp_gate.py' -v 2>&1 \
+            | tee /tmp/gate-tests.log
+          if grep -q 'skipped' /tmp/gate-tests.log; then echo "gate tests were skipped"; exit 1; fi
+          if docker run --rm --read-only --user 1000:1000 -e UPSTREAM_URL=http://upstream.test/mcp \
+            "${IMAGE}:sha-${SHA}" python -m mcp_gate; then
+            echo "the gate started without a token check"; exit 1
+          fi
+          docker run -d --rm --name gate --read-only --user 1000:1000 \
+            -e UPSTREAM_URL=http://upstream.test/mcp \
+            -e OAUTH_ISSUER=https://auth.example.test/application/o/snacky-mcp/ \
+            -e OAUTH_AUDIENCE=smoke \
+            -e OAUTH_RESOURCE_URL=http://127.0.0.1:8000/mcp \
+            -p 8000:8000 "${IMAGE}:sha-${SHA}" python -m mcp_gate
+          for _ in $(seq 1 20); do
+            if curl -sf http://127.0.0.1:8000/health; then echo; break; fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8000/health | grep -q '"server":"gate"'
+          curl -sf http://127.0.0.1:8000/.well-known/oauth-protected-resource/mcp \
+            | grep -q 'auth.example.test/application/o/snacky-mcp/'
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
+            -d '{}' http://127.0.0.1:8000/mcp)
+          test "$code" = 401
+          docker stop gate >/dev/null

@@ -7,10 +7,11 @@ import httpx
 from mcp.server import MCPServer
 from pydantic import BaseModel, Field
 
+from oauth import server_kwargs
 from serve import guarded
 from tandoor_mcp import leftovers as lo
 
-mcp = MCPServer("tandoor")
+mcp = MCPServer("tandoor", **server_kwargs())
 
 # The Service name is in Tandoor's ALLOWED_HOSTS, so no Host trick is needed.
 BASE_URL = os.environ.get("TANDOOR_URL", "http://tandoor.tandoor.svc.cluster.local").rstrip("/")

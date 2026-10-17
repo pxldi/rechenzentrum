@@ -33,7 +33,8 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 
 | Server | Tools | Approval |
 | --- | --- | --- |
-| tandoor | `search_recipes`, `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `leftovers`, `recipes_for_leftovers`, `log_cooked`, `list_shopping_list`, `preview_recipe_from_url`, `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size`, `move_meal_plan`, `add_shopping_item`, `remove_shopping_item`, `import_recipe_from_url` | runs on its own |
+| tandoor | `search_recipes` (by name and keyword names), `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `search_food`, `leftovers`, `recipes_for_leftovers`, `log_cooked`, `list_shopping_list`, `preview_recipe_from_url`, `create_recipe`, `update_recipe`, `set_recipe_image`, `add_meal_plan`, `add_meal_plans`, `set_pack_size`, `set_food_stock`, `move_meal_plan`, `add_shopping_item(s)`, `update_shopping_item`, `check_shopping_items`, `remove_shopping_item(s)`, `add_recipe_to_shopping_list`, `create_keyword`, `create_meal_type`, `import_recipe_from_url` | runs on its own |
+| tandoor | `merge_food`, `merge_keyword` (delete the source, cannot be undone) | approve/deny keyboard in the chat, every time |
 | tandoor | `delete_meal_plan` (also drops the shopping list items the entry added) | approve/deny keyboard in the chat, every time |
 | calendar | `list_calendars`, `list_events`, `search_events`, `agenda`, `list_tasks` | runs on its own |
 | calendar | `create_event`, `move_event` | runs on its own |
@@ -51,6 +52,14 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 | built-in | `web_search_tool` (titles, links and snippets from the in-cluster SearXNG) | runs on its own |
 | homelab | `list_services`, `list_workloads`, `workload_status`, `pod_logs`, `events`, `flux_status`, `backups` | runs on its own |
 | homelab | `restart_workload` (deletes a Deployment's or StatefulSet's pods), `reconcile_flux`, `backup_now` (a Velero backup from an existing schedule's template) | approve/deny keyboard in the chat, every time |
+
+The shopping list writes match a food name against the foods Tandoor already
+has (`tandoor_mcp/foods.py`): the same name up to case, spacing or a plural
+is reused, and a name that only resembles one ("Zwiebel, klein" next to
+"Zwiebel") is not added but returned with the similar foods, so no duplicate
+food appears unless `new_food` says so. The batch tools take up to 50 items
+and answer per item; removing an id that is already gone reports
+`already_removed`, not an error.
 
 `files-mcp` is a native sidecar in the ZeroClaw pod, on the same volume,
 because Telegram attachments land in ZeroClaw's workspace and nowhere

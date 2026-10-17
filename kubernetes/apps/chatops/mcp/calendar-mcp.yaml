@@ -25,7 +25,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: calendar-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-5d809338b23d5955396ba8bfa3ab21d0cce6bf3d
+          image: ghcr.io/pxldi/homelab-mcp:sha-c57c7b027c310fb46734edf20ae9f774955a097d
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "calendar_mcp"]
           ports:
@@ -74,6 +74,66 @@ spec:
               memory: 64Mi
             limits:
               memory: 256Mi
+        # The same server a second time, for claude.ai, as in the tandoor-mcp
+        # pod: its own port and a bearer-token check that the bot's container
+        # does not have. Tokens are Authentik's, for the calendar-mcp client in
+        # terraform/authentik/oidc-apps.tf (the id is public).
+        - name: calendar-mcp-claude
+          image: ghcr.io/pxldi/homelab-mcp:sha-c57c7b027c310fb46734edf20ae9f774955a097d
+          imagePullPolicy: IfNotPresent
+          args: ["python", "-m", "calendar_mcp"]
+          ports:
+            - name: claude
+              containerPort: 8001
+          env:
+            - name: PORT
+              value: "8001"
+            - name: CALDAV_URL
+              value: http://nextcloud.nextcloud.svc.cluster.local:8080/remote.php/dav/
+            - name: CALDAV_HOST
+              value: cloud.pxldi.de
+            - name: CALDAV_USER
+              value: leopold
+            - name: CALDAV_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: chatops-caldav
+                  key: CALDAV_PASSWORD
+            - name: TZ
+              value: Europe/Berlin
+            - name: OAUTH_ISSUER
+              value: https://auth.pxldi.de/application/o/calendar-mcp/
+            - name: OAUTH_AUDIENCE
+              value: DEuYsEASNNtWlMwviGPOBFof0oghFuwaK6VprRTv
+            - name: OAUTH_RESOURCE_URL
+              value: https://calendar-mcp.pxldi.de/mcp
+            - name: OAUTH_JWKS_URL
+              value: http://authentik-server.authentik.svc.cluster.local/application/o/calendar-mcp/jwks/
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: claude
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: claude
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
       volumes:
         - name: tmp
           emptyDir: {}
@@ -90,3 +150,7 @@ spec:
     - name: http
       port: 8000
       targetPort: http
+    # The claude.ai copy; only the IngressRoute forwards to it.
+    - name: claude
+      port: 8001
+      targetPort: claude

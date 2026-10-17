@@ -25,7 +25,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: tandoor-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-5d809338b23d5955396ba8bfa3ab21d0cce6bf3d
+          image: ghcr.io/pxldi/homelab-mcp:sha-c57c7b027c310fb46734edf20ae9f774955a097d
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "tandoor_mcp"]
           ports:
@@ -72,7 +72,7 @@ spec:
         # terraform/authentik/oidc-apps.tf (the id is public), verified against
         # the provider's JWKS over the in-cluster Service.
         - name: tandoor-mcp-claude
-          image: ghcr.io/pxldi/homelab-mcp:sha-5d809338b23d5955396ba8bfa3ab21d0cce6bf3d
+          image: ghcr.io/pxldi/homelab-mcp:sha-c57c7b027c310fb46734edf20ae9f774955a097d
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "tandoor_mcp"]
           ports:

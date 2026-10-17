@@ -27,6 +27,7 @@ class FakeTandoor:
         self.property_types = [{"id": 31, "name": "Kalorien", "unit": "kcal", "fdc_id": 1008, "order": 2}, {"id": 32, "name": "Salz", "unit": "g", "fdc_id": None}]
         self.recipes = {5: {"id": 5, "name": "Chili"}}
         self.keywords = {7: {"id": 7, "name": "test"}}
+        self.conversions = {}
         self.next_id = 100
         self.calls = []
 
@@ -110,6 +111,18 @@ class FakeTandoor:
                 props = [{**p, "id": p.get("id") or 900 + i} for i, p in enumerate(body["properties"])]
                 self.foods[fid] = {**self.foods[fid], **body, "properties": props}
             return httpx.Response(200, json=self.foods[fid])
+        if path == "/unit-conversion/" and method == "GET":
+            fid = int(q.get("food_id") or 0)
+            return httpx.Response(200, json={"results": [c for c in self.conversions.values() if c["food"]["id"] == fid], "next": None})
+        if path == "/unit-conversion/" and method == "POST":
+            cid = self.next_id
+            self.next_id += 1
+            self.conversions[cid] = {"id": cid, **body}
+            return httpx.Response(201, json=self.conversions[cid])
+        if path.startswith("/unit-conversion/") and method == "PATCH":
+            cid = int(path.split("/")[2])
+            self.conversions[cid] = {"id": cid, **body}
+            return httpx.Response(200, json=self.conversions[cid])
         if path == "/meal-type/":
             return httpx.Response(200, json={"results": [{"id": 1, "name": "Dinner"}]})
         if path == "/meal-plan/" and method == "POST":
@@ -197,7 +210,7 @@ class TandoorToolsTest(unittest.TestCase):
 
     def test_set_food_nutrients_keeps_other_properties(self):
         self.fake.foods[3]["properties"] = [{"id": 70, "property_amount": 2.5, "property_type": {"id": 32, "name": "Salz"}}]
-        out = self.run_(self.s.set_food_nutrients(food_id=3, kcal=7, protein_g=0.3, fat_g=None, carbs_g=None, fibre_g=None, per="100ml"))
+        out = self.run_(self.s.set_food_nutrients(food_id=3, kcal=7, protein_g=0.3, fat_g=None, carbs_g=None, fibre_g=None, per="100ml", g_per_ml=1.0))
         self.assertEqual(out["values"], {"kcal": 7, "protein_g": 0.3})
         (patch,) = [c for c in self.fake.calls if c[0] == "PATCH"]
         body = patch[2]
@@ -208,7 +221,46 @@ class TandoorToolsTest(unittest.TestCase):
         created = [c for c in self.fake.calls if c[:2] == ("POST", "/property-type/")]
         self.assertEqual([c[2]["name"] for c in created], ["Eiweiß"])
         with self.assertRaises(Exception):
-            self.run_(self.s.set_food_nutrients(food_id=3, kcal=None, protein_g=None, fat_g=None, carbs_g=None, fibre_g=None, per="100g"))
+            self.run_(self.s.set_food_nutrients(food_id=3, kcal=None, protein_g=None, fat_g=None, carbs_g=None, fibre_g=None, per="100g", g_per_ml=1.0))
+
+    def test_volume_values_on_a_food_kept_per_100g_are_converted(self):
+        # Stock whose label values were first stored per 100 g, then given per 100 ml.
+        self.fake.foods[3].update({
+            "properties_food_amount": 100,
+            "properties_food_unit": {"id": 1, "name": "g"},
+            "properties": [{"id": 70, "property_amount": 5, "property_type": {"id": 31, "name": "Kalorien"}}],
+        })
+        out = self.run_(self.s.set_food_nutrients(food_id=3, kcal=6, protein_g=None, fat_g=None, carbs_g=None, fibre_g=None, per="100ml", g_per_ml=1.2))
+        self.assertEqual(out["per"], "100g")
+        self.assertEqual(out["values"], {"kcal": 5})
+        (patch,) = [c for c in self.fake.calls if c[0] == "PATCH" and c[1] == "/food/3/"]
+        self.assertEqual(patch[2]["properties_food_unit"]["name"], "g")
+        self.assertEqual(out["conversions"], ["1 l = 1200 g", "100 ml = 120 g"])
+        units = sorted((c["base_unit"]["name"], c["converted_amount"]) for c in self.fake.conversions.values())
+        self.assertEqual(units, [("l", 1200.0), ("ml", 120.0)])
+        # Again with another density: the two conversions are replaced, not added.
+        self.run_(self.s.set_food_nutrients(food_id=3, kcal=6, protein_g=None, fat_g=None, carbs_g=None, fibre_g=None, per="100ml", g_per_ml=1.0))
+        self.assertEqual(len(self.fake.conversions), 2)
+        self.assertEqual(sorted(c["converted_amount"] for c in self.fake.conversions.values()), [100.0, 1000.0])
+
+    def test_other_unit_mismatch_still_refused(self):
+        self.fake.foods[3].update({
+            "properties_food_amount": 1,
+            "properties_food_unit": {"id": 9, "name": "stück"},
+            "properties": [{"id": 70, "property_amount": 5, "property_type": {"id": 31, "name": "Kalorien"}}],
+        })
+        with self.assertRaises(Exception):
+            self.run_(self.s.set_food_nutrients(food_id=3, kcal=6, protein_g=None, fat_g=None, carbs_g=None, fibre_g=None, per="100g", g_per_ml=1.0))
+        self.assertEqual([c for c in self.fake.calls if c[0] == "PATCH"], [])
+
+    def test_set_unit_conversion(self):
+        out = self.run_(self.s.set_unit_conversion(food_id=1, amount=1, unit="Stück", equals=150, equals_unit="g"))
+        self.assertEqual(out, {"id": 1, "name": "Zwiebel", "conversion": "1 Stück = 150 g"})
+        self.run_(self.s.set_unit_conversion(food_id=1, amount=1, unit="Stück", equals=120, equals_unit="g"))
+        (conv,) = self.fake.conversions.values()
+        self.assertEqual((conv["base_unit"]["name"], conv["converted_amount"], conv["food"]["id"]), ("Stück", 120, 1))
+        with self.assertRaises(Exception):
+            self.run_(self.s.set_unit_conversion(food_id=1, amount=1, unit="g", equals=1, equals_unit="G"))
 
     def test_recipe_image(self):
         self.assertEqual(self.run_(self.s.set_recipe_image(recipe_id=5, image_url="https://example.org/chili.jpg")), {"id": 5, "image": True})

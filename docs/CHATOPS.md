@@ -33,7 +33,7 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 
 | Server | Tools | Approval |
 | --- | --- | --- |
-| tandoor | `search_recipes` (by name and keyword names), `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `search_food`, `leftovers`, `recipes_for_leftovers`, `log_cooked`, `list_shopping_list`, `preview_recipe_from_url`, `create_recipe`, `update_recipe`, `set_recipe_image`, `add_meal_plan`, `add_meal_plans`, `set_pack_size`, `set_food_stock`, `set_food_nutrients`, `move_meal_plan`, `add_shopping_item(s)`, `update_shopping_item`, `check_shopping_items`, `remove_shopping_item(s)`, `add_recipe_to_shopping_list`, `create_keyword`, `create_meal_type`, `import_recipe_from_url` | runs on its own |
+| tandoor | `search_recipes` (by name and keyword names), `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `search_food`, `leftovers`, `recipes_for_leftovers`, `log_cooked`, `list_shopping_list`, `preview_recipe_from_url`, `create_recipe`, `update_recipe`, `set_recipe_image`, `add_meal_plan`, `add_meal_plans`, `set_pack_size`, `set_unit_conversion`, `set_food_stock`, `set_food_nutrients`, `move_meal_plan`, `add_shopping_item(s)`, `update_shopping_item`, `check_shopping_items`, `remove_shopping_item(s)`, `add_recipe_to_shopping_list`, `create_keyword`, `create_meal_type`, `import_recipe_from_url` | runs on its own |
 | tandoor | `merge_food`, `merge_keyword` (delete the source, cannot be undone) | approve/deny keyboard in the chat, every time |
 | tandoor | `delete_meal_plan` (also drops the shopping list items the entry added) | approve/deny keyboard in the chat, every time |
 | tandoor | `delete_recipe` (with its steps, cook log and plan entries), `delete_keyword` (cannot be undone; a missing id answers `already_removed`) | approve/deny keyboard in the chat, every time |
@@ -210,6 +210,8 @@ the merges above all) to ask first.
   app", then `POST /api/pair/redeem` with the code) and put the new token in
   both this Secret and Snacky's. Writes are compare-and-swap on openGym's
   document revision, so a phone saving at the same time keeps its change.
+  Besides workouts and weigh-ins it writes one routine field, the
+  per-exercise weight step (`set_progression_step`).
   Set `log_workout`, `delete_workout` and `log_bodyweight` to ask first.
 
 To connect: Add custom connector, URL `https://tandoor-mcp.<domain>/mcp`,

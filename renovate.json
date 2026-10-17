@@ -114,6 +114,13 @@
       "description": "Both CLIs ship several releases a day. Grouped so a bump restarts claudebox, and the sessions running in it, at most once a night. The two-day age skips releases that upstream pulls or hotfixes, and keeps a freshly published npm package from reaching a pod that holds cluster and GitHub credentials the same day."
     },
     {
+      "matchFileNames": [
+        "kubernetes/apps/claudebox/deployment.yaml"
+      ],
+      "enabled": false,
+      "description": "claudebox is scaled to 0. No update PRs for a pod that does not run; remove this rule when it is scaled back up."
+    },
+    {
       "matchPackageNames": [
         "ghcr.io/cloudnative-pg/postgresql"
       ],

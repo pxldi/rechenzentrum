@@ -23,6 +23,8 @@ class FakeTandoor:
     def __init__(self):
         self.foods = {1: {"id": 1, "name": "Zwiebel"}, 2: {"id": 2, "name": "Ingwer"}, 3: {"id": 3, "name": "Salz"}}
         self.entries = {10: {"id": 10, "food": {"name": "Zwiebel"}, "amount": 2, "unit": None, "checked": False}}
+        self.recipes = {5: {"id": 5, "name": "Chili"}}
+        self.keywords = {7: {"id": 7, "name": "test"}}
         self.next_id = 100
         self.calls = []
 
@@ -42,7 +44,20 @@ class FakeTandoor:
         if path == "/food/" and method == "GET":
             word = (q.get("query") or "").lower()
             hits = [f for f in self.foods.values() if word in f["name"].lower() or f["name"].lower() in word]
+            # Like Tandoor, the recipe count is only there with extended=1.
+            if q.get("extended") == "1":
+                hits = [{**f, "numrecipe": 4} for f in hits]
             return httpx.Response(200, json={"results": hits})
+        for kind, store in (("recipe", self.recipes), ("keyword", self.keywords)):
+            prefix = f"/{kind}/"
+            if path.startswith(prefix) and path.count("/") == 3:
+                oid = int(path.split("/")[2])
+                if oid not in store:
+                    return httpx.Response(404, json={"detail": "Not found."})
+                if method == "DELETE":
+                    del store[oid]
+                    return httpx.Response(204)
+                return httpx.Response(200, json=store[oid])
         if path == "/shopping-list-entry/" and method == "POST":
             name = body["food"]["name"]
             if "id" not in body["food"] and not any(f["name"] == name for f in self.foods.values()):
@@ -141,6 +156,17 @@ class TandoorToolsTest(unittest.TestCase):
         out = self.run_(self.s.add_meal_plans(entries=entries))
         self.assertEqual([o["added"] for o in out], [True, False, True])
         self.assertIn("Brunch", out[1]["error"])
+
+    def test_search_food_counts_recipes(self):
+        out = self.run_(self.s.search_food(query="Zwiebel", limit=10))
+        self.assertEqual(out[0]["used_in_recipes"], 4)
+
+    def test_delete_recipe_and_keyword_are_repeatable(self):
+        self.assertEqual(self.run_(self.s.delete_recipe(recipe_id=5)), {"id": 5, "status": "removed", "name": "Chili"})
+        self.assertEqual(self.run_(self.s.delete_recipe(recipe_id=5)), {"id": 5, "status": "already_removed"})
+        self.assertEqual(self.run_(self.s.delete_keyword(keyword_id=7)), {"id": 7, "status": "removed", "name": "test"})
+        self.assertEqual(self.run_(self.s.delete_keyword(keyword_id=7)), {"id": 7, "status": "already_removed"})
+        self.assertNotIn(5, self.fake.recipes)
 
     def test_recipe_image(self):
         self.assertEqual(self.run_(self.s.set_recipe_image(recipe_id=5, image_url="https://example.org/chili.jpg")), {"id": 5, "image": True})

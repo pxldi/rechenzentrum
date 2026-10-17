@@ -540,11 +540,15 @@ class ShoppingItem(BaseModel):
     new_food: bool = Field(False, description="Create the food even though similar ones exist. Only after the person said it is a different food.")
 
 
-async def _food_candidates(name: str) -> list[dict]:
+async def _food_candidates(name: str, with_recipe_count: bool = False) -> list[dict]:
     """Foods that may be `name`: what Tandoor's search returns for the whole name
-    and for its first part, so 'Zwiebel, klein' also finds 'Zwiebel'."""
+    and for its first part, so 'Zwiebel, klein' also finds 'Zwiebel'.
+
+    Tandoor only counts the recipes using each food when asked with extended=1,
+    which costs a subquery per food, so only search_food asks for it."""
     queries = {name.strip(), fm.base_name(name)}
-    results = await asyncio.gather(*(_get("/food/", query=q, page_size=25) for q in queries if q))
+    extended = 1 if with_recipe_count else None
+    results = await asyncio.gather(*(_get("/food/", query=q, page_size=25, extended=extended) for q in queries if q))
     seen: dict[int, dict] = {}
     for data in results:
         for f in data.get("results", []) if isinstance(data, dict) else data:
@@ -664,19 +668,23 @@ async def check_shopping_items(
     return [{"id": i, "status": state if ok else "not_found"} for i, ok in zip(entry_ids, found)]
 
 
-async def _delete_entry(entry_id: int) -> dict:
-    """One entry's outcome. An id that is already gone is not an error, so a
+async def _delete(path: str, obj_id: int) -> dict:
+    """One delete's outcome. An id that is already gone is not an error, so a
     repeated call is harmless."""
     try:
         async with _client() as c:
-            r = await c.delete(f"/shopping-list-entry/{entry_id}/")
+            r = await c.delete(f"{path}{obj_id}/")
     except httpx.HTTPError as e:
-        return {"id": entry_id, "status": "error", "error": str(e)[:200]}
+        return {"id": obj_id, "status": "error", "error": str(e)[:200]}
     if r.status_code == 404:
-        return {"id": entry_id, "status": "already_removed"}
+        return {"id": obj_id, "status": "already_removed"}
     if r.status_code >= 400:
-        return {"id": entry_id, "status": "error", "error": f"Tandoor answered {r.status_code}: {r.text[:200]}"}
-    return {"id": entry_id, "status": "removed"}
+        return {"id": obj_id, "status": "error", "error": f"Tandoor answered {r.status_code}: {r.text[:200]}"}
+    return {"id": obj_id, "status": "removed"}
+
+
+async def _delete_entry(entry_id: int) -> dict:
+    return await _delete("/shopping-list-entry/", entry_id)
 
 
 @mcp.tool()
@@ -732,7 +740,7 @@ async def search_food(query: str = Field(..., description="Food name or part of 
     """Foods Tandoor knows that match a name, with whether each is on hand, never
     goes on the shopping list, is on it now, and how many recipes use it. Use it
     before naming a food in a write, and to find duplicates for merge_food."""
-    candidates = await _food_candidates(query)
+    candidates = await _food_candidates(query, with_recipe_count=True)
     candidates.sort(key=lambda f: -fm.similarity(query, f.get("name") or ""))
     return [_food_summary(f) for f in candidates[:limit]]
 
@@ -829,6 +837,40 @@ async def create_meal_type(
         body["time"] = default_time
     r = await _send("POST", "/meal-type/", body)
     return {"id": r.get("id"), "name": r.get("name"), "default_time": r.get("time")}
+
+
+async def _delete_named(path: str, obj_id: int) -> dict:
+    """Delete one object and name it in the result. A missing id answers
+    already_removed, so a repeated call is harmless."""
+    async with _client() as c:
+        r = await c.get(f"{path}{obj_id}/")
+    if r.status_code == 404:
+        return {"id": obj_id, "status": "already_removed"}
+    r.raise_for_status()
+    name = r.json().get("name")
+    result = await _delete(path, obj_id)
+    if result["status"] == "error":
+        raise RuntimeError(result["error"])
+    return {**result, "name": name}
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def delete_recipe(recipe_id: int = Field(..., description="Recipe id (see search_recipes).")) -> dict:
+    """Delete a recipe with its steps, ingredients, cook log, meal plan entries and
+    the shopping list items it put on the list. Cannot be undone. Tandoor refuses
+    while another recipe uses it as a step. Returns removed with the recipe's
+    name, or already_removed when the id no longer exists."""
+    return await _delete_named("/recipe/", recipe_id)
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def delete_keyword(keyword_id: int = Field(..., description="Keyword id (see list_keywords).")) -> dict:
+    """Delete a keyword (tag). Recipes keep everything else and just lose the tag;
+    to move them to another keyword use merge_keyword instead. Cannot be undone.
+    Returns removed with the keyword's name, or already_removed."""
+    return await _delete_named("/keyword/", keyword_id)
 
 
 # --- leftovers -------------------------------------------------------------

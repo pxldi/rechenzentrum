@@ -1,0 +1,92 @@
+---
+# openGym for claude.ai (images/homelab-mcp/src/opengym_mcp). Only claude.ai
+# uses it, so there is one container and it checks Authentik tokens on every
+# /mcp request, for the opengym-mcp client in terraform/authentik/oidc-apps.tf
+# (the id is public). It holds openGym's pairing token and talks to the
+# openGym Service; see networkpolicy.yaml and
+# kubernetes/apps/opengym/networkpolicy-chatops.yaml.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opengym-mcp
+  namespace: chatops
+  labels:
+    app: opengym-mcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opengym-mcp
+  template:
+    metadata:
+      labels:
+        app: opengym-mcp
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: opengym-mcp
+          image: ghcr.io/pxldi/homelab-mcp:sha-c19ddfe4f89f030acfe20057e75311de205020ff
+          imagePullPolicy: IfNotPresent
+          args: ["python", "-m", "opengym_mcp"]
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: OPENGYM_URL
+              value: http://opengym.opengym.svc.cluster.local
+            - name: OPENGYM_TZ
+              value: Europe/Berlin
+            - name: OPENGYM_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: chatops-opengym
+                  key: OPENGYM_TOKEN
+            - name: OAUTH_ISSUER
+              value: https://auth.pxldi.de/application/o/opengym-mcp/
+            - name: OAUTH_AUDIENCE
+              value: 6wV32lCFNE3rvYBwASMcHlDTOKVFDgiiBjcpS7VX
+            - name: OAUTH_RESOURCE_URL
+              value: https://opengym-mcp.pxldi.de/mcp
+            - name: OAUTH_JWKS_URL
+              value: http://authentik-server.authentik.svc.cluster.local/application/o/opengym-mcp/jwks/
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opengym-mcp
+  namespace: chatops
+spec:
+  selector:
+    app: opengym-mcp
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

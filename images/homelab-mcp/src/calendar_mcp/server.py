@@ -245,6 +245,19 @@ def search_events(
     return hits[:50]
 
 
+@mcp.tool()
+@guarded(*ERRORS)
+def agenda(
+    from_date: str = Field(..., description="YYYY-MM-DD, inclusive"),
+    to_date: str = Field("", description="YYYY-MM-DD, inclusive. Empty: the same day."),
+) -> dict:
+    """A day or a range at a glance: events from every calendar (series expanded)
+    and the open tasks due by the end of it, overdue ones included."""
+    to_date = to_date or from_date
+    tasks = [t for t in list_tasks(list_name="", include_done=False) if t["due"] and t["due"][:10] <= to_date]
+    return {"events": _list_events(from_date, to_date), "tasks_due": tasks}
+
+
 # --- write tools -----------------------------------------------------------
 
 

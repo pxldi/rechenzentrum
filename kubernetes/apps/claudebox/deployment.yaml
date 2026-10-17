@@ -73,7 +73,9 @@ metadata:
     app.kubernetes.io/name: claudebox
 spec:
   revisionHistoryLimit: 3
-  replicas: 1
+  # Scaled to 0 on 2026-10-17: Remote Control sessions here kept hanging.
+  # PVC, secrets and config stay, so scaling back to 1 restores it as it was.
+  replicas: 0
   strategy:
     # Single RWO PVC, and two servers sharing a projects root would edit the
     # same working copies — never run two pods against it at once.

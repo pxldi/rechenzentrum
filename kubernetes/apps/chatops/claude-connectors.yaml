@@ -1,5 +1,5 @@
 ---
-# The recipe server and Snacky for claude.ai, the same shape as the vault's
+# The recipe server, Snacky and the calendar server for claude.ai, the same shape as the vault's
 # route (vault/ingress.yaml, whose allowlist middleware these reuse): no
 # forward-auth, because claude.ai calls from Anthropic's servers and cannot
 # follow a login redirect; the servers refuse /mcp without an Authentik token
@@ -39,3 +39,21 @@ spec:
       services:
         - name: snacky-mcp-gate
           port: 8000
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: calendar-mcp
+  namespace: chatops
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: "Host(`calendar-mcp.pxldi.de`) && (PathPrefix(`/mcp`) || PathPrefix(`/.well-known/`))"
+      middlewares:
+        - name: anthropic-and-house
+      priority: 10
+      services:
+        - name: calendar-mcp
+          port: 8001

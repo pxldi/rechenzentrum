@@ -35,8 +35,10 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 | --- | --- | --- |
 | tandoor | `search_recipes`, `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `leftovers`, `recipes_for_leftovers`, `log_cooked`, `list_shopping_list`, `preview_recipe_from_url`, `create_recipe`, `update_recipe`, `add_meal_plan`, `set_pack_size`, `move_meal_plan`, `add_shopping_item`, `remove_shopping_item`, `import_recipe_from_url` | runs on its own |
 | tandoor | `delete_meal_plan` (also drops the shopping list items the entry added) | approve/deny keyboard in the chat, every time |
-| calendar | `list_calendars`, `list_events`, `search_events` | runs on its own |
-| calendar | `create_event`, `move_event`, `delete_event` | approve/deny keyboard in the chat first |
+| calendar | `list_calendars`, `list_events`, `search_events`, `agenda`, `list_tasks` | runs on its own |
+| calendar | `create_event`, `move_event` | runs on its own |
+| calendar | `update_event`, `create_task`, `update_task`, `complete_task` | approve/deny keyboard in the chat first |
+| calendar | `delete_event`, `delete_task` | approve/deny keyboard in the chat, every time |
 | vault | `list_notes`, `read_note`, `search_notes` (whole vault), `append_note`, `log_learned` (under `Clanky/` only) | runs on its own |
 | vault | `write_note` (replaces a whole note, under `Clanky/` only) | approve/deny keyboard in the chat first |
 | paperless | `search_documents`, `list_documents`, `get_document`, `get_document_page` (a page as a picture), `list_labels` | runs on its own |
@@ -162,7 +164,7 @@ Shipping it is the two-PR rule below plus one step between: the code and
 the tofu client merge first, the tofu apply on `main` creates the client,
 and the manifests PR pins the new tag and adds the route.
 
-### Tandoor and Snacky from claude.ai
+### Tandoor, Snacky and the calendar from claude.ai
 
 The same arrangement, twice more. Each has its own Authentik client
 (`authentik_provider_oauth2.mcp_connector` in `terraform/authentik/oidc-apps.tf`),
@@ -183,9 +185,15 @@ Both routes reuse the vault's `anthropic-and-house` allowlist and route only
 bot's kind; its per-tool permission setting in the connector does that job,
 so set the writes (`delete_meal_plan` above all) to ask first.
 
-To connect: Add custom connector, URL `https://tandoor-mcp.<domain>/mcp` or
-`https://snacky-mcp.<domain>/mcp`, and the matching client id from the tofu
-file under advanced settings, secret blank.
+- **Calendar**: a second `calendar_mcp` container in the `calendar-mcp` pod,
+  on port 8001 with the `OAUTH_*` variables, behind `calendar-mcp.<domain>`.
+  It holds the same Nextcloud app password as the bot's container. Events
+  and tasks (VTODO) both go over CalDAV.
+
+To connect: Add custom connector, URL `https://tandoor-mcp.<domain>/mcp`,
+`https://snacky-mcp.<domain>/mcp` or `https://calendar-mcp.<domain>/mcp`, and
+the matching client id from the tofu file under advanced settings, secret
+blank.
 
 ## Scheduled nudges
 

@@ -41,8 +41,9 @@ as it always did for every app without such a route. They were removed on
   server answers 401 to anything without an access token Authentik issued
   for its client, so the login still happens, in the browser, once. See
   `docs/CHATOPS.md`.
-- **The recipe and Snacky MCP servers** (`tandoor-mcp.pxldi.de` and
-  `snacky-mcp.pxldi.de`, `/mcp` and `/.well-known/` only), the same as the
+- **The recipe, Snacky and calendar MCP servers** (`tandoor-mcp.pxldi.de`,
+  `snacky-mcp.pxldi.de` and `calendar-mcp.pxldi.de`, `/mcp` and
+  `/.well-known/` only), the same as the
   vault's: Anthropic's range and the house, and a token from each one's own
   Authentik client. Snacky's token check is the gate in front of it.
 - **Authentik itself** (`auth.pxldi.de`) and **branding** (`branding.pxldi.de`)
@@ -141,3 +142,4 @@ is on Tailscale" is not an answer on its own.
 | chatops | `vault-mcp.pxldi.de` (`/mcp`, `/.well-known/` only) | Anthropic range and house | anthropic-and-house |
 | chatops | `tandoor-mcp.pxldi.de` (`/mcp`, `/.well-known/` only) | Anthropic range and house | anthropic-and-house |
 | chatops | `snacky-mcp.pxldi.de` (`/mcp`, `/.well-known/` only) | Anthropic range and house | anthropic-and-house |
+| chatops | `calendar-mcp.pxldi.de` (`/mcp`, `/.well-known/` only) | Anthropic range and house | anthropic-and-house |

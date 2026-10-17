@@ -57,6 +57,7 @@ auto_approve = [
   "tandoor__leftovers", "tandoor__recipes_for_leftovers", "tandoor__log_cooked",
   "tandoor__list_shopping_list",
   "calendar__list_calendars", "calendar__list_events", "calendar__search_events",
+  "calendar__agenda", "calendar__list_tasks",
   "vault__list_notes", "vault__read_note", "vault__search_notes",
   "vault__append_note", "vault__log_learned",
   "paperless__search_documents", "paperless__list_documents", "paperless__get_document",
@@ -91,7 +92,7 @@ auto_approve = [
 # that replace, delete or file something: a whole note, a calendar entry,
 # a meal plan entry, a Paperless document.
 always_ask = [
-  "calendar__delete_event",
+  "calendar__delete_event", "calendar__delete_task",
   "vault__write_note",
   "paperless__update_document", "paperless__create_tag",
   "files__send_to_paperless",

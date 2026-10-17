@@ -9,6 +9,7 @@ import asyncio
 import importlib.util
 import json
 import os
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -23,6 +24,9 @@ class FakeTandoor:
     def __init__(self):
         self.foods = {1: {"id": 1, "name": "Zwiebel"}, 2: {"id": 2, "name": "Ingwer"}, 3: {"id": 3, "name": "Salz"}}
         self.entries = {10: {"id": 10, "food": {"name": "Zwiebel"}, "amount": 2, "unit": None, "checked": False}}
+        self.property_types = [{"id": 31, "name": "Kalorien", "unit": "kcal", "fdc_id": 1008, "order": 2}, {"id": 32, "name": "Salz", "unit": "g", "fdc_id": None}]
+        self.recipes = {5: {"id": 5, "name": "Chili"}}
+        self.keywords = {7: {"id": 7, "name": "test"}}
         self.next_id = 100
         self.calls = []
 
@@ -31,7 +35,13 @@ class FakeTandoor:
 
         path = request.url.path.removeprefix("/api")
         method = request.method
-        body = json.loads(request.content) if request.content else None
+        ctype = request.headers.get("content-type", "")
+        if ctype.startswith("multipart/"):
+            # Only the image endpoint takes a form; keep its text fields.
+            body = dict(re.findall(rb'name="([^"]+)"\r\n\r\n([^\r]*)', request.content))
+            body = {k.decode(): v.decode() for k, v in body.items()}
+        else:
+            body = json.loads(request.content) if request.content else None
         self.calls.append((method, path, body))
         q = request.url.params
 
@@ -42,7 +52,20 @@ class FakeTandoor:
         if path == "/food/" and method == "GET":
             word = (q.get("query") or "").lower()
             hits = [f for f in self.foods.values() if word in f["name"].lower() or f["name"].lower() in word]
+            # Like Tandoor, the recipe count is only there with extended=1.
+            if q.get("extended") == "1":
+                hits = [{**f, "numrecipe": 4} for f in hits]
             return httpx.Response(200, json={"results": hits})
+        for kind, store in (("recipe", self.recipes), ("keyword", self.keywords)):
+            prefix = f"/{kind}/"
+            if path.startswith(prefix) and path.count("/") == 3:
+                oid = int(path.split("/")[2])
+                if oid not in store:
+                    return httpx.Response(404, json={"detail": "Not found."})
+                if method == "DELETE":
+                    del store[oid]
+                    return httpx.Response(204)
+                return httpx.Response(200, json=store[oid])
         if path == "/shopping-list-entry/" and method == "POST":
             name = body["food"]["name"]
             if "id" not in body["food"] and not any(f["name"] == name for f in self.foods.values()):
@@ -66,8 +89,27 @@ class FakeTandoor:
                 return httpx.Response(204)
             return httpx.Response(200, json=self.entries[eid])
         if path.endswith("/image/") and method == "PUT":
+            if not ctype.startswith("multipart/"):
+                return httpx.Response(415, json={"detail": f'Unsupported media type "{ctype}" in request.'})
             ok = body["image_url"].endswith(".jpg")
             return httpx.Response(200, json={"image": "/media/x.jpg" if ok else None, "image_url": body["image_url"]})
+        if path == "/property-type/" and method == "GET":
+            return httpx.Response(200, json={"results": self.property_types, "next": None})
+        if path == "/property-type/" and method == "POST":
+            t = {"id": self.next_id, **body}
+            self.next_id += 1
+            self.property_types.append(t)
+            return httpx.Response(201, json=t)
+        if path == "/unit/" and method == "GET":
+            return httpx.Response(200, json={"results": [{"id": 1, "name": "g"}], "next": None})
+        if path == "/unit/" and method == "POST":
+            return httpx.Response(201, json={"id": 2, **body})
+        if path.startswith("/food/") and path.count("/") == 3:
+            fid = int(path.split("/")[2])
+            if method == "PATCH":
+                props = [{**p, "id": p.get("id") or 900 + i} for i, p in enumerate(body["properties"])]
+                self.foods[fid] = {**self.foods[fid], **body, "properties": props}
+            return httpx.Response(200, json=self.foods[fid])
         if path == "/meal-type/":
             return httpx.Response(200, json={"results": [{"id": 1, "name": "Dinner"}]})
         if path == "/meal-plan/" and method == "POST":
@@ -141,6 +183,32 @@ class TandoorToolsTest(unittest.TestCase):
         out = self.run_(self.s.add_meal_plans(entries=entries))
         self.assertEqual([o["added"] for o in out], [True, False, True])
         self.assertIn("Brunch", out[1]["error"])
+
+    def test_search_food_counts_recipes(self):
+        out = self.run_(self.s.search_food(query="Zwiebel", limit=10))
+        self.assertEqual(out[0]["used_in_recipes"], 4)
+
+    def test_delete_recipe_and_keyword_are_repeatable(self):
+        self.assertEqual(self.run_(self.s.delete_recipe(recipe_id=5)), {"id": 5, "status": "removed", "name": "Chili"})
+        self.assertEqual(self.run_(self.s.delete_recipe(recipe_id=5)), {"id": 5, "status": "already_removed"})
+        self.assertEqual(self.run_(self.s.delete_keyword(keyword_id=7)), {"id": 7, "status": "removed", "name": "test"})
+        self.assertEqual(self.run_(self.s.delete_keyword(keyword_id=7)), {"id": 7, "status": "already_removed"})
+        self.assertNotIn(5, self.fake.recipes)
+
+    def test_set_food_nutrients_keeps_other_properties(self):
+        self.fake.foods[3]["properties"] = [{"id": 70, "property_amount": 2.5, "property_type": {"id": 32, "name": "Salz"}}]
+        out = self.run_(self.s.set_food_nutrients(food_id=3, kcal=7, protein_g=0.3, fat_g=None, carbs_g=None, fibre_g=None, per="100ml"))
+        self.assertEqual(out["values"], {"kcal": 7, "protein_g": 0.3})
+        (patch,) = [c for c in self.fake.calls if c[0] == "PATCH"]
+        body = patch[2]
+        self.assertEqual(body["properties_food_amount"], 100)
+        self.assertEqual(body["properties_food_unit"]["name"], "ml")
+        kept = [p for p in body["properties"] if p.get("id") == 70]
+        self.assertEqual(kept[0]["property_amount"], 2.5)
+        created = [c for c in self.fake.calls if c[:2] == ("POST", "/property-type/")]
+        self.assertEqual([c[2]["name"] for c in created], ["Eiweiß"])
+        with self.assertRaises(Exception):
+            self.run_(self.s.set_food_nutrients(food_id=3, kcal=None, protein_g=None, fat_g=None, carbs_g=None, fibre_g=None, per="100g"))
 
     def test_recipe_image(self):
         self.assertEqual(self.run_(self.s.set_recipe_image(recipe_id=5, image_url="https://example.org/chili.jpg")), {"id": 5, "image": True})

@@ -33,9 +33,10 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 
 | Server | Tools | Approval |
 | --- | --- | --- |
-| tandoor | `search_recipes` (by name and keyword names), `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `search_food`, `leftovers`, `recipes_for_leftovers`, `log_cooked`, `list_shopping_list`, `preview_recipe_from_url`, `create_recipe`, `update_recipe`, `set_recipe_image`, `add_meal_plan`, `add_meal_plans`, `set_pack_size`, `set_food_stock`, `move_meal_plan`, `add_shopping_item(s)`, `update_shopping_item`, `check_shopping_items`, `remove_shopping_item(s)`, `add_recipe_to_shopping_list`, `create_keyword`, `create_meal_type`, `import_recipe_from_url` | runs on its own |
+| tandoor | `search_recipes` (by name and keyword names), `get_recipe`, `list_keywords`, `list_meal_types`, `list_meal_plan`, `search_food`, `leftovers`, `recipes_for_leftovers`, `log_cooked`, `list_shopping_list`, `preview_recipe_from_url`, `create_recipe`, `update_recipe`, `set_recipe_image`, `add_meal_plan`, `add_meal_plans`, `set_pack_size`, `set_food_stock`, `set_food_nutrients`, `move_meal_plan`, `add_shopping_item(s)`, `update_shopping_item`, `check_shopping_items`, `remove_shopping_item(s)`, `add_recipe_to_shopping_list`, `create_keyword`, `create_meal_type`, `import_recipe_from_url` | runs on its own |
 | tandoor | `merge_food`, `merge_keyword` (delete the source, cannot be undone) | approve/deny keyboard in the chat, every time |
 | tandoor | `delete_meal_plan` (also drops the shopping list items the entry added) | approve/deny keyboard in the chat, every time |
+| tandoor | `delete_recipe` (with its steps, cook log and plan entries), `delete_keyword` (cannot be undone; a missing id answers `already_removed`) | approve/deny keyboard in the chat, every time |
 | calendar | `list_calendars`, `list_events`, `search_events`, `agenda`, `list_tasks` | runs on its own |
 | calendar | `create_event`, `move_event` | runs on its own |
 | calendar | `update_event`, `create_task`, `update_task`, `complete_task` | approve/deny keyboard in the chat first |
@@ -192,7 +193,8 @@ others; only members of `mcp-connector-users` pass the login.
 Both routes reuse the vault's `anthropic-and-house` allowlist and route only
 `/mcp` and `/.well-known/`. claude.ai has no approve/deny keyboard of the
 bot's kind; its per-tool permission setting in the connector does that job,
-so set the writes (`delete_meal_plan` above all) to ask first.
+so set the writes (`delete_meal_plan`, `delete_recipe`, `delete_keyword` and
+the merges above all) to ask first.
 
 - **Calendar**: a second `calendar_mcp` container in the `calendar-mcp` pod,
   on port 8001 with the `OAUTH_*` variables, behind `calendar-mcp.<domain>`.

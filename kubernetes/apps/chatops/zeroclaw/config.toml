@@ -99,6 +99,9 @@ always_ask = [
   "files__send_to_paperless",
   # Deleting a meal plan entry also drops the shopping list items it added.
   "tandoor__delete_meal_plan",
+  # Deleting or merging a recipe, keyword or food cannot be undone.
+  "tandoor__delete_recipe", "tandoor__delete_keyword",
+  "tandoor__merge_food", "tandoor__merge_keyword",
   # The only cluster writes: a pod restart, a Flux reconcile, a backup run.
   # Each changes the live cluster, so each asks every time.
   "homelab__restart_workload", "homelab__reconcile_flux", "homelab__backup_now",

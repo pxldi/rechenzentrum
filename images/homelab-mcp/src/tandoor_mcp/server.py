@@ -1,7 +1,7 @@
 import asyncio
 import os
 from datetime import date, timedelta
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from mcp.server import MCPServer
@@ -11,6 +11,7 @@ from oauth import server_kwargs
 from serve import guarded
 from tandoor_mcp import foods as fm
 from tandoor_mcp import leftovers as lo
+from tandoor_mcp import nutrients as nu
 
 mcp = MCPServer("tandoor", **server_kwargs())
 
@@ -423,7 +424,14 @@ async def set_recipe_image(
     Tandoor cannot load the URL, the recipe is left without one, so prefer a
     direct link to a .jpg/.png/.webp file."""
     url = _check_image_url(image_url)
-    r = await _send("PUT", f"/recipe/{recipe_id}/image/", {"image_url": url})
+    # The image endpoint only parses multipart forms; JSON gets a 415. Tandoor
+    # fetches the URL itself through its SSRF-filtered client, so this pod
+    # needs no internet access.
+    async with _client() as c:
+        resp = await c.put(f"/recipe/{recipe_id}/image/", files={"image_url": (None, url)})
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Tandoor answered {resp.status_code}: {resp.text[:300]}")
+    r = resp.json()
     if not r.get("image"):
         raise RuntimeError("Tandoor could not load that image (not reachable or not an image); the recipe has no picture now, try another URL")
     return {"id": recipe_id, "image": True}
@@ -540,11 +548,15 @@ class ShoppingItem(BaseModel):
     new_food: bool = Field(False, description="Create the food even though similar ones exist. Only after the person said it is a different food.")
 
 
-async def _food_candidates(name: str) -> list[dict]:
+async def _food_candidates(name: str, with_recipe_count: bool = False) -> list[dict]:
     """Foods that may be `name`: what Tandoor's search returns for the whole name
-    and for its first part, so 'Zwiebel, klein' also finds 'Zwiebel'."""
+    and for its first part, so 'Zwiebel, klein' also finds 'Zwiebel'.
+
+    Tandoor only counts the recipes using each food when asked with extended=1,
+    which costs a subquery per food, so only search_food asks for it."""
     queries = {name.strip(), fm.base_name(name)}
-    results = await asyncio.gather(*(_get("/food/", query=q, page_size=25) for q in queries if q))
+    extended = 1 if with_recipe_count else None
+    results = await asyncio.gather(*(_get("/food/", query=q, page_size=25, extended=extended) for q in queries if q))
     seen: dict[int, dict] = {}
     for data in results:
         for f in data.get("results", []) if isinstance(data, dict) else data:
@@ -664,19 +676,23 @@ async def check_shopping_items(
     return [{"id": i, "status": state if ok else "not_found"} for i, ok in zip(entry_ids, found)]
 
 
-async def _delete_entry(entry_id: int) -> dict:
-    """One entry's outcome. An id that is already gone is not an error, so a
+async def _delete(path: str, obj_id: int) -> dict:
+    """One delete's outcome. An id that is already gone is not an error, so a
     repeated call is harmless."""
     try:
         async with _client() as c:
-            r = await c.delete(f"/shopping-list-entry/{entry_id}/")
+            r = await c.delete(f"{path}{obj_id}/")
     except httpx.HTTPError as e:
-        return {"id": entry_id, "status": "error", "error": str(e)[:200]}
+        return {"id": obj_id, "status": "error", "error": str(e)[:200]}
     if r.status_code == 404:
-        return {"id": entry_id, "status": "already_removed"}
+        return {"id": obj_id, "status": "already_removed"}
     if r.status_code >= 400:
-        return {"id": entry_id, "status": "error", "error": f"Tandoor answered {r.status_code}: {r.text[:200]}"}
-    return {"id": entry_id, "status": "removed"}
+        return {"id": obj_id, "status": "error", "error": f"Tandoor answered {r.status_code}: {r.text[:200]}"}
+    return {"id": obj_id, "status": "removed"}
+
+
+async def _delete_entry(entry_id: int) -> dict:
+    return await _delete("/shopping-list-entry/", entry_id)
 
 
 @mcp.tool()
@@ -732,7 +748,7 @@ async def search_food(query: str = Field(..., description="Food name or part of 
     """Foods Tandoor knows that match a name, with whether each is on hand, never
     goes on the shopping list, is on it now, and how many recipes use it. Use it
     before naming a food in a write, and to find duplicates for merge_food."""
-    candidates = await _food_candidates(query)
+    candidates = await _food_candidates(query, with_recipe_count=True)
     candidates.sort(key=lambda f: -fm.similarity(query, f.get("name") or ""))
     return [_food_summary(f) for f in candidates[:limit]]
 
@@ -749,6 +765,54 @@ async def merge_food(
     source, target = await asyncio.gather(_get(f"/food/{source_id}/"), _get(f"/food/{target_id}/"))
     r = await _send("PUT", f"/food/{source_id}/merge/{target_id}/", {})
     return {"merged": source.get("name"), "into": target.get("name"), "target_id": target_id, "message": r.get("msg")}
+
+
+async def _unit(name: str) -> dict:
+    """The full unit object (Tandoor's UnitSerializer.update reads its name),
+    created with itself as base unit when missing so amounts convert to it."""
+    for u in await _get_all("/unit/"):
+        if (u.get("name") or "").strip().casefold() == name:
+            return u
+    return await _send("POST", "/unit/", {"name": name, "plural_name": name, "base_unit": name})
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def set_food_nutrients(
+    food_id: int = Field(..., description="Food id (see search_food)."),
+    kcal: float | None = Field(None, ge=0),
+    protein_g: float | None = Field(None, ge=0),
+    fat_g: float | None = Field(None, ge=0),
+    carbs_g: float | None = Field(None, ge=0),
+    fibre_g: float | None = Field(None, ge=0),
+    per: Literal["100g", "100ml"] = Field("100g", description="What the values are for; 100ml for liquids such as stock."),
+) -> dict:
+    """Set a food's nutrients, e.g. from the label, so recipes using it get
+    complete nutrition and Snacky can log them. Values left out stay as they
+    are; the food's other properties are kept. Missing nutrient types are
+    created with the names Snacky uses."""
+    values = {k: v for k, v in {"kcal": kcal, "protein_g": protein_g, "fat_g": fat_g, "carbs_g": carbs_g, "fibre_g": fibre_g}.items() if v is not None}
+    if not values:
+        raise RuntimeError("Give at least one value")
+    food, type_list = await asyncio.gather(_get(f"/food/{food_id}/"), _get_all("/property-type/"))
+    types = nu.map_types(type_list)
+    for key in values:
+        if key not in types:
+            name, unit = nu.DEFAULT_TYPES[key]
+            types[key] = await _send("POST", "/property-type/", {"name": name, "unit": unit, "fdc_id": nu.FDC_IDS[key]})
+    current_unit = ((food.get("properties_food_unit") or {}).get("name") or "").strip().casefold()
+    unit_name = "ml" if per == "100ml" else "g"
+    if food.get("properties") and current_unit and current_unit != unit_name:
+        raise RuntimeError(f"{food.get('name')} keeps its values per {food.get('properties_food_amount')} {current_unit}; use that")
+    payload = {
+        "properties_food_amount": 100,
+        "properties_food_unit": await _unit(unit_name),
+        "properties": nu.build_properties(food.get("properties") or [], types, values),
+    }
+    r = await _send("PATCH", f"/food/{food_id}/", payload)
+    by_id = {t["id"]: k for k, t in types.items()}
+    saved = {by_id[p["property_type"]["id"]]: p.get("property_amount") for p in r.get("properties") or [] if p["property_type"]["id"] in by_id}
+    return {"id": food_id, "name": r.get("name"), "per": per, "values": saved}
 
 
 @mcp.tool()
@@ -829,6 +893,40 @@ async def create_meal_type(
         body["time"] = default_time
     r = await _send("POST", "/meal-type/", body)
     return {"id": r.get("id"), "name": r.get("name"), "default_time": r.get("time")}
+
+
+async def _delete_named(path: str, obj_id: int) -> dict:
+    """Delete one object and name it in the result. A missing id answers
+    already_removed, so a repeated call is harmless."""
+    async with _client() as c:
+        r = await c.get(f"{path}{obj_id}/")
+    if r.status_code == 404:
+        return {"id": obj_id, "status": "already_removed"}
+    r.raise_for_status()
+    name = r.json().get("name")
+    result = await _delete(path, obj_id)
+    if result["status"] == "error":
+        raise RuntimeError(result["error"])
+    return {**result, "name": name}
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def delete_recipe(recipe_id: int = Field(..., description="Recipe id (see search_recipes).")) -> dict:
+    """Delete a recipe with its steps, ingredients, cook log, meal plan entries and
+    the shopping list items it put on the list. Cannot be undone. Tandoor refuses
+    while another recipe uses it as a step. Returns removed with the recipe's
+    name, or already_removed when the id no longer exists."""
+    return await _delete_named("/recipe/", recipe_id)
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def delete_keyword(keyword_id: int = Field(..., description="Keyword id (see list_keywords).")) -> dict:
+    """Delete a keyword (tag). Recipes keep everything else and just lose the tag;
+    to move them to another keyword use merge_keyword instead. Cannot be undone.
+    Returns removed with the keyword's name, or already_removed."""
+    return await _delete_named("/keyword/", keyword_id)
 
 
 # --- leftovers -------------------------------------------------------------

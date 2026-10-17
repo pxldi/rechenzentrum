@@ -38,8 +38,9 @@ path = "/zeroclaw-data/zeroclaw/agents/haus/workspace"
 # Supervised: reads and the routine writes (Tandoor, Snacky, shopping, calendar
 # create and move, light switching) run on their own. log_cooked, append_note and
 # log_learned run on their own: they record a fact and are cheap to undo,
-# and the vault keeps history. write_note replaces a whole note, so it asks. allowed_tools pins the
-# built-ins to memory and the clock; MCP tools are admitted by the SDK's
+# and the vault keeps history. write_note replaces a whole note, so it asks,
+# and so do edit_note, move_note and delete_note (which moves to _trash/).
+# allowed_tools pins the built-ins to memory and the clock; MCP tools are admitted by the SDK's
 # `<server>__<tool>` rule, so shell, file, http and browser tools are out.
 [risk_profiles.haus]
 level = "supervised"
@@ -58,7 +59,7 @@ auto_approve = [
   "tandoor__list_shopping_list",
   "calendar__list_calendars", "calendar__list_events", "calendar__search_events",
   "calendar__agenda", "calendar__list_tasks",
-  "vault__list_notes", "vault__read_note", "vault__search_notes",
+  "vault__list_notes", "vault__read_note", "vault__read_notes", "vault__search_notes",
   "vault__append_note", "vault__log_learned",
   "paperless__search_documents", "paperless__list_documents", "paperless__get_document",
   "paperless__list_labels", "paperless__get_document_page",

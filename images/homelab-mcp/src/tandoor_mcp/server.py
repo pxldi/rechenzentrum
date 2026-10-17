@@ -392,6 +392,43 @@ async def delete_meal_plan(entry_id: int = Field(..., description="Meal plan ent
     }
 
 
+def _check_image_url(url: str) -> str:
+    """Refuse what is plainly not a public image URL before Tandoor fetches it.
+    Tandoor's own fetch is SSRF-filtered (requests-hardened, no private or
+    loopback addresses); this catches the obvious cases with a clear message."""
+    import ipaddress
+    from urllib.parse import urlparse
+
+    u = urlparse(url.strip())
+    if u.scheme not in ("http", "https") or not u.hostname:
+        raise RuntimeError("image_url must be an http(s) URL")
+    host = u.hostname.lower()
+    if host == "localhost" or host.endswith((".local", ".internal", ".svc", ".cluster.local", ".lan")):
+        raise RuntimeError("image_url must point to a public host")
+    try:
+        if not ipaddress.ip_address(host).is_global:
+            raise RuntimeError("image_url must point to a public address")
+    except ValueError:
+        pass  # a name, not an address literal
+    return url.strip()
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def set_recipe_image(
+    recipe_id: int,
+    image_url: str = Field(..., description="A public http(s) URL of the image, e.g. from a web search. Tandoor downloads it itself."),
+) -> dict:
+    """Set a recipe's picture from an image URL. Replaces the current picture; if
+    Tandoor cannot load the URL, the recipe is left without one, so prefer a
+    direct link to a .jpg/.png/.webp file."""
+    url = _check_image_url(image_url)
+    r = await _send("PUT", f"/recipe/{recipe_id}/image/", {"image_url": url})
+    if not r.get("image"):
+        raise RuntimeError("Tandoor could not load that image (not reachable or not an image); the recipe has no picture now, try another URL")
+    return {"id": recipe_id, "image": True}
+
+
 # --- recipe import ---------------------------------------------------------
 
 

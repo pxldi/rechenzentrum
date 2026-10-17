@@ -65,6 +65,9 @@ class FakeTandoor:
                 del self.entries[eid]
                 return httpx.Response(204)
             return httpx.Response(200, json=self.entries[eid])
+        if path.endswith("/image/") and method == "PUT":
+            ok = body["image_url"].endswith(".jpg")
+            return httpx.Response(200, json={"image": "/media/x.jpg" if ok else None, "image_url": body["image_url"]})
         if path == "/meal-type/":
             return httpx.Response(200, json={"results": [{"id": 1, "name": "Dinner"}]})
         if path == "/meal-plan/" and method == "POST":
@@ -138,6 +141,17 @@ class TandoorToolsTest(unittest.TestCase):
         out = self.run_(self.s.add_meal_plans(entries=entries))
         self.assertEqual([o["added"] for o in out], [True, False, True])
         self.assertIn("Brunch", out[1]["error"])
+
+    def test_recipe_image(self):
+        self.assertEqual(self.run_(self.s.set_recipe_image(recipe_id=5, image_url="https://example.org/chili.jpg")), {"id": 5, "image": True})
+        with self.assertRaises(Exception):
+            self.run_(self.s.set_recipe_image(recipe_id=5, image_url="https://example.org/page.html"))
+        for bad in ("file:///etc/passwd", "http://127.0.0.1/a.jpg", "http://10.0.0.5/a.jpg", "http://[::1]/a.jpg",
+                    "http://tandoor.tandoor.svc.cluster.local/a.jpg", "http://localhost/a.jpg", "http://169.254.169.254/a.jpg"):
+            with self.subTest(url=bad), self.assertRaises(Exception):
+                self.run_(self.s.set_recipe_image(recipe_id=5, image_url=bad))
+        puts = [c for c in self.fake.calls if c[1].endswith("/image/")]
+        self.assertEqual(len(puts), 2)
 
 
 if __name__ == "__main__":

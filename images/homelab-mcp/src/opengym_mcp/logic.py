@@ -20,7 +20,9 @@ The progression rules are a port of frontend/src/lib/progression.js
 things are simpler than the app: a deload backs off by the factor
 (deloadTo) instead of the app's Epley search for a load and rep pair, and
 the "start planned sessions from the last session" profile option is not
-read. The app computes its own numbers when a session starts; these are for
+read. One thing is stricter: a session with fewer sets than the routine
+planned counts as a miss even when its own target was lowered
+(_read_session). The app computes its own numbers when a session starts; these are for
 talking about the plan.
 """
 
@@ -461,6 +463,8 @@ def routine_view(r: dict, cat: Catalogue) -> dict:
         if c.get("weight") is not None:
             item["weight"] = c.get("weight")
         item["progression"] = policy_for(c, r, mode)
+        if (_num(c.get("inc")) or 0) > 0:
+            item["step"] = c["inc"]
         if c.get("side"):
             item["per_side"] = True
         if c.get("note"):
@@ -553,7 +557,13 @@ def _read_session(entry: dict, fallback: dict, ex: Exercise) -> dict:
     target = entry.get("target") if isinstance(entry.get("target"), dict) else fallback
     mode = mode_of({**target, "id": ex.id}, ex)
     logged = [s for s in _records(entry.get("sets")) if not is_warmup(s)]
-    planned = int(_num(target.get("sets")) or len(logged))
+    # The app reads the set count off the session's target alone, so a session
+    # whose target lost sets (or never had a count) reads as complete with sets
+    # left out. Here the routine's plan, as stamped on the entry and as it is
+    # now, sets the floor: a set not done is a set missed.
+    stamped = entry.get("planned") if isinstance(entry.get("planned"), dict) else {}
+    floor = max(int(_num(stamped.get("sets")) or 0), int(_num((fallback or {}).get("sets")) or 0))
+    planned = max(int(_num(target.get("sets")) or len(logged)), floor)
     enough = len(logged) >= planned
     sets = logged[: max(1, planned)]
     done_loads = [_num(s.get("w")) or 0 for s in sets if s.get("done")]
@@ -902,6 +912,51 @@ def set_bodyweight(state: dict, day: date, weight: float, now_ms: int | None = N
     new["bodyweight"] = log
     new["_ts"] = max(now_ms, int(_num(state.get("_ts")) or 0) + 1)
     return new, entry, old
+
+
+def set_step(state: dict, routine_ref: str, exercise_ref: str, step: float | None, cat: Catalogue, now_ms: int | None = None) -> tuple[dict, dict]:
+    """A copy with the progression step (`inc`, the app's per-exercise
+    increment) of one exercise in one routine set, or cleared with None so the
+    app's default applies again. Nothing else in the routine changes."""
+    if step is not None and not 0 < step <= 50:
+        raise StateError(f"{step} is not a weight step")
+    new = json.loads(json.dumps(state))
+    routine = find_routine(new, routine_ref)
+    cfgs = _records(routine.get("ex"))
+    ex = cat.resolve(exercise_ref, prefer={str(c.get("id")) for c in cfgs})
+    hits = [c for c in cfgs if str(c.get("id")) == ex.id]
+    if not hits:
+        raise StateError(f"{ex.name} is not in {routine.get('name')}")
+    before = hits[0].get("inc")
+    for c in hits:
+        if step is None:
+            c.pop("inc", None)
+        else:
+            c["inc"] = _tidy(step)
+    now_ms = now_ms if now_ms is not None else int(time.time() * 1000)
+    new["_ts"] = max(now_ms, int(_num(state.get("_ts")) or 0) + 1)
+    unit = unit_of(state)
+    return new, {
+        "routine": routine.get("name"),
+        "exercise": ex.name,
+        "step": _tidy(step) if step is not None else None,
+        "was": before,
+        "default": _tidy(default_increment(ex, unit)),
+        "unit": unit,
+    }
+
+
+def check_step_change(before: dict, after: dict, routine_id: str) -> None:
+    """Refuse a step change that touched more than `inc` in one routine."""
+    for key in ("customEx", "week", "dayPlan", "exWeights", "unit", "workouts", "bodyweight"):
+        if before.get(key) != after.get(key):
+            raise StateError(f"internal check failed: {key} would change")
+
+    def strip(rs: list[dict]) -> list:
+        return [{**r, "ex": [{k: v for k, v in c.items() if k != "inc"} for c in _records(r.get("ex"))]} if str(r.get("id")) == routine_id else r for r in rs]
+
+    if strip(routines(before)) != strip(routines(after)):
+        raise StateError("internal check failed: routines would change beyond the step")
 
 
 def check_change(before: dict, after: dict, *, workouts: int = 0, bodyweight: int = 0) -> None:

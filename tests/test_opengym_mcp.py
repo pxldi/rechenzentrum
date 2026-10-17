@@ -182,6 +182,48 @@ class Progression(unittest.TestCase):
         cfg = {"id": "im1", "sets": 3, "reps": 10, "weight": 40}
         self.assertEqual(self.p(cfg)["kind"], "first")
 
+    def test_missing_sets_count_as_missed(self):
+        # Two of three planned sets with every rep, and a target the session lowered to 2.
+        self.state["workouts"][1]["entries"][0].update({"sets": sets((62.5, 8), (62.5, 8)), "target": {"sets": 2, "reps": 8}})
+        p = self.p(BENCH_CFG)
+        self.assertEqual((p["kind"], p["weight"]), ("hold", 62.5))
+        # No count in the target and no stamped plan: the routine's 3 sets still apply.
+        entry = self.state["workouts"][1]["entries"][0]
+        entry["target"] = {"reps": 8}
+        entry.pop("planned")
+        self.assertEqual(self.p(BENCH_CFG)["kind"], "hold")
+        # All three done: up.
+        entry["sets"] = sets((62.5, 8), (62.5, 8), (62.5, 8))
+        self.assertEqual(self.p(BENCH_CFG)["kind"], "up")
+
+    def test_routine_step_overrides_the_default(self):
+        self.state["workouts"][1]["entries"][0]["sets"] = sets((62.5, 8), (62.5, 8), (62.5, 8))
+        new, out = og.set_step(self.state, "Push A", "bench press", 1.25, self.cat)
+        self.assertEqual((out["step"], out["was"], out["default"]), (1.25, None, 2.5))
+        og.check_step_change(self.state, new, "pushA")
+        cfg = og.find_routine(new, "pushA")["ex"][0]
+        self.assertEqual(cfg["inc"], 1.25)
+        self.assertEqual(og.next_prescription(new, cfg, og.find_routine(new, "pushA"), self.cat)["weight"], 63.8)  # rounded to 0.1 like the app
+        self.assertEqual(og.routine_view(og.find_routine(new, "pushA"), self.cat)["exercises"][0]["step"], 1.25)
+        # Clearing it restores the default, and the other routine is untouched.
+        cleared, _ = og.set_step(new, "Push A", BENCH, None, self.cat)
+        self.assertNotIn("inc", og.find_routine(cleared, "pushA")["ex"][0])
+        self.assertEqual(cleared["routines"][1], self.state["routines"][1])
+        with self.assertRaises(og.StateError):
+            og.set_step(self.state, "Legs A", "bench press", 2, self.cat)
+        with self.assertRaises(og.StateError):
+            og.set_step(self.state, "Push A", BENCH, 0, self.cat)
+
+    def test_step_check_refuses_other_changes(self):
+        new, _ = og.set_step(self.state, "Push A", BENCH, 2, self.cat)
+        new["routines"][0]["ex"][0]["reps"] = 5
+        with self.assertRaises(og.StateError):
+            og.check_step_change(self.state, new, "pushA")
+        new, _ = og.set_step(self.state, "Push A", BENCH, 2, self.cat)
+        new["workouts"].pop()
+        with self.assertRaises(og.StateError):
+            og.check_step_change(self.state, new, "pushA")
+
     def test_suggest_routine_lists_every_exercise(self):
         out = og.suggest_routine(self.state, self.push, self.cat, TZ)
         self.assertEqual([e["exercise_id"] for e in out["exercises"]], [BENCH, LATERAL, PUSHUP])
@@ -340,6 +382,14 @@ class ServerWrites(unittest.TestCase):
         self.assertEqual(len(ids), 4)
         self.assertEqual(self.fake.state["routines"], base_state()["routines"])
         self.assertNotIn("active", self.fake.state)
+
+    def test_set_progression_step_writes_only_the_step(self):
+        out = self.run_tool(self.server.set_progression_step(routine="Push A", exercise="dumbbell lateral raise", step=2))
+        self.assertEqual((out["exercise"], out["step"]), ("dumbbell lateral raise", 2))
+        expected = base_state()
+        expected["routines"][0]["ex"][1] = {**LATERAL_CFG, "inc": 2}
+        self.assertEqual(self.fake.state["routines"], expected["routines"])
+        self.assertEqual(self.fake.state["workouts"], expected["workouts"])
 
     def test_revoked_token_says_pair_again(self):
         from mcp.server.mcpserver.exceptions import ToolError

@@ -786,11 +786,16 @@ async def set_food_nutrients(
     carbs_g: float | None = Field(None, ge=0),
     fibre_g: float | None = Field(None, ge=0),
     per: Literal["100g", "100ml"] = Field("100g", description="What the values are for; 100ml for liquids such as stock."),
+    g_per_ml: float = Field(1.0, gt=0.2, le=3, description="Density for liquids: grams per ml (water and stock 1.0, oil 0.92, honey 1.4)."),
 ) -> dict:
     """Set a food's nutrients, e.g. from the label, so recipes using it get
     complete nutrition and Snacky can log them. Values left out stay as they
     are; the food's other properties are kept. Missing nutrient types are
-    created with the names Snacky uses."""
+    created with the names Snacky uses.
+
+    With per=100ml the food also gets ml/l to g conversions from g_per_ml, so a
+    recipe can use it by volume or by weight. A food that already keeps its
+    values per 100 g (or 100 ml) stays that way; the values are converted."""
     values = {k: v for k, v in {"kcal": kcal, "protein_g": protein_g, "fat_g": fat_g, "carbs_g": carbs_g, "fibre_g": fibre_g}.items() if v is not None}
     if not values:
         raise RuntimeError("Give at least one value")
@@ -803,7 +808,14 @@ async def set_food_nutrients(
     current_unit = ((food.get("properties_food_unit") or {}).get("name") or "").strip().casefold()
     unit_name = "ml" if per == "100ml" else "g"
     if food.get("properties") and current_unit and current_unit != unit_name:
-        raise RuntimeError(f"{food.get('name')} keeps its values per {food.get('properties_food_amount')} {current_unit}; use that")
+        current_amount = _number(food.get("properties_food_amount"))
+        if {current_unit, unit_name} != {"g", "ml"} or current_amount != 100:
+            raise RuntimeError(f"{food.get('name')} keeps its values per {food.get('properties_food_amount')} {current_unit}; use that")
+        # 100 ml weigh 100 * g_per_ml g: values per 100 ml become per 100 g by
+        # dividing by the density, and the other way round by multiplying.
+        factor = 1 / g_per_ml if unit_name == "ml" else g_per_ml
+        values = {k: round(v * factor, 2) for k, v in values.items()}
+        unit_name = current_unit
     payload = {
         "properties_food_amount": 100,
         "properties_food_unit": await _unit(unit_name),
@@ -812,7 +824,66 @@ async def set_food_nutrients(
     r = await _send("PATCH", f"/food/{food_id}/", payload)
     by_id = {t["id"]: k for k, t in types.items()}
     saved = {by_id[p["property_type"]["id"]]: p.get("property_amount") for p in r.get("properties") or [] if p["property_type"]["id"] in by_id}
-    return {"id": food_id, "name": r.get("name"), "per": per, "values": saved}
+    out = {"id": food_id, "name": r.get("name"), "per": f"100{unit_name}", "values": saved}
+    if per == "100ml":
+        # Tandoor only converts volume to weight with a food's own conversion.
+        food_ref = {"id": food_id, "name": r.get("name") or food.get("name")}
+        out["conversions"] = [
+            await _upsert_conversion(food_ref, 1, "l", 1000 * g_per_ml, "g"),
+            await _upsert_conversion(food_ref, 100, "ml", 100 * g_per_ml, "g"),
+        ]
+    return out
+
+
+def _number(v: Any) -> float | None:
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+async def _upsert_conversion(food: dict, amount: float, unit: str, equals: float, equals_unit: str) -> str:
+    """Store `amount unit = equals equals_unit` for one food, replacing an
+    earlier conversion between the same two units (in either direction)."""
+    pair = {unit.casefold(), equals_unit.casefold()}
+    existing = [
+        c
+        for c in await _get_all("/unit-conversion/", food_id=food["id"])
+        if {((c.get("base_unit") or {}).get("name") or "").casefold(), ((c.get("converted_unit") or {}).get("name") or "").casefold()} == pair
+    ]
+    body = {
+        "base_amount": amount,
+        "base_unit": {"name": unit},
+        "converted_amount": round(equals, 4),
+        "converted_unit": {"name": equals_unit},
+        "food": food,
+    }
+    if existing:
+        # POST hands back an existing row unchanged (see set_pack_size).
+        await _send("PATCH", f"/unit-conversion/{existing[0]['id']}/", body)
+    else:
+        await _send("POST", "/unit-conversion/", body)
+    return f"{amount:g} {unit} = {equals:g} {equals_unit}"
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def set_unit_conversion(
+    food_id: int = Field(..., description="Food id (see search_food)."),
+    amount: float = Field(..., gt=0, description="e.g. 1"),
+    unit: str = Field(..., min_length=1, description="The unit a recipe uses, e.g. 'Stück', 'EL' or 'l'."),
+    equals: float = Field(..., gt=0, description="What that amount weighs or holds, e.g. 150."),
+    equals_unit: str = Field(..., min_length=1, description="Usually 'g' (or 'ml'), the unit the food's nutrients are per."),
+) -> dict:
+    """Teach Tandoor what an amount of one food weighs, e.g. 1 Stück Zwiebel =
+    150 g or 1 EL Öl = 13 g, so recipes that use that unit get nutrition and
+    Snacky can log them. Replaces an earlier conversion between the same units.
+    For packs use set_pack_size."""
+    if unit.strip().casefold() == equals_unit.strip().casefold():
+        raise RuntimeError("unit and equals_unit must differ")
+    food = await _get(f"/food/{food_id}/")
+    done = await _upsert_conversion({"id": food_id, "name": food.get("name")}, amount, unit.strip(), equals, equals_unit.strip())
+    return {"id": food_id, "name": food.get("name"), "conversion": done}
 
 
 @mcp.tool()

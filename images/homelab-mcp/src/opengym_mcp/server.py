@@ -250,6 +250,22 @@ async def log_workout(
 
 @mcp.tool()
 @guarded(httpx.HTTPError, OpenGymError, og.StateError)
+async def set_progression_step(
+    routine: str = Field(description="Routine name or id."),
+    exercise: str = Field(description="Exercise id or name as in list_routines."),
+    step: float | None = Field(description="Weight added after a clean session, in the profile's unit, e.g. 2 for dumbbells. null restores the app's default (5 kg legs and back, else 2.5 kg)."),
+) -> dict:
+    """Set how much weight one exercise of a routine goes up by after a session with every rep, the same per-exercise increment the app's routine editor sets. Syncs to the phone; the app uses it from its next session."""
+    def change(state: dict):
+        new, result = og.set_step(state, routine, exercise, step, og.Catalogue(state))
+        og.check_step_change(state, new, str(og.find_routine(state, routine).get("id")))
+        return new, result
+
+    return await _write(change)
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, OpenGymError, og.StateError)
 async def delete_workout(workout_id: str = Field(description="Id of a workout this connector logged (starts with 'mcp-').")) -> dict:
     """Remove a workout that log_workout added, to correct a mistake. Workouts logged in the app are deleted in the app."""
 

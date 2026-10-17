@@ -69,7 +69,7 @@ spec:
         # loopback only, so no NetworkPolicy is involved. Same uid as ZeroClaw
         # because the files belong to it; the server never writes.
         - name: files-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-07a25746723644ba46e73aebd73c2422cd27d70e
+          image: ghcr.io/pxldi/homelab-mcp:sha-1d231e8412ed05fe984e93295556493dd298314e
           imagePullPolicy: IfNotPresent
           restartPolicy: Always
           args: ["python", "-m", "files_mcp"]
@@ -120,7 +120,7 @@ spec:
         # After two minutes it starts the bot anyway, with a warning: a bot
         # with old tools beats no bot.
         - name: wait-for-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-07a25746723644ba46e73aebd73c2422cd27d70e
+          image: ghcr.io/pxldi/homelab-mcp:sha-1d231e8412ed05fe984e93295556493dd298314e
           imagePullPolicy: IfNotPresent
           command: ["python", "/app/src/wait_for_mcp.py"]
           env:

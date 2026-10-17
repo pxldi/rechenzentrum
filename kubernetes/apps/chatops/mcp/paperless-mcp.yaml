@@ -25,7 +25,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: paperless-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-07a25746723644ba46e73aebd73c2422cd27d70e
+          image: ghcr.io/pxldi/homelab-mcp:sha-1d231e8412ed05fe984e93295556493dd298314e
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "paperless_mcp"]
           ports:

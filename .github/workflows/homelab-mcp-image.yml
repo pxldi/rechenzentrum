@@ -17,6 +17,7 @@ on:
       - "images/homelab-mcp/**"
       - "tests/test_mcp_gate.py"
       - "tests/test_tandoor_tools.py"
+      - "tests/test_opengym_mcp.py"
       - ".github/workflows/homelab-mcp-image.yml"
   push:
     branches: ["main"]
@@ -24,6 +25,7 @@ on:
       - "images/homelab-mcp/**"
       - "tests/test_mcp_gate.py"
       - "tests/test_tandoor_tools.py"
+      - "tests/test_opengym_mcp.py"
       - ".github/workflows/homelab-mcp-image.yml"
 
 env:
@@ -227,3 +229,31 @@ jobs:
             -d '{}' http://127.0.0.1:8000/mcp)
           test "$code" = 401
           docker stop gate >/dev/null
+
+      # The openGym server: its write tests run against a fake openGym in the
+      # image, then it must start as the Deployment runs it and refuse /mcp
+      # without a token.
+      - name: Test the openGym server
+        run: |
+          set -euo pipefail
+          docker run --rm --read-only --user 1000:1000 -v "$PWD/tests:/tests:ro" \
+            "${IMAGE}:sha-${SHA}" python -m unittest discover -s /tests -p 'test_opengym_mcp.py' -v 2>&1 \
+            | tee /tmp/opengym-tests.log
+          if grep -q 'skipped' /tmp/opengym-tests.log; then echo "openGym tests were skipped"; exit 1; fi
+          docker run -d --rm --name opengym_locked --read-only --user 1000:1000 \
+            -e OPENGYM_TOKEN=smoke \
+            -e OAUTH_ISSUER=https://auth.example.test/application/o/opengym-mcp/ \
+            -e OAUTH_AUDIENCE=smoke \
+            -e OAUTH_RESOURCE_URL=http://127.0.0.1:8000/mcp \
+            -p 8000:8000 "${IMAGE}:sha-${SHA}" python -m opengym_mcp
+          for _ in $(seq 1 20); do
+            if curl -sf http://127.0.0.1:8000/health; then echo; break; fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:8000/health | grep -q '"server":"opengym"'
+          curl -sf http://127.0.0.1:8000/.well-known/oauth-protected-resource/mcp \
+            | grep -q 'auth.example.test/application/o/opengym-mcp/'
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
+            -d '{}' http://127.0.0.1:8000/mcp)
+          test "$code" = 401
+          docker stop opengym_locked >/dev/null

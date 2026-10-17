@@ -1,4 +1,4 @@
-# Nine MCP servers in one image, selected by the container's args:
+# Ten MCP servers in one image, selected by the container's args:
 #   python -m tandoor_mcp   recipes and meal plans, holds the Tandoor token
 #   python -m homelab_mcp   read-only cluster view, holds a ServiceAccount token
 #   python -m calendar_mcp  Nextcloud calendars over CalDAV, holds an app password
@@ -7,6 +7,7 @@
 #   python -m homeassistant_mcp  Home Assistant states and switches, holds a token
 #   python -m immich_mcp    photo search and shared links, holds an API key
 #   python -m karakeep_mcp  bookmarks, holds an API key
+#   python -m opengym_mcp   workouts and weigh-ins in openGym, holds a pairing token
 #   python -m files_mcp     files people send the bot (sidecar in the ZeroClaw pod)
 #   python -m mcp_gate      not a server: a token check in front of one that has
 #                           none, so claude.ai can reach Snacky

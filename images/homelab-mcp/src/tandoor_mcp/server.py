@@ -1,7 +1,7 @@
 import asyncio
 import os
 from datetime import date, timedelta
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from mcp.server import MCPServer
@@ -11,6 +11,7 @@ from oauth import server_kwargs
 from serve import guarded
 from tandoor_mcp import foods as fm
 from tandoor_mcp import leftovers as lo
+from tandoor_mcp import nutrients as nu
 
 mcp = MCPServer("tandoor", **server_kwargs())
 
@@ -423,7 +424,14 @@ async def set_recipe_image(
     Tandoor cannot load the URL, the recipe is left without one, so prefer a
     direct link to a .jpg/.png/.webp file."""
     url = _check_image_url(image_url)
-    r = await _send("PUT", f"/recipe/{recipe_id}/image/", {"image_url": url})
+    # The image endpoint only parses multipart forms; JSON gets a 415. Tandoor
+    # fetches the URL itself through its SSRF-filtered client, so this pod
+    # needs no internet access.
+    async with _client() as c:
+        resp = await c.put(f"/recipe/{recipe_id}/image/", files={"image_url": (None, url)})
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Tandoor answered {resp.status_code}: {resp.text[:300]}")
+    r = resp.json()
     if not r.get("image"):
         raise RuntimeError("Tandoor could not load that image (not reachable or not an image); the recipe has no picture now, try another URL")
     return {"id": recipe_id, "image": True}
@@ -757,6 +765,54 @@ async def merge_food(
     source, target = await asyncio.gather(_get(f"/food/{source_id}/"), _get(f"/food/{target_id}/"))
     r = await _send("PUT", f"/food/{source_id}/merge/{target_id}/", {})
     return {"merged": source.get("name"), "into": target.get("name"), "target_id": target_id, "message": r.get("msg")}
+
+
+async def _unit(name: str) -> dict:
+    """The full unit object (Tandoor's UnitSerializer.update reads its name),
+    created with itself as base unit when missing so amounts convert to it."""
+    for u in await _get_all("/unit/"):
+        if (u.get("name") or "").strip().casefold() == name:
+            return u
+    return await _send("POST", "/unit/", {"name": name, "plural_name": name, "base_unit": name})
+
+
+@mcp.tool()
+@guarded(httpx.HTTPError, RuntimeError)
+async def set_food_nutrients(
+    food_id: int = Field(..., description="Food id (see search_food)."),
+    kcal: float | None = Field(None, ge=0),
+    protein_g: float | None = Field(None, ge=0),
+    fat_g: float | None = Field(None, ge=0),
+    carbs_g: float | None = Field(None, ge=0),
+    fibre_g: float | None = Field(None, ge=0),
+    per: Literal["100g", "100ml"] = Field("100g", description="What the values are for; 100ml for liquids such as stock."),
+) -> dict:
+    """Set a food's nutrients, e.g. from the label, so recipes using it get
+    complete nutrition and Snacky can log them. Values left out stay as they
+    are; the food's other properties are kept. Missing nutrient types are
+    created with the names Snacky uses."""
+    values = {k: v for k, v in {"kcal": kcal, "protein_g": protein_g, "fat_g": fat_g, "carbs_g": carbs_g, "fibre_g": fibre_g}.items() if v is not None}
+    if not values:
+        raise RuntimeError("Give at least one value")
+    food, type_list = await asyncio.gather(_get(f"/food/{food_id}/"), _get_all("/property-type/"))
+    types = nu.map_types(type_list)
+    for key in values:
+        if key not in types:
+            name, unit = nu.DEFAULT_TYPES[key]
+            types[key] = await _send("POST", "/property-type/", {"name": name, "unit": unit, "fdc_id": nu.FDC_IDS[key]})
+    current_unit = ((food.get("properties_food_unit") or {}).get("name") or "").strip().casefold()
+    unit_name = "ml" if per == "100ml" else "g"
+    if food.get("properties") and current_unit and current_unit != unit_name:
+        raise RuntimeError(f"{food.get('name')} keeps its values per {food.get('properties_food_amount')} {current_unit}; use that")
+    payload = {
+        "properties_food_amount": 100,
+        "properties_food_unit": await _unit(unit_name),
+        "properties": nu.build_properties(food.get("properties") or [], types, values),
+    }
+    r = await _send("PATCH", f"/food/{food_id}/", payload)
+    by_id = {t["id"]: k for k, t in types.items()}
+    saved = {by_id[p["property_type"]["id"]]: p.get("property_amount") for p in r.get("properties") or [] if p["property_type"]["id"] in by_id}
+    return {"id": food_id, "name": r.get("name"), "per": per, "values": saved}
 
 
 @mcp.tool()

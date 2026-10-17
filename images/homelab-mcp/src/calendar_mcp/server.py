@@ -16,6 +16,7 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 import caldav
+import recurring_ical_events
 from caldav.lib.error import DAVError
 from caldav.lib.vcal import create_ical
 from icalendar import Calendar, Todo, vRecur
@@ -36,6 +37,9 @@ HOST = os.environ.get("CALDAV_HOST", "")
 TZ = ZoneInfo(os.environ.get("TZ", "Europe/Berlin"))
 # Nextcloud's own bookkeeping collections; nothing a person plans lives there.
 HIDDEN = {"inbox", "outbox", "trashbin"}
+# Collections Nextcloud fills itself and refuses writes to: the birthdays
+# calendar is generated from the address book.
+READ_ONLY = {"contact_birthdays"}
 
 ERRORS = (DAVError, RuntimeError, ValueError, OSError)
 
@@ -55,6 +59,12 @@ def _calendars(client: caldav.DAVClient) -> list[caldav.Calendar]:
     return [c for c in client.principal().calendars() if _slug(c) not in HIDDEN]
 
 
+def _writable(cal: caldav.Calendar) -> caldav.Calendar:
+    if _slug(cal) in READ_ONLY:
+        raise RuntimeError(f"{cal.name or _slug(cal)!r} is read-only (Nextcloud fills it from the contacts)")
+    return cal
+
+
 def _calendar(client: caldav.DAVClient, name: str) -> caldav.Calendar:
     wanted = name.strip().lower()
     for c in _calendars(client):
@@ -64,6 +74,8 @@ def _calendar(client: caldav.DAVClient, name: str) -> caldav.Calendar:
 
 
 def _components(cal: caldav.Calendar) -> list[str]:
+    if _slug(cal) in READ_ONLY:
+        return ["VEVENT"]
     try:
         return [str(c).upper() for c in cal.get_supported_components()]
     except ERRORS:
@@ -74,7 +86,7 @@ def _task_list(client: caldav.DAVClient, name: str) -> caldav.Calendar:
     """The named list, or with no name the first one that holds only tasks
     (a list made in the Tasks app), else Personal."""
     if name.strip():
-        return _calendar(client, name)
+        return _writable(_calendar(client, name))
     cals = _calendars(client)
     for c in cals:
         if _components(c) == ["VTODO"]:
@@ -104,7 +116,10 @@ def _fmt(value: Any) -> str | None:
 
 
 def _event_dict(ev: caldav.Event, calendar: caldav.Calendar) -> dict:
-    c = ev.icalendar_component
+    return _component_dict(ev.icalendar_component, calendar)
+
+
+def _component_dict(c: Any, calendar: caldav.Calendar) -> dict:
     start = c.get("dtstart")
     end = c.get("dtend")
     is_all_day = start is not None and not isinstance(start.dt, datetime)
@@ -118,6 +133,9 @@ def _event_dict(ev: caldav.Event, calendar: caldav.Calendar) -> dict:
         "location": str(c.get("location") or "") or None,
         "description": (str(c.get("description") or "")[:300]) or None,
         "recurring": bool(c.get("rrule")) or bool(c.get("recurrence-id")),
+        # One occurrence of a series: pass it as occurrence to move_event,
+        # update_event or delete_event to change only this one.
+        "occurrence": _fmt(c.get("recurrence-id")),
     }
 
 
@@ -186,6 +204,80 @@ def _find(client: caldav.DAVClient, uid: str) -> tuple[caldav.Event, caldav.Cale
     raise RuntimeError(f"no event with uid {uid!r} in any calendar")
 
 
+OCCURRENCE = Field(
+    "",
+    description=(
+        "For a recurring event: the occurrence field from list_events or agenda, to change "
+        "only that one. Empty changes the whole series."
+    ),
+)
+
+
+def _master(ev: caldav.Event) -> Any:
+    for comp in ev.icalendar_instance.walk("VEVENT"):
+        if comp.get("recurrence-id") is None:
+            return comp
+    raise RuntimeError("the event has no master component")
+
+
+def _occurrence_key(master: Any, occurrence: str) -> date | datetime:
+    """The RECURRENCE-ID for an occurrence, in the master's own form: a date
+    for an all-day series, else a time in the series' zone."""
+    first = master.get("dtstart").dt
+    if not isinstance(first, datetime):
+        return _parse_when(occurrence, all_day=True)
+    when = _parse_when(occurrence)
+    if not isinstance(when, datetime):
+        raise ValueError("occurrence needs the time of the occurrence, as list_events gives it")
+    return when.astimezone(first.tzinfo) if first.tzinfo else when.astimezone(TZ).replace(tzinfo=None)
+
+
+def _same(a: Any, b: Any) -> bool:
+    a, b = getattr(a, "dt", a), getattr(b, "dt", b)
+    if isinstance(a, datetime) != isinstance(b, datetime):
+        return False
+    if isinstance(a, datetime):
+        a = a if a.tzinfo else a.replace(tzinfo=TZ)
+        b = b if b.tzinfo else b.replace(tzinfo=TZ)
+    return a == b
+
+
+def _in_series(ev: caldav.Event, key: date | datetime) -> bool:
+    day = key.date() if isinstance(key, datetime) else key
+    for inst in recurring_ical_events.of(ev.icalendar_instance).at(day):
+        rid = inst.get("recurrence-id") or inst.get("dtstart")
+        if _same(rid, key):
+            return True
+    return False
+
+
+def _override(ev: caldav.Event, occurrence: str) -> Any:
+    """The component for one occurrence, made from the master if the series
+    has none for it yet. Raises if the series has no such occurrence."""
+    master = _master(ev)
+    if master.get("rrule") is None:
+        raise ValueError("this event is not recurring; leave occurrence empty")
+    key = _occurrence_key(master, occurrence)
+    for comp in ev.icalendar_instance.walk("VEVENT"):
+        rid = comp.get("recurrence-id")
+        if rid is not None and _same(rid, key):
+            return comp
+    if not _in_series(ev, key):
+        raise ValueError(f"the series has no occurrence at {occurrence}")
+    first = master.get("dtstart").dt
+    end = master.get("dtend")
+    length = (end.dt - first) if end is not None else (timedelta(hours=1) if isinstance(first, datetime) else timedelta(days=1))
+    comp = master.copy()
+    for k in ("rrule", "rdate", "exdate", "dtstart", "dtend", "duration", "recurrence-id"):
+        while comp.get(k) is not None:
+            comp.pop(k)
+    comp.add("recurrence-id", key)
+    comp.add("dtstart", key)
+    comp.add("dtend", key + length)
+    ev.icalendar_instance.add_component(comp)
+    return comp
+
+
 # --- read tools ------------------------------------------------------------
 
 
@@ -199,7 +291,7 @@ def list_calendars() -> list[dict]:
     for c in _calendars(client):
         comps = _components(c)
         holds = [k for k, v in (("events", "VEVENT"), ("tasks", "VTODO")) if v in comps]
-        out.append({"name": c.name or _slug(c), "id": _slug(c), "holds": holds})
+        out.append({"name": c.name or _slug(c), "id": _slug(c), "holds": holds, "read_only": _slug(c) in READ_ONLY})
     return out
 
 
@@ -283,7 +375,7 @@ def create_event(
     """Create an event or, with repeat, a recurring series. Returns its uid, which
     move_event, update_event and delete_event take."""
     client = _client()
-    cal = _calendar(client, calendar)
+    cal = _writable(_calendar(client, calendar))
     dtstart = _parse_when(start)
     if isinstance(dtstart, datetime):
         dtend = _parse_when(end) if end else dtstart + timedelta(hours=1)
@@ -311,12 +403,14 @@ def move_event(
     uid: str,
     start: str = Field(..., description="New start, ISO datetime or date."),
     end: str = Field("", description="New end. Empty keeps the event's duration."),
+    occurrence: str = OCCURRENCE,
 ) -> dict:
     """Move an event (by uid) to a new start, keeping its duration unless end is given.
-    For a recurring event this moves the whole series."""
+    For a recurring event this moves the whole series, or with occurrence just that one."""
     client = _client()
     ev, cal = _find(client, uid)
-    c = ev.icalendar_component
+    _writable(cal)
+    c = _override(ev, occurrence) if occurrence.strip() else _master(ev)
     old_start, old_end = c.get("dtstart").dt, (c.get("dtend").dt if c.get("dtend") else None)
     new_start = _parse_when(start, all_day=not isinstance(old_start, datetime))
     if end:
@@ -331,7 +425,7 @@ def move_event(
         c.pop("dtend")
     c.add("dtend", new_end)
     ev.save()
-    return _event_dict(ev, cal)
+    return _component_dict(c, cal)
 
 
 @mcp.tool()
@@ -341,12 +435,14 @@ def update_event(
     summary: str = Field("", description="New title. Empty keeps it."),
     location: str | None = Field(None, description="New location; an empty string clears it, null keeps it."),
     description: str | None = Field(None, description="New description; an empty string clears it, null keeps it."),
+    occurrence: str = OCCURRENCE,
 ) -> dict:
     """Change an event's title, location or description. Use move_event for its time.
-    For a recurring event this changes the whole series."""
+    For a recurring event this changes the whole series, or with occurrence just that one."""
     client = _client()
     ev, cal = _find(client, uid)
-    c = ev.icalendar_component
+    _writable(cal)
+    c = _override(ev, occurrence) if occurrence.strip() else _master(ev)
     if summary.strip():
         _set(c, "summary", summary.strip())
     if location is not None:
@@ -354,17 +450,27 @@ def update_event(
     if description is not None:
         _set(c, "description", description or None)
     ev.save()
-    return _event_dict(ev, cal)
+    return _component_dict(c, cal)
 
 
 @mcp.tool()
 @guarded(*ERRORS)
-def delete_event(uid: str) -> dict:
-    """Delete an event by uid; for a recurring event, the whole series. Nextcloud keeps
-    it in the calendar trash bin for a while."""
+def delete_event(uid: str, occurrence: str = OCCURRENCE) -> dict:
+    """Delete an event by uid; for a recurring event the whole series, or with
+    occurrence only that one. Nextcloud keeps a deleted series in the calendar trash
+    bin for a while; a single occurrence is an exception on the series instead."""
     client = _client()
     ev, cal = _find(client, uid)
-    summary = str(ev.icalendar_component.get("summary") or "")
+    _writable(cal)
+    master = _master(ev)
+    summary = str(master.get("summary") or "")
+    if occurrence.strip():
+        comp = _override(ev, occurrence)
+        key = comp.get("recurrence-id").dt
+        ev.icalendar_instance.subcomponents.remove(comp)
+        master.add("exdate", key)
+        ev.save()
+        return {"deleted": uid, "occurrence": _fmt(key), "summary": summary, "calendar": cal.name or _slug(cal)}
     ev.delete()
     return {"deleted": uid, "summary": summary, "calendar": cal.name or _slug(cal)}
 
@@ -439,6 +545,7 @@ def update_task(
     complete_task to tick it off."""
     client = _client()
     t, cal = _find_task(client, uid)
+    _writable(cal)
     c = t.icalendar_component
     if summary.strip():
         _set(c, "summary", summary.strip())

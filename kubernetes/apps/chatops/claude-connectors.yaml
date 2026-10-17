@@ -1,0 +1,41 @@
+---
+# The recipe server and Snacky for claude.ai, the same shape as the vault's
+# route (vault/ingress.yaml, whose allowlist middleware these reuse): no
+# forward-auth, because claude.ai calls from Anthropic's servers and cannot
+# follow a login redirect; the servers refuse /mcp without an Authentik token
+# instead. Only the paths a connector uses are routed.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: tandoor-mcp
+  namespace: chatops
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: "Host(`tandoor-mcp.pxldi.de`) && (PathPrefix(`/mcp`) || PathPrefix(`/.well-known/`))"
+      middlewares:
+        - name: anthropic-and-house
+      priority: 10
+      services:
+        - name: tandoor-mcp
+          port: 8001
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: snacky-mcp
+  namespace: chatops
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: "Host(`snacky-mcp.pxldi.de`) && (PathPrefix(`/mcp`) || PathPrefix(`/.well-known/`))"
+      middlewares:
+        - name: anthropic-and-house
+      priority: 10
+      services:
+        - name: snacky-mcp-gate
+          port: 8000

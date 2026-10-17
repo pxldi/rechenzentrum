@@ -162,6 +162,31 @@ Shipping it is the two-PR rule below plus one step between: the code and
 the tofu client merge first, the tofu apply on `main` creates the client,
 and the manifests PR pins the new tag and adds the route.
 
+### Tandoor and Snacky from claude.ai
+
+The same arrangement, twice more. Each has its own Authentik client
+(`authentik_provider_oauth2.mcp_connector` in `terraform/authentik/oidc-apps.tf`),
+its own issuer and audience, so a token for one connector is refused by the
+others; only members of `mcp-connector-users` pass the login.
+
+- **Tandoor**: a second `tandoor_mcp` container in the `tandoor-mcp` pod, on
+  port 8001 with the `OAUTH_*` variables, behind `tandoor-mcp.<domain>`. It
+  holds the same Tandoor token as the bot's container.
+- **Snacky**: Snacky is built elsewhere and its MCP port has no login, so a
+  gate stands in front of it: `snacky-mcp-gate` runs `python -m mcp_gate` from
+  this image, checks the token and forwards `/mcp` to Snacky's Service without
+  it, behind `snacky-mcp.<domain>`. Snacky's NetworkPolicy lets the gate in
+  next to the bot. The gate refuses to start without `OAUTH_ISSUER`.
+
+Both routes reuse the vault's `anthropic-and-house` allowlist and route only
+`/mcp` and `/.well-known/`. claude.ai has no approve/deny keyboard of the
+bot's kind; its per-tool permission setting in the connector does that job,
+so set the writes (`delete_meal_plan` above all) to ask first.
+
+To connect: Add custom connector, URL `https://tandoor-mcp.<domain>/mcp` or
+`https://snacky-mcp.<domain>/mcp`, and the matching client id from the tofu
+file under advanced settings, secret blank.
+
 ## Scheduled nudges
 
 Three agent cron jobs are declared in `config.toml` under `[cron.*]` and run

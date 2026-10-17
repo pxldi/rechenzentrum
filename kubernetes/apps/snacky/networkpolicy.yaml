@@ -1,5 +1,6 @@
 # Two ways in, and they must not share a port. 8000 is MCP with no login of its
-# own, so only the chat assistant's pod may reach it. 8080 is the web UI, and
+# own, so only the chat assistant's pod and the token gate for claude.ai may
+# reach it. 8080 is the web UI, and
 # Traefik reaches it through the allow-from-traefik component (see the
 # kustomization). Traefik has no route to 8000.
 #
@@ -24,6 +25,18 @@ spec:
           podSelector:
             matchLabels:
               app: zeroclaw
+      ports:
+        - protocol: TCP
+          port: 8000
+    # The token gate that claude.ai reaches Snacky through; it lets nothing
+    # past without an Authentik token (kubernetes/apps/chatops/mcp).
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: chatops
+          podSelector:
+            matchLabels:
+              app: snacky-mcp-gate
       ports:
         - protocol: TCP
           port: 8000

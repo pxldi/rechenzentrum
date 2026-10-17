@@ -1,0 +1,85 @@
+---
+# Snacky's MCP port for claude.ai. Snacky serves MCP without a login (only
+# the bot may reach it, see kubernetes/apps/snacky/networkpolicy.yaml), so a
+# claude.ai connector cannot be pointed at it directly. This gate checks the
+# Authentik token, for the snacky-mcp client in
+# terraform/authentik/oidc-apps.tf, and forwards the request without it
+# (images/homelab-mcp/src/mcp_gate). It holds no credential.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snacky-mcp-gate
+  namespace: chatops
+  labels:
+    app: snacky-mcp-gate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: snacky-mcp-gate
+  template:
+    metadata:
+      labels:
+        app: snacky-mcp-gate
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gate
+          image: ghcr.io/pxldi/homelab-mcp:sha-5d809338b23d5955396ba8bfa3ab21d0cce6bf3d
+          imagePullPolicy: IfNotPresent
+          args: ["python", "-m", "mcp_gate"]
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: UPSTREAM_URL
+              value: http://snacky.snacky.svc.cluster.local:8000/mcp
+            - name: OAUTH_ISSUER
+              value: https://auth.pxldi.de/application/o/snacky-mcp/
+            - name: OAUTH_AUDIENCE
+              value: YDWJiIWVPrimLNEEiKrn68hJuUkbkwTMpIA9LNtI
+            - name: OAUTH_RESOURCE_URL
+              value: https://snacky-mcp.pxldi.de/mcp
+            - name: OAUTH_JWKS_URL
+              value: http://authentik-server.authentik.svc.cluster.local/application/o/snacky-mcp/jwks/
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 10m
+              memory: 48Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: snacky-mcp-gate
+  namespace: chatops
+spec:
+  selector:
+    app: snacky-mcp-gate
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

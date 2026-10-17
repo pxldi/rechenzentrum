@@ -32,10 +32,12 @@ resources:
   - mcp/calendar-mcp.yaml
   - mcp/paperless-mcp.yaml
   - mcp/homeassistant-mcp.yaml
+  - mcp/snacky-mcp-gate.yaml
   - vault/pvc.yaml
   - vault/deployment.yaml
   - vault/service.yaml
   - vault/ingress.yaml
+  - claude-connectors.yaml
   - networkpolicy.yaml
 
 # Egress and ingress are hand-written in networkpolicy.yaml because the three

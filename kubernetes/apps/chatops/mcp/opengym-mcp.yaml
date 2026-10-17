@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: opengym-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-7e92753adee9c74aeb9f803cda64567d0db128bf
+          image: ghcr.io/pxldi/homelab-mcp:sha-b464d2e256667b8a8de90be35a26e7c37560e12a
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "opengym_mcp"]
           ports:

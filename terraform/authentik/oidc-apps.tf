@@ -198,7 +198,7 @@ resource "authentik_policy_binding" "vault_mcp_users" {
   order  = 0
 }
 
-# --- Tandoor and Snacky MCP, for claude.ai ---
+# --- Tandoor, Snacky and calendar MCP, for claude.ai ---
 #
 # The same arrangement as the vault's, one client per server: each server
 # checks that a token's aud is its own client id, so a token issued for one
@@ -217,6 +217,12 @@ locals {
       name        = "Snacky MCP"
       description = "The nutrition log, for claude.ai"
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/grocy.png"
+    }
+    calendar-mcp = {
+      client_id   = "DEuYsEASNNtWlMwviGPOBFof0oghFuwaK6VprRTv"
+      name        = "Calendar MCP"
+      description = "Nextcloud calendars and tasks, for claude.ai"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/nextcloud.png"
     }
   }
 }
@@ -265,9 +271,9 @@ resource "authentik_application" "mcp_connector" {
   meta_icon         = each.value.icon
 }
 
-# Both servers write (recipes, meal plans, log entries) with the one token
-# the server holds, so whoever passes this login writes as the owner. Same
-# reason as vault-mcp-users for a group of its own.
+# These servers write (recipes, meal plans, log entries, events, tasks) with
+# the one credential the server holds, so whoever passes this login writes as
+# the owner. Same reason as vault-mcp-users for a group of its own.
 resource "authentik_group" "mcp_connector_users" {
   name         = "mcp-connector-users"
   is_superuser = false

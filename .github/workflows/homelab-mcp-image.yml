@@ -16,12 +16,14 @@ on:
     paths:
       - "images/homelab-mcp/**"
       - "tests/test_mcp_gate.py"
+      - "tests/test_tandoor_tools.py"
       - ".github/workflows/homelab-mcp-image.yml"
   push:
     branches: ["main"]
     paths:
       - "images/homelab-mcp/**"
       - "tests/test_mcp_gate.py"
+      - "tests/test_tandoor_tools.py"
       - ".github/workflows/homelab-mcp-image.yml"
 
 env:
@@ -193,16 +195,17 @@ jobs:
           test "$code" = 401
           docker stop tandoor_locked >/dev/null
 
-      # The gate in front of Snacky: its unit tests need the SDK, so they run
-      # in the image; then the module must start as the Deployment runs it,
-      # refuse /mcp without a token, and refuse to start without OAUTH_ISSUER.
-      - name: Test the token gate
+      # The tests that need the SDK (the token gate, the recipe tools against a
+      # fake Tandoor) run in the image. Then the gate must start as the
+      # Deployment runs it, refuse /mcp without a token, and refuse to start
+      # without OAUTH_ISSUER.
+      - name: Test the token gate and the recipe tools
         run: |
           set -euo pipefail
-          docker run --rm --read-only --user 1000:1000 -v "$PWD/tests:/tests:ro" \
-            "${IMAGE}:sha-${SHA}" python -m unittest discover -s /tests -p 'test_mcp_gate.py' -v 2>&1 \
-            | tee /tmp/gate-tests.log
-          if grep -q 'skipped' /tmp/gate-tests.log; then echo "gate tests were skipped"; exit 1; fi
+          docker run --rm --read-only --user 1000:1000 -v "$PWD/tests:/tests:ro" -w /tests \
+            "${IMAGE}:sha-${SHA}" python -m unittest -v test_mcp_gate test_tandoor_tools 2>&1 \
+            | tee /tmp/sdk-tests.log
+          if grep -q 'skipped' /tmp/sdk-tests.log; then echo "SDK tests were skipped"; exit 1; fi
           if docker run --rm --read-only --user 1000:1000 -e UPSTREAM_URL=http://upstream.test/mcp \
             "${IMAGE}:sha-${SHA}" python -m mcp_gate; then
             echo "the gate started without a token check"; exit 1

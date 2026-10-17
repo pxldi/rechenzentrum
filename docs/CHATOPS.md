@@ -40,8 +40,8 @@ Telegram ──▶ zeroclaw ──▶ tandoor-mcp ──▶ tandoor (recipes, me
 | calendar | `create_event`, `move_event` | runs on its own |
 | calendar | `update_event`, `create_task`, `update_task`, `complete_task` | approve/deny keyboard in the chat first |
 | calendar | `delete_event`, `delete_task` | approve/deny keyboard in the chat, every time |
-| vault | `list_notes`, `read_note`, `search_notes` (whole vault), `append_note`, `log_learned` (under `Clanky/` only) | runs on its own |
-| vault | `write_note` (replaces a whole note, under `Clanky/` only) | approve/deny keyboard in the chat first |
+| vault | `list_notes`, `read_note`, `read_notes` (up to 50 at once), `search_notes` (whole vault), `append_note`, `log_learned` (under `Clanky/` only) | runs on its own |
+| vault | `write_note` (replaces a whole note), `edit_note` (replaces one exact passage), `move_note`, `delete_note` (moves the note to `Clanky/_trash/<date>/`), under `Clanky/` only | approve/deny keyboard in the chat first |
 | paperless | `search_documents`, `list_documents`, `get_document`, `get_document_page` (a page as a picture), `list_labels` | runs on its own |
 | paperless | `update_document`, `create_tag` | approve/deny keyboard in the chat first |
 | homeassistant | `who_is_home`, `list_entities`, `get_state` | runs on its own |

@@ -63,7 +63,7 @@ spec:
               mountPath: /run
       containers:
         - name: karakeep
-          image: ghcr.io/karakeep-app/karakeep:0.33.2
+          image: ghcr.io/karakeep-app/karakeep:0.34.0
           imagePullPolicy: IfNotPresent
           # The image runs its own migrations at start, so schema changes apply
           # on rollout with no init container.

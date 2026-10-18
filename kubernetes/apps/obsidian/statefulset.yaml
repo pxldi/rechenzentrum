@@ -52,7 +52,7 @@ spec:
               mountPath: /local.d
       containers:
         - name: couchdb
-          image: couchdb:3.5.2
+          image: couchdb:3.5.3
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5984

@@ -156,6 +156,21 @@ spec:
               comps: [=, endswith, =, =]
               values:
                 - [nextcloud, nextcloud, apache2, "sh -c -- command -v -- 'libreoffice'"]
+                - [nextcloud, nextcloud, apache2, "sh -c -- command -v -- 'openoffice'"]
+            # The weekly CNPG restore test (components/cnpg-restore-test) recovers
+            # into a Cluster named restore-test. Its full-recovery pod's postgres
+            # runs restore_command through sh: wal-restore per segment, and
+            # `false` once the archive has nothing more to give.
+            - name: cnpg_restore_test_wal_restore
+              fields: [k8s.ns.name, k8s.pod.name, proc.pname, proc.cmdline]
+              comps: [in, startswith, =, startswith]
+              values:
+                - [[immich, media, tandoor], restore-test-1-full-recovery-, postgres, "sh -c /controller/manager wal-restore "]
+            - name: cnpg_restore_test_end_of_archive
+              fields: [k8s.ns.name, k8s.pod.name, proc.pname, proc.cmdline]
+              comps: [in, startswith, =, =]
+              values:
+                - [[immich, media, tandoor], restore-test-1-full-recovery-, postgres, "sh -c false"]
           override:
             exceptions: append
 

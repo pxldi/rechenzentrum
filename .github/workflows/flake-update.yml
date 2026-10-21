@@ -77,7 +77,7 @@ jobs:
           }
           {
             echo "detail<<FLAKE_EOF"
-            echo "k3s_1_33 = $(ev 'pkgs.k3s_1_33.version')"
+            echo "k3s      = $(ev 'np.nixosConfigurations.rechenzentrum.config.services.k3s.package.version')"
             echo "kernel   = $(ev 'pkgs.linuxPackages.kernel.version')"
             echo "FLAKE_EOF"
           } >> "$GITHUB_OUTPUT"

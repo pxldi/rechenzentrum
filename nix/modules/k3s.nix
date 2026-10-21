@@ -130,7 +130,7 @@ in
   services.k3s = {
     enable = true;
     role = "server";
-    package = pkgs.k3s_1_33;
+    package = pkgs.k3s_1_34;
     extraFlags = toString [
       "--disable=traefik"
       # Pin the node to its LAN interface and address.
@@ -268,7 +268,7 @@ in
   environment.etc."rancher/k3s/kubelet-resolv.conf".source = kubeletResolvConf;
 
   environment.systemPackages = with pkgs; [
-    k3s_1_33
+    config.services.k3s.package
     kubectl
     kubernetes-helm
     docker-compose

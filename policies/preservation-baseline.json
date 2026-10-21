@@ -197,7 +197,7 @@
   },
   "postgresql.cnpg.io/v1/Cluster/media/cantus-postgresql": {
     "kind": "Cluster",
-    "spec_sha256": "4b8a4355241046b2e2fbc4277b00e80f8c2b7cefa3d4f5ffb1a767a9fd7f2c2b"
+    "spec_sha256": "f3a85692b68da1bb92300408daa01db90e77ad5e02d696643e5db36730c89b3c"
   },
   "postgresql.cnpg.io/v1/Cluster/tandoor/tandoor-postgresql": {
     "kind": "Cluster",

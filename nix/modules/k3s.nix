@@ -130,7 +130,7 @@ in
   services.k3s = {
     enable = true;
     role = "server";
-    package = pkgs.k3s_1_34;
+    package = pkgs.k3s_1_35;
     extraFlags = toString [
       "--disable=traefik"
       # Pin the node to its LAN interface and address.

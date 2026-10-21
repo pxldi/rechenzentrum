@@ -5,7 +5,7 @@ cluster on 2026-09-12. Only schemas for kinds used by the rendered GitOps roots
 are included. No instances, status, credentials or private keys are included.
 
 `scripts/schema-check.py` validates against these schemas and the Kubernetes
-1.35 built-in schemas. Unknown kinds fail validation. When upgrading a
+1.36 built-in schemas. Unknown kinds fail validation. When upgrading a
 controller, update its schema in the same PR from the upstream CRD at the
 selected release, then validate the manifests against that version.
 

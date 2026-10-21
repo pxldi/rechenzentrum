@@ -27,7 +27,7 @@ for doc in documents:
             if field in doc:
                 doc[field] = {key: "" for key in doc[field]}
 subprocess.run([
-    "kubeconform", "-strict", "-summary", "-kubernetes-version", "1.35.0",
+    "kubeconform", "-strict", "-summary", "-kubernetes-version", "1.36.0",
     "-schema-location", "default",
     "-schema-location", str(ROOT / "schemas/{{.Group}}-{{.ResourceKind}}-{{.ResourceAPIVersion}}.json"),
 ], input=yaml.safe_dump_all(documents), text=True, check=True, cwd=ROOT)

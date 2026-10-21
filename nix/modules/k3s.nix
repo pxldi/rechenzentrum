@@ -268,7 +268,7 @@ in
   environment.etc."rancher/k3s/kubelet-resolv.conf".source = kubeletResolvConf;
 
   environment.systemPackages = with pkgs; [
-    k3s_1_33
+    config.services.k3s.package
     kubectl
     kubernetes-helm
     docker-compose

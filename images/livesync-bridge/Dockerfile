@@ -2,7 +2,7 @@
 # directory and back. It has no published image, so this builds it from a
 # pinned commit. The bot's vault MCP server reads and writes the mirrored
 # directory; see kubernetes/apps/chatops/vault.
-FROM docker.io/denoland/deno:2.9.7@sha256:fa335acdf6b72106eda2cb6a8cb5f4187e7630e357467489db4b2e7352d5e432 AS src
+FROM docker.io/denoland/deno:2.9.8@sha256:a0d88a7fcbd44f062cba2748e19df67d30290ad12aa203c7c1e0b12462c483f0 AS src
 ARG BRIDGE_COMMIT=c3760beaa0851214da4860903445d7f6420ca025
 USER 0
 # hadolint ignore=DL3008

@@ -1,0 +1,23 @@
+# Authentik only, without the house allowlist: one of its two users is outside
+# the house and the tailnet (docs/EXPOSURE.md, exceptions). Authentik admits
+# only the survivorlike-viewers group here, not rechenzentrum-users
+# (terraform/authentik/forward-auth-apps.tf).
+# Priority 10 matches the rest of the repo's IngressRoutes.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: asset-viewer
+  namespace: survivorlike
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`assets.pxldi.de`)
+      priority: 10
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: traefik
+      services:
+        - name: asset-viewer
+          port: 80

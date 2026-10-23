@@ -114,12 +114,26 @@ locals {
       description = "Protein & calorie log"
     }
   }
+
+  # Apps that bind their own group instead of rechenzentrum-users, for people
+  # who should reach that app and nothing else. Same fields as above; the
+  # binding for each is at the end of "Who may reach any of this".
+  restricted_forward_auth_apps = {
+    survivorlike-assets = {
+      name        = "Survivorlike Assets"
+      host        = "assets.${var.domain}"
+      icon        = ""
+      description = "Asset viewer of the survivorlike game"
+    }
+  }
+
+  all_forward_auth_apps = merge(local.forward_auth_apps, local.restricted_forward_auth_apps)
 }
 
 # --- Proxy Providers (one per app) ---
 
 resource "authentik_provider_proxy" "forward_auth" {
-  for_each = local.forward_auth_apps
+  for_each = local.all_forward_auth_apps
 
   name               = each.key
   mode               = "forward_single"
@@ -133,7 +147,7 @@ resource "authentik_provider_proxy" "forward_auth" {
 # --- Applications (one per app) ---
 
 resource "authentik_application" "forward_auth" {
-  for_each = local.forward_auth_apps
+  for_each = local.all_forward_auth_apps
 
   name              = each.value.name
   slug              = each.key
@@ -152,10 +166,10 @@ resource "authentik_application" "forward_auth" {
 # account. It stops being invisible the moment there is a second one, because
 # "has a login" would mean Grafana, the Traefik dashboard and Velero.
 #
-# So membership is explicit. Every application above asks for this group, and
-# the group's members are managed here rather than in the admin interface: a
-# name added by hand there is removed on the next apply. Add people in this
-# file.
+# So membership is explicit. Every application in forward_auth_apps asks for
+# this group, and the group's members are managed here rather than in the admin
+# interface: a name added by hand there is removed on the next apply. Add people
+# in this file.
 #
 data "authentik_user" "pxldi" {
   username = "pxldi"
@@ -179,6 +193,30 @@ resource "authentik_policy_binding" "forward_auth_users" {
 
   target = authentik_application.forward_auth[each.key].uuid
   group  = authentik_group.rechenzentrum_users.id
+  order  = 0
+}
+
+# The apps in restricted_forward_auth_apps get no binding above; each one
+# binds its own group here. Without a binding an app would be open to every
+# account.
+#
+# The asset viewer is for the two people who work on the game. Its group is
+# the only one bound to it, so rechenzentrum-users does not open it, and this
+# group opens nothing else. Members are managed here, like rechenzentrum-users.
+# To add someone: create the account in authentik first (with MFA), then add a
+# data "authentik_user" block for the username and its id to the list. A
+# username that does not exist yet fails the plan.
+resource "authentik_group" "survivorlike_viewers" {
+  name         = "survivorlike-viewers"
+  is_superuser = false
+  users = [
+    data.authentik_user.pxldi.id,
+  ]
+}
+
+resource "authentik_policy_binding" "survivorlike_viewers" {
+  target = authentik_application.forward_auth["survivorlike-assets"].uuid
+  group  = authentik_group.survivorlike_viewers.id
   order  = 0
 }
 

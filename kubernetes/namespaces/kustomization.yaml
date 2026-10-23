@@ -24,6 +24,7 @@ resources:
   - searxng.yaml
   - slskd.yaml
   - snacky.yaml
+  - survivorlike.yaml
   - tandoor.yaml
   - velero-restore-test.yaml
   - wealthfolio.yaml

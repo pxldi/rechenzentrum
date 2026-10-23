@@ -26,6 +26,11 @@ as it always did for every app without such a route. They were removed on
 
 - **Snacky** (`snacky.pxldi.de`) stays Authentik-only, so a phone off the
   tailnet can reach it. The MCP port has no route.
+- **The survivorlike asset viewer** (`assets.pxldi.de`) is Authentik-only, for
+  a user outside the house and the tailnet. Unlike every other forward-auth
+  app it binds its own group, `survivorlike-viewers`, so an account in that
+  group reaches this app and nothing else, and `rechenzentrum-users` does not
+  open it (`terraform/authentik/forward-auth-apps.tf`).
 - **Karakeep** (`links.pxldi.de`) stays Authentik-only, through Karakeep's own
   OIDC login rather than forward-auth: its password form is off, and the browser
   extension and phone apps send bearer tokens to `/api`, which a forward-auth
@@ -133,6 +138,7 @@ is on Tailscale" is not an answer on its own.
 | slskd | `slskd.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | snacky | `snacky.pxldi.de` | Authentik | authentik-forward-auth |
 | media | `sonarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| survivorlike | `assets.pxldi.de` | Authentik | authentik-forward-auth |
 | traefik | `traefik.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | adventurelog | `travel-admin.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | adventurelog | `travel.pxldi.de` | public | none |

@@ -50,6 +50,7 @@ Every application namespace except the two at the end of this section.
 | `searxng` | own namespace, internet | Querying upstream engines is the job; ZeroClaw in `chatops` may query it |
 | `slskd` | own namespace, internet | gluetun's tunnel and Soulseek peers |
 | `snacky` | internet, `tandoor`, `opengym` | Open Food Facts outside; recipes and workouts by Service name. Its pod takes MCP from the chat agent only |
+| `survivorlike` | nothing | Static files; the browser loads three.js from the CDN itself |
 | `tandoor` | own namespace, internet, API server | Postgres here; recipe import; CNPG |
 | `whisper-cpp` | nothing | Transcription happens in the pod; the model is already on the PVC |
 

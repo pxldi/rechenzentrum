@@ -1,0 +1,81 @@
+# The asset viewer of the survivorlike game: a static site (models, textures,
+# sprites, shaders) that the game repo builds into an nginx image on every
+# asset change. No state; a new pod is the whole deploy.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asset-viewer
+  namespace: survivorlike
+  labels:
+    app: asset-viewer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: asset-viewer
+  template:
+    metadata:
+      labels:
+        app: asset-viewer
+    spec:
+      automountServiceAccountToken: false
+      # The image is private on ghcr. See the comment in ghcr-pull-secret.yaml.
+      imagePullSecrets:
+        - name: ghcr-pull
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: asset-viewer
+          # `main` moves with every build of the game repo's main branch, as
+          # schall's does. Pinning a sha tag would need a PR here for every
+          # asset commit, and the viewer exists to show the current assets.
+          # Always, so a restart picks up the newest build:
+          #   kubectl -n survivorlike rollout restart deployment/asset-viewer
+          image: ghcr.io/pxldi/survivorlike-asset-viewer:main
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          # nginx-unprivileged keeps its pid file and temp paths under /tmp.
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}

@@ -116,6 +116,9 @@
   "apps/v1/Deployment/snacky/snacky": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/survivorlike/asset-viewer": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/wealthfolio/wealthfolio": {
     "kind": "Deployment"
   },
@@ -303,6 +306,9 @@
     "kind": "Namespace"
   },
   "v1/Namespace//snacky": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//survivorlike": {
     "kind": "Namespace"
   },
   "v1/Namespace//tandoor": {

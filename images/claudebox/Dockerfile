@@ -41,7 +41,7 @@
 
 # The digest is the actual pin. The tag is here so a human reading it knows what
 # they are looking at, and so Renovate has something to bump.
-FROM node:24.22.1-trixie@sha256:e8bc2eedd0e82fb45a4d9a68aff03d1fbe478fc5794a67d7dc06b72a2caaa2ec
+FROM node:24.22.1-trixie@sha256:016f604a11c4c725f0a4c62e29ff11adab153d297bf97046c9bf2ddb9f1011d3
 
 # Every version is an explicit ARG so that the table in the PR, the pins here and
 # the verification transcript are the same three numbers rather than three

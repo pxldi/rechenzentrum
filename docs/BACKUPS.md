@@ -4,7 +4,7 @@
 | --- | --- |
 | Six CNPG databases | Barman Cloud plugin -> B2; base backups and WAL |
 | Selected application files | Velero/Kopia -> B2 |
-| Daily critical namespaces | `daily-critical-backup`, `0 2 * * *`, 30-day retention |
+| Daily critical namespaces | `daily-critical-backup`, `20 2 * * *` (UTC), 30-day retention |
 | Weekly selected cluster resources | `weekly-full-backup`, `0 3 * * 0`, 90-day retention |
 
 Scopes and volume exclusions are defined in `kubernetes/infrastructure-config/velero/`.

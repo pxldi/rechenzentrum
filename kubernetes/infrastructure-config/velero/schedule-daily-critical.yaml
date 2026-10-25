@@ -5,8 +5,9 @@ metadata:
   name: daily-critical-backup
   namespace: velero
 spec:
-  # Run at 2 AM every night
-  schedule: "0 2 * * *"
+  # 02:20 UTC. The router reboots at 03:00 Berlin time, which is 01:00 UTC in
+  # summer and 02:00 UTC in winter; a run at 02:00 UTC failed its B2 DNS lookup.
+  schedule: "20 2 * * *"
 
   template:
     includedNamespaces:

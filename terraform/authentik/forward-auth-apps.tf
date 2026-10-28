@@ -206,11 +206,16 @@ resource "authentik_policy_binding" "forward_auth_users" {
 # To add someone: create the account in authentik first (with MFA), then add a
 # data "authentik_user" block for the username and its id to the list. A
 # username that does not exist yet fails the plan.
+data "authentik_user" "leon" {
+  username = "leon"
+}
+
 resource "authentik_group" "survivorlike_viewers" {
   name         = "survivorlike-viewers"
   is_superuser = false
   users = [
     data.authentik_user.pxldi.id,
+    data.authentik_user.leon.id,
   ]
 }
 

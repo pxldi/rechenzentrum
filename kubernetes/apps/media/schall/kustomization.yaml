@@ -8,6 +8,7 @@ resources:
   - auth-secret.yaml
   - middleware-proxy-key.yaml
   - ingress.yaml
+  - follower.yaml
 
 # Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
 labels:

@@ -152,6 +152,12 @@ spec:
               comps: [=, =, endswith, =]
               values:
                 - [survivorlike, kubectl, rancher/kubectl, kubectl patch deployment/asset-viewer --namespace=survivorlike --type=merge --patch-file=/work/patch.json --field-manager=asset-viewer-follower]
+            # kubernetes/apps/media/schall/follower.yaml, every five minutes.
+            - name: schall_follower
+              fields: [k8s.ns.name, container.name, container.image.repository, proc.cmdline]
+              comps: [=, =, endswith, =]
+              values:
+                - [media, kubectl, rancher/kubectl, kubectl patch deployment/schall --namespace=media --type=merge --patch-file=/work/patch.json --field-manager=schall-follower]
           override:
             exceptions: append
 

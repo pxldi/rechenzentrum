@@ -12,7 +12,15 @@ spec:
   path: ./kubernetes/apps
   prune: true
   wait: true
-  timeout: 5m
+  # wait checks every Deployment here, including one rolling out on its own.
+  # The followers in survivorlike and media/schall roll their Deployment when a
+  # new `main` build appears, at any time. On 2026-10-28 the asset viewer's
+  # 289 MB image took 6m20s to pull, and a burst of builds kept it InProgress
+  # from 18:15 to 18:26. With 5m the health check at 18:18 failed and paged
+  # through Flux -> Gotify. Schall's startupProbe also allows 10 minutes of
+  # migrations, which 5m never covered. 15m matches infrastructure and the
+  # databases; a broken app rollout now reports up to 10 minutes later.
+  timeout: 15m
   # Apps depend on infrastructure being ready
   dependsOn:
     - name: infrastructure

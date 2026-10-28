@@ -185,7 +185,7 @@ spec:
               mountPath: /rendered
       containers:
         - name: zeroclaw
-          image: ghcr.io/zeroclaw-labs/zeroclaw:v0.8.6@sha256:e44308c7120a32f1089e3bc2881159bfdf462e1281d2be40920f15de9202f752
+          image: ghcr.io/zeroclaw-labs/zeroclaw:v0.8.7@sha256:3ffa4a1eae189b3e6b2374685d08f3c086086ca26442366e8cbf9c743cbb6236
           imagePullPolicy: IfNotPresent
           args: ["daemon"]
           env:

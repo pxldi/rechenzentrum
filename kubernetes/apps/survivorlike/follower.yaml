@@ -1,0 +1,272 @@
+---
+# Rolls the asset viewer onto each new build of its `main` tag. The game repo's
+# CI pushes a new `main` on every asset commit, and with a mutable tag nothing
+# else notices: on 2026-10-28 the pod still served a build from two days
+# earlier.
+#
+# Every five minutes the Job asks ghcr.io for the digest behind `main` and
+# writes it into a pod-template annotation on the Deployment. If the digest is
+# unchanged, the patch changes nothing and no rollout starts. If it is new, the
+# template changes, the Deployment rolls once, and `imagePullPolicy: Always`
+# pulls the new build.
+#
+# Flux image automation (retired 2026-09-18, docs/MASTERPLAN.md) would have to
+# commit every asset build to this repository. The game repo pushes several a
+# day, and main here takes changes only through a PR with CI.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: asset-viewer-follower
+  namespace: survivorlike
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: asset-viewer-follower
+  namespace: survivorlike
+rules:
+  # The one Deployment, by name, as for fredy-restarter.
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["asset-viewer"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: asset-viewer-follower
+  namespace: survivorlike
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: asset-viewer-follower
+subjects:
+  - kind: ServiceAccount
+    name: asset-viewer-follower
+    namespace: survivorlike
+---
+# The namespace allows DNS and nothing else, which stays true for the viewer.
+# The Job's pods alone get ghcr.io on 443 and the API server on the node's 6443,
+# the address `allow-egress-to-apiserver` explains. The 443 rule excludes the
+# same ranges as `allow-internet-egress`.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: asset-viewer-follower-egress
+  namespace: survivorlike
+spec:
+  podSelector:
+    matchLabels:
+      app: asset-viewer-follower
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.8.226/32
+      ports:
+        - protocol: TCP
+          port: 6443
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: asset-viewer-follower
+  namespace: survivorlike
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  # A node restart can miss a few runs. Without a deadline the controller
+  # counts every missed run since the last one and stops scheduling after 100.
+  startingDeadlineSeconds: 240
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      # No retry: the next run is five minutes away.
+      backoffLimit: 0
+      activeDeadlineSeconds: 120
+      # The nightly WAN drop fails a run or two. Deleting finished Jobs after
+      # ten minutes keeps such a run from holding KubeJobFailed (15m) open;
+      # AssetViewerFollowerStale below catches a run that keeps failing.
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          labels:
+            app: asset-viewer-follower
+        spec:
+          serviceAccountName: asset-viewer-follower
+          # The API token is mounted into the kubectl container only, and the
+          # ghcr credential into the curl container only. The container that
+          # talks to the internet never holds the token that can patch the
+          # Deployment.
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          # rancher/kubectl has no shell, so the registry lookup runs first in
+          # its own container and hands the patch over in a file.
+          initContainers:
+            - name: digest
+              # Tag plus digest, as with rancher/kubectl below.
+              image: curlimages/curl:8.23.0@sha256:6b46ee7c652d53ef17ddf1428b1a365a66d913d21c54df42e2e46d5bd321bb46
+              command:
+                - sh
+                - -c
+                - |
+                  set -euo pipefail
+                  repo=pxldi/survivorlike-asset-viewer
+                  # The pull secret is {"auths":{"ghcr.io":{"auth":"..."}}}, and
+                  # auth is base64 of user:token, which is what Basic auth takes.
+                  auth=$(sed -n 's/.*"auth" *: *"\([^"]*\)".*/\1/p' /ghcr/config.json)
+                  [ -n "$auth" ] || { echo "the pull secret holds no ghcr.io auth" >&2; exit 1; }
+                  # Credentials reach curl on stdin (-K -), never in its command
+                  # line, which Falco would log.
+                  token=$(printf 'header = "Authorization: Basic %s"\n' "$auth" \
+                    | curl -fsS --max-time 20 -K - \
+                        "https://ghcr.io/token?service=ghcr.io&scope=repository:$repo:pull" \
+                    | sed -n 's/.*"token" *: *"\([^"]*\)".*/\1/p')
+                  [ -n "$token" ] || { echo "ghcr.io issued no token" >&2; exit 1; }
+                  digest=$(printf 'header = "Authorization: Bearer %s"\n' "$token" \
+                    | curl -fsS --max-time 20 -K - --head \
+                        -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
+                        "https://ghcr.io/v2/$repo/manifests/main" \
+                    | tr -d '\r' \
+                    | awk 'tolower($1) == "docker-content-digest:" { print $2 }')
+                  # Anything but a digest stops here, so a registry error can
+                  # never reach the Deployment.
+                  echo "$digest" | grep -Eqx 'sha256:[0-9a-f]{64}' \
+                    || { echo "no digest for $repo:main" >&2; exit 1; }
+                  printf '{"spec":{"template":{"metadata":{"annotations":{"rechenzentrum.dev/image-digest":"%s"}}}}}\n' \
+                    "$digest" > /work/patch.json
+                  echo "ghcr.io/$repo:main is $digest"
+              volumeMounts:
+                - name: work
+                  mountPath: /work
+                - name: ghcr-pull
+                  mountPath: /ghcr
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 16Mi
+                limits:
+                  memory: 32Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          containers:
+            - name: kubectl
+              # Tag plus digest: Renovate needs the tag to find the next digest,
+              # and the digest keeps the pull reproducible. Held at the k3s
+              # minor by renovate.json.
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              # The field manager must not start with "kubectl". Flux takes over
+              # fields written by kubectl-* managers and removes them on its next
+              # apply: that is why every `kubectl rollout restart` here rolled
+              # twice, the second time back to the plain template a few minutes
+              # later. Under this name the annotation stays.
+              args:
+                - patch
+                - deployment/asset-viewer
+                - --namespace=survivorlike
+                - --type=merge
+                - --patch-file=/work/patch.json
+                - --field-manager=asset-viewer-follower
+              volumeMounts:
+                - name: work
+                  mountPath: /work
+                  readOnly: true
+                - name: api-token
+                  mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: work
+              emptyDir:
+                sizeLimit: 1Mi
+            - name: ghcr-pull
+              secret:
+                secretName: ghcr-pull
+                items:
+                  - key: .dockerconfigjson
+                    path: config.json
+            # What automountServiceAccountToken would mount, for one container.
+            - name: api-token
+              projected:
+                sources:
+                  - serviceAccountToken:
+                      path: token
+                      expirationSeconds: 600
+                  - configMap:
+                      name: kube-root-ca.crt
+                      items:
+                        - key: ca.crt
+                          path: ca.crt
+                  - downwardAPI:
+                      items:
+                        - path: namespace
+                          fieldRef:
+                            fieldPath: metadata.namespace
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: asset-viewer-follower
+  namespace: survivorlike
+spec:
+  groups:
+    - name: survivorlike.asset-viewer-follower
+      rules:
+        # No successful run for two hours, or none since the CronJob first
+        # ran. The usual cause is the read:packages token in ghcr-pull expiring;
+        # the next pod restart would then fail to pull as well.
+        - alert: AssetViewerFollowerStale
+          expr: |
+            time() - kube_cronjob_status_last_successful_time{namespace="survivorlike", cronjob="asset-viewer-follower"} > 2 * 3600
+            or
+            (
+              kube_cronjob_status_last_schedule_time{namespace="survivorlike", cronjob="asset-viewer-follower"}
+                unless on (namespace, cronjob)
+              kube_cronjob_status_last_successful_time{namespace="survivorlike", cronjob="asset-viewer-follower"}
+            )
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "The asset viewer has stopped following new builds"
+            description: >-
+              The asset-viewer-follower CronJob in survivorlike has not finished
+              a run in over two hours, so assets.pxldi.de shows an old build.
+              The failed Job's log says whether the ghcr.io lookup or the patch
+              failed. Jobs are deleted ten minutes after they finish, so read
+              the log of the next failing run.

@@ -1,0 +1,242 @@
+---
+# Rolls Schall onto each new build of its `main` tag, the same way
+# kubernetes/apps/survivorlike/follower.yaml does for the asset viewer. Schall's
+# CI pushes `main` on every merge, and until 2026-10-28 every merge was followed
+# by a manual `kubectl rollout restart`.
+#
+# Every five minutes the Job asks ghcr.io for the digest behind `main` and
+# writes it into a pod-template annotation on the Deployment. If the digest is
+# unchanged, the patch changes nothing and no rollout starts. If it is new, the
+# template changes and the Deployment rolls once; `imagePullPolicy: Always`
+# pulls the new build. The strategy is Recreate, so each new build costs the
+# same short outage the manual restart did.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: schall-follower
+  namespace: media
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: schall-follower
+  namespace: media
+rules:
+  # The one Deployment, by name, as for fredy-restarter.
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["schall"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: schall-follower
+  namespace: media
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: schall-follower
+subjects:
+  - kind: ServiceAccount
+    name: schall-follower
+    namespace: media
+---
+# media already allows the internet on any port for every pod, which covers
+# ghcr.io. Its API-server rule selects the CNPG instance pods only, so the Job's
+# pods get their own, to the node's 6443 as `allow-egress-to-apiserver`
+# explains.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: schall-follower-egress
+  namespace: media
+spec:
+  podSelector:
+    matchLabels:
+      app: schall-follower
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 192.168.8.226/32
+      ports:
+        - protocol: TCP
+          port: 6443
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: schall-follower
+  namespace: media
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  # A node restart can miss a few runs. Without a deadline the controller
+  # counts every missed run since the last one and stops scheduling after 100.
+  startingDeadlineSeconds: 240
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      # No retry: the next run is five minutes away.
+      backoffLimit: 0
+      activeDeadlineSeconds: 120
+      # The nightly WAN drop fails a run or two. Deleting finished Jobs after
+      # ten minutes keeps such a run from holding KubeJobFailed (15m) open;
+      # SchallFollowerStale below catches a run that keeps failing.
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          labels:
+            app: schall-follower
+        spec:
+          serviceAccountName: schall-follower
+          # The API token is mounted into the kubectl container only. The
+          # container that talks to the internet never holds the token that
+          # can patch the Deployment.
+          automountServiceAccountToken: false
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          # rancher/kubectl has no shell, so the registry lookup runs first in
+          # its own container and hands the patch over in a file.
+          initContainers:
+            - name: digest
+              # Tag plus digest, as with rancher/kubectl below.
+              image: curlimages/curl:8.23.0@sha256:6b46ee7c652d53ef17ddf1428b1a365a66d913d21c54df42e2e46d5bd321bb46
+              command:
+                - sh
+                - -c
+                - |
+                  set -euo pipefail
+                  repo=pxldi/schall
+                  # The package is public, so ghcr.io issues a pull token to
+                  # anyone. It still has to be asked for.
+                  token=$(curl -fsS --max-time 20 \
+                      "https://ghcr.io/token?service=ghcr.io&scope=repository:$repo:pull" \
+                    | sed -n 's/.*"token" *: *"\([^"]*\)".*/\1/p')
+                  [ -n "$token" ] || { echo "ghcr.io issued no token" >&2; exit 1; }
+                  # The token reaches curl on stdin (-K -), never in its command
+                  # line, which Falco would log.
+                  digest=$(printf 'header = "Authorization: Bearer %s"\n' "$token" \
+                    | curl -fsS --max-time 20 -K - --head \
+                        -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json' \
+                        "https://ghcr.io/v2/$repo/manifests/main" \
+                    | tr -d '\r' \
+                    | awk 'tolower($1) == "docker-content-digest:" { print $2 }')
+                  # Anything but a digest stops here, so a registry error can
+                  # never reach the Deployment.
+                  echo "$digest" | grep -Eqx 'sha256:[0-9a-f]{64}' \
+                    || { echo "no digest for $repo:main" >&2; exit 1; }
+                  printf '{"spec":{"template":{"metadata":{"annotations":{"rechenzentrum.dev/image-digest":"%s"}}}}}\n' \
+                    "$digest" > /work/patch.json
+                  echo "ghcr.io/$repo:main is $digest"
+              volumeMounts:
+                - name: work
+                  mountPath: /work
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 16Mi
+                limits:
+                  memory: 32Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          containers:
+            - name: kubectl
+              # Tag plus digest: Renovate needs the tag to find the next digest,
+              # and the digest keeps the pull reproducible. Held at the k3s
+              # minor by renovate.json.
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              # The field manager must not start with "kubectl". Flux takes over
+              # fields written by kubectl-* managers and removes them on its next
+              # apply: that is why every `kubectl rollout restart` of Schall
+              # rolled twice, the second time minutes later. Under this name the
+              # annotation stays.
+              args:
+                - patch
+                - deployment/schall
+                - --namespace=media
+                - --type=merge
+                - --patch-file=/work/patch.json
+                - --field-manager=schall-follower
+              volumeMounts:
+                - name: work
+                  mountPath: /work
+                  readOnly: true
+                - name: api-token
+                  mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+                  readOnly: true
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: work
+              emptyDir:
+                sizeLimit: 1Mi
+            # What automountServiceAccountToken would mount, for one container.
+            - name: api-token
+              projected:
+                sources:
+                  - serviceAccountToken:
+                      path: token
+                      expirationSeconds: 600
+                  - configMap:
+                      name: kube-root-ca.crt
+                      items:
+                        - key: ca.crt
+                          path: ca.crt
+                  - downwardAPI:
+                      items:
+                        - path: namespace
+                          fieldRef:
+                            fieldPath: metadata.namespace
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: schall-follower
+  namespace: media
+spec:
+  groups:
+    - name: media.schall-follower
+      rules:
+        # No successful run for two hours, or none since the CronJob first ran.
+        - alert: SchallFollowerStale
+          expr: |
+            time() - kube_cronjob_status_last_successful_time{namespace="media", cronjob="schall-follower"} > 2 * 3600
+            or
+            (
+              kube_cronjob_status_last_schedule_time{namespace="media", cronjob="schall-follower"}
+                unless on (namespace, cronjob)
+              kube_cronjob_status_last_successful_time{namespace="media", cronjob="schall-follower"}
+            )
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Schall has stopped following new builds"
+            description: >-
+              The schall-follower CronJob in media has not finished a run in
+              over two hours, so schall.pxldi.de may run an old build. The
+              failed Job's log says whether the ghcr.io lookup or the patch
+              failed. Jobs are deleted ten minutes after they finish, so read
+              the log of the next failing run.

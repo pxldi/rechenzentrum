@@ -6,10 +6,12 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
+  - follower.yaml
 components:
   - ../../../components/safe-rollout
   # Static files only; the page loads three.js from a CDN in the browser, not
-  # from here. So no egress beyond DNS.
+  # from here. So no egress beyond DNS. follower.yaml opens ghcr.io and the API
+  # server for its own Job pods.
   - ../../../components/default-deny-egress
   - ../../../components/allow-dns
   - ../../infrastructure-config/networkpolicies/default-deny-ingress

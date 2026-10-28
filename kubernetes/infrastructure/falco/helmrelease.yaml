@@ -146,6 +146,12 @@ spec:
               comps: [=, =, endswith, =]
               values:
                 - [fredy, kubectl, rancher/kubectl, kubectl rollout restart deployment/fredy -n fredy]
+            # kubernetes/apps/survivorlike/follower.yaml, every five minutes.
+            - name: asset_viewer_follower
+              fields: [k8s.ns.name, container.name, container.image.repository, proc.cmdline]
+              comps: [=, =, endswith, =]
+              values:
+                - [survivorlike, kubectl, rancher/kubectl, kubectl patch deployment/asset-viewer --namespace=survivorlike --type=merge --patch-file=/work/patch.json --field-manager=asset-viewer-follower]
           override:
             exceptions: append
 

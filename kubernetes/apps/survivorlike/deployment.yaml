@@ -33,8 +33,10 @@ spec:
           # `main` moves with every build of the game repo's main branch, as
           # schall's does. Pinning a sha tag would need a PR here for every
           # asset commit, and the viewer exists to show the current assets.
-          # Always, so a restart picks up the newest build:
-          #   kubectl -n survivorlike rollout restart deployment/asset-viewer
+          # follower.yaml rolls this Deployment within five minutes of a new
+          # build by writing the build's digest into the
+          # rechenzentrum.dev/image-digest template annotation. Always, so
+          # that rollout pulls the new build.
           image: ghcr.io/pxldi/survivorlike-asset-viewer:main
           imagePullPolicy: Always
           ports:

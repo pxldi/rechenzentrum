@@ -15,7 +15,7 @@ RUN git clone --quiet --depth 1 --branch "$PLUGIN_TAG" \
     && test "$(git -C /plugin rev-parse HEAD)" = "$PLUGIN_COMMIT" \
     && rm -rf /plugin/.git /plugin/.github /plugin/tests /plugin/examples
 
-FROM docker.io/library/busybox:1.38@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e
+FROM docker.io/library/busybox:1.38@sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4
 COPY --from=src /plugin /plugin
 # Traefik's pod runs as 65532 under the restricted Pod Security profile.
 USER 65532:65532

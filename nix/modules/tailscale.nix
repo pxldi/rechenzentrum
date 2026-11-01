@@ -42,6 +42,16 @@
       no-resolv = true;
       no-hosts = true;
       address = "/pxldi.de/100.122.211.109";
+      # Without this, every other record type (AAAA, HTTPS) for these names
+      # got REFUSED, because no-resolv leaves nothing to forward to. Browsers
+      # ask for A and AAAA together, and a REFUSED AAAA made the phone report
+      # the name as not found now and then. local= answers those with an
+      # empty NOERROR instead.
+      local = "/pxldi.de/";
+      # dnsmasq hands out TTL 0 by default, so every lookup crossed the
+      # tailnet again. A minute is long enough to cache and short enough
+      # that a client turning Tailscale off does not hold the address long.
+      local-ttl = 60;
     };
   };
 

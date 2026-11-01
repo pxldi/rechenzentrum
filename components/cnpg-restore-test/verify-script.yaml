@@ -32,6 +32,17 @@ data:
       false, true, '')))[1]::text::bigint), 0)
       from pg_stat_user_tables where has_table_privilege(relid, 'SELECT')"
 
+    # The Cluster turns Ready in the same second as its pod, and the
+    # restore-test-rw Service can lag that by a moment. On 2026-10-28 the first
+    # query hit the Service before it had the pod as an endpoint and got
+    # "connection refused". Wait for it to accept connections, up to a minute.
+    i=0
+    until pg_isready -q -h restore-test-rw; do
+      i=$((i + 1))
+      if [ "$i" -ge 30 ]; then echo "FAIL: restore-test-rw did not accept connections within 60s"; exit 1; fi
+      sleep 2
+    done
+
     restored=$(q restore-test-rw "$counts")
     live=$(q "$LIVE_HOST" "$counts")
     size=$(q restore-test-rw "select pg_size_pretty(pg_database_size(current_database()))")

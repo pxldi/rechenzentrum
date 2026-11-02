@@ -49,24 +49,12 @@ applications and data.
 - Monitor metrics, logs, Flux, deployments and backup freshness/failures.
 - Own apps should expose health and metrics endpoints with appropriate access control.
 
-## Later: ChatOps
+## MCP servers for claude.ai
 
-```text
-Telegram -> ZeroClaw -> Tandoor MCP
-                    -> Homelab MCP <- coding agents
-```
-
-- ZeroClaw handles chat, memory and tool orchestration; no node shell or cluster-admin.
-- Keep personal preferences in agent memory/configuration, not MCP business logic.
-- Tandoor tools: recipe search/get/create/update and meal-plan list/add.
-- Homelab starts read-only: services, deployments, logs, events, Flux and backups.
-- Later allowlisted actions: restart a deployment, trigger a backup, reconcile Flux.
-- No generic `run_kubectl` tool over Telegram. Use scoped CLI access for coding work.
-- Authenticate callers, separate read/action privileges and keep API tokens in MCP services.
-- Proactive messages should cover useful failures, with deduplication and rate limits.
-
-Sequence: verified recovery and app isolation -> edge/egress changes -> image
-automation -> MCP/ChatOps.
+The Telegram agent (ZeroClaw) was retired on 2026-11-02. Five MCP servers in
+`chatops` remain as claude.ai connectors: recipes (Tandoor), Snacky, calendar,
+openGym and the notes vault. Each checks an Authentik token itself, and API
+tokens for the apps stay inside the MCP servers.
 
 ## Status
 
@@ -87,5 +75,5 @@ Configured does not mean live or restore-tested.
 | Runtime detection | Falco (modern eBPF, four capabilities, no privileged container) watches syscalls with the upstream stable rules; `FalcoWarningEvents` alerts on Warning and above, `FalcoNotReporting` when it goes quiet |
 | Schall namespace | slskd moved out 2026-09-13 and `media` is baseline; Schall stays, see [SCHALL_ISOLATION.md](SCHALL_ISOLATION.md) |
 | Edge/egress expansion | Done for every application namespace, see [EGRESS.md](EGRESS.md). `home-assistant` is hostNetwork so policy does not apply |
-| Bot actions | `restart_workload`, `reconcile_flux` and `backup_now` in homelab-mcp from 2026-10-02, asked in the chat every time and held by RBAC plus the `homelab-mcp-actions` admission policy; live once the image tag is bumped |
-| ZeroClaw/MCP | Deployed 2026-09-18, see [CHATOPS.md](CHATOPS.md): ZeroClaw on Telegram with a Tandoor MCP server and a read-only homelab MCP server. Needs its four credentials in `chatops-credentials` to come alive |
+| Bot actions | Removed 2026-11-02 with the Telegram agent |
+| ZeroClaw/MCP | Retired 2026-11-02. The Telegram agent, homelab-mcp, paperless-mcp, homeassistant-mcp and whisper-cpp are gone; the claude.ai MCP servers in `chatops` stay |

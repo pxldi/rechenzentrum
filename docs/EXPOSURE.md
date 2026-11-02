@@ -44,8 +44,7 @@ as it always did for every app without such a route. They were removed on
   only) is public to Anthropic's egress range and the house. claude.ai calls
   it from Anthropic's servers, which cannot follow a login redirect. The
   server answers 401 to anything without an access token Authentik issued
-  for its client, so the login still happens, in the browser, once. See
-  `docs/CHATOPS.md`.
+  for its client, so the login still happens, in the browser, once.
 - **The recipe, Snacky, calendar and openGym MCP servers**
   (`tandoor-mcp.pxldi.de`, `snacky-mcp.pxldi.de`, `calendar-mcp.pxldi.de` and
   `opengym-mcp.pxldi.de`, `/mcp` and `/.well-known/` only), the same as the

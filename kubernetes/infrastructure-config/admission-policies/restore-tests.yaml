@@ -1,6 +1,5 @@
 ---
-# The second lock on the weekly restore tests' write access, in the shape of
-# homelab-mcp-actions. RBAC gives each test account create on CNPG Clusters or
+# The second lock on the weekly restore tests' write access. RBAC gives each test account create on CNPG Clusters or
 # Velero Restores, and create cannot be narrowed by name or content:
 #
 #   a Cluster could name the production ObjectStore with WAL archiving on,
@@ -115,7 +114,7 @@ metadata:
   name: restore-tests
 spec:
   policyName: restore-tests
-  # Deny from the start, like homelab-mcp-actions: the grants are new and must
+  # Deny from the start: the grants are new and must
   # never exist without it.
   validationActions: [Deny, Audit]
   matchResources: {}

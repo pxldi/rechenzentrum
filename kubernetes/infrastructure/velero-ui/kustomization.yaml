@@ -4,5 +4,6 @@ kind: Kustomization
 resources:
   - source.yaml
   - rbac.yaml
+  - secret-jwt.yaml
   - helmrelease.yaml
   - ingress.yaml

@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: velero-ui
-      version: "0.16.0"
+      version: "1.1.0"
       sourceRef:
         kind: HelmRepository
         name: otwld-charts
@@ -24,6 +24,10 @@ spec:
     configuration:
       general:
         veleroNamespace: "velero"
+        # Chart 1.x needs a JWT signing passphrase; it lives in secret-jwt.yaml.
+        secretPassPhrase:
+          existingSecret: velero-ui-jwt
+          key: pass_phrase
 
     # The chart's default is `clusterAdministratorName: cluster-admin`, which
     # bound this web app to write access on every object in the cluster. Repoint

@@ -68,10 +68,6 @@ spec:
               value: production
             - name: MEILI_NO_ANALYTICS
               value: "true"
-            # One boot only: rewrites the 1.54 database to the 1.56 format.
-            # Removed again in the follow-up PR once the pod is up.
-            - name: MEILI_UPGRADE_DB
-              value: "true"
             - name: MEILI_DB_PATH
               value: /meili_data
             - name: MEILI_MASTER_KEY

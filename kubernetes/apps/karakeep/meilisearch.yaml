@@ -53,10 +53,10 @@ spec:
           # one way. v1.53.2 landed on 2026-09-13 and again on 2026-09-15 and
           # crashlooped both times against the 1.41.0 database on disk. A
           # one-boot MEILI_UPGRADE_DB rewrote the database to the 1.53
-          # format on 2026-09-15, and to the 1.54 format on 2026-09-28. The
-          # next minor bump needs the same: the tag and the flag in one PR,
-          # so the pod rolls straight into the upgrading boot.
-          image: getmeili/meilisearch:v1.54.0
+          # format on 2026-09-15, to 1.54 on 2026-09-28 and to 1.56 on
+          # 2026-11-02. The next minor bump needs the same: the tag and the
+          # flag in one PR, so the pod rolls straight into the upgrading boot.
+          image: getmeili/meilisearch:v1.56.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -67,6 +67,10 @@ spec:
             - name: MEILI_ENV
               value: production
             - name: MEILI_NO_ANALYTICS
+              value: "true"
+            # One boot only: rewrites the 1.54 database to the 1.56 format.
+            # Removed again in the follow-up PR once the pod is up.
+            - name: MEILI_UPGRADE_DB
               value: "true"
             - name: MEILI_DB_PATH
               value: /meili_data

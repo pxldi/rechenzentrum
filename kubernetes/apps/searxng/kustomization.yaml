@@ -8,7 +8,6 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
-  - networkpolicy-chatops.yaml
 components:
   # Egress. A metasearch engine: querying upstream search engines is the whole
   # job.

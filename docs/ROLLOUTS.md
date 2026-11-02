@@ -85,4 +85,3 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | velero | DaemonSet/node-agent | RollingUpdate | none | no |
 | velero | Deployment/velero | Recreate | none | yes |
 | velero | Deployment/velero-ui | RollingUpdate | none | yes |
-| whisper-cpp | Deployment/whisper-cpp | Recreate | whisper-cpp-models | yes |

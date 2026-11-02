@@ -28,4 +28,3 @@ resources:
   - tandoor.yaml
   - velero-restore-test.yaml
   - wealthfolio.yaml
-  - whisper-cpp.yaml

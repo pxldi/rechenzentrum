@@ -2,15 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: chatops
 
-# Generated so the name carries a content hash: an edit to config.toml or to
-# the identity files rolls the ZeroClaw pod, and nothing in this cluster
-# reloads a pod on a ConfigMap change otherwise.
 configMapGenerator:
-  - name: zeroclaw-config
-    files:
-      - config.toml=zeroclaw/config.toml
-      - SOUL.md=zeroclaw/SOUL.md
-      - AGENTS.md=zeroclaw/AGENTS.md
   # livesync-bridge's config with placeholders; the vault pod's init container
   # fills in the credentials and the passphrase from the chatops-vault Secret.
   - name: vault-bridge-config
@@ -19,20 +11,11 @@ configMapGenerator:
 
 resources:
   - secret.yaml
-  - secret-telegram-chat.yaml
   - secret-caldav.yaml
   - secret-vault.yaml
-  - secret-paperless.yaml
-  - secret-homeassistant.yaml
   - secret-opengym.yaml
-  - zeroclaw/pvc.yaml
-  - zeroclaw/deployment.yaml
-  - mcp/rbac.yaml
-  - mcp/homelab-mcp.yaml
   - mcp/tandoor-mcp.yaml
   - mcp/calendar-mcp.yaml
-  - mcp/paperless-mcp.yaml
-  - mcp/homeassistant-mcp.yaml
   - mcp/snacky-mcp-gate.yaml
   - mcp/opengym-mcp.yaml
   - vault/pvc.yaml
@@ -42,8 +25,8 @@ resources:
   - claude-connectors.yaml
   - networkpolicy.yaml
 
-# Egress and ingress are hand-written in networkpolicy.yaml because the three
-# pods need three different destinations and the shared components open a
+# Egress and ingress are hand-written in networkpolicy.yaml because the five
+# pods need five different destinations and the shared components open a
 # whole namespace. Only the two defaults and DNS are shared.
 components:
   - ../../../components/default-deny-egress

@@ -14,13 +14,7 @@
   "apps/v1/Deployment/branding/branding": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/chatops/homelab-mcp": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/chatops/tandoor-mcp": {
-    "kind": "Deployment"
-  },
-  "apps/v1/Deployment/chatops/zeroclaw": {
     "kind": "Deployment"
   },
   "apps/v1/Deployment/claudebox/claudebox": {
@@ -120,9 +114,6 @@
     "kind": "Deployment"
   },
   "apps/v1/Deployment/wealthfolio/wealthfolio": {
-    "kind": "Deployment"
-  },
-  "apps/v1/Deployment/whisper-cpp/whisper-cpp": {
     "kind": "Deployment"
   },
   "apps/v1/StatefulSet/karakeep/karakeep-meilisearch": {
@@ -323,9 +314,6 @@
   "v1/Namespace//wealthfolio": {
     "kind": "Namespace"
   },
-  "v1/Namespace//whisper-cpp": {
-    "kind": "Namespace"
-  },
   "v1/PersistentVolumeClaim/adventurelog/adventurelog-db": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
@@ -333,10 +321,6 @@
   "v1/PersistentVolumeClaim/adventurelog/adventurelog-media": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "12aa304e456bb83d8a9f73712a653df884b52c7843c3056b6c0f1165762446dd"
-  },
-  "v1/PersistentVolumeClaim/chatops/zeroclaw-data": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "080fc65af7b8c09a79d9dc57d30a5b1afdd62c66aa9c10a1e5cd2223d120a8ec"
   },
   "v1/PersistentVolumeClaim/claudebox/claudebox-data-pvc": {
     "kind": "PersistentVolumeClaim",
@@ -509,9 +493,5 @@
   "v1/PersistentVolumeClaim/tandoor/tandoor-media-pvc": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "733cb5e48806feb3ec25ed06f1630d0f5159f42d6c1ebcf215948c3a31a31c4b"
-  },
-  "v1/PersistentVolumeClaim/whisper-cpp/whisper-cpp-models": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
   }
 }

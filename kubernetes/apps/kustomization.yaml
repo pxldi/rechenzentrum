@@ -16,7 +16,6 @@ resources:
   - paperless-ngx
   - grimmory
   - ollama
-  - whisper-cpp
   - fredy
   - home-assistant
   - obsidian

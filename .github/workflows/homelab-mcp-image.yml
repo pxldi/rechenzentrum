@@ -117,12 +117,12 @@ jobs:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: cosign sign --yes "${IMAGE}@${DIGEST}"
 
-      # Both servers must come up and answer /health as uid 1000 on a
+      # The servers must come up and answer /health as uid 1000 on a
       # read-only root filesystem, which is how the Deployments run them.
-      - name: Smoke-test both servers
+      - name: Smoke-test the servers
         run: |
           set -euo pipefail
-          for mod in homelab_mcp tandoor_mcp; do
+          for mod in tandoor_mcp vault_mcp; do
             docker run -d --rm --name "$mod" --read-only --user 1000:1000 \
               -e TANDOOR_TOKEN=smoke -p 8000:8000 \
               "${IMAGE}:sha-${SHA}" python -m "$mod"
@@ -136,8 +136,8 @@ jobs:
 
       # The vault server is the one claude.ai reaches. With OAUTH_ISSUER set it
       # must publish the resource metadata, refuse /mcp without a token and
-      # say in the 401 where the metadata is; without it, /mcp must still
-      # answer ZeroClaw's untokened initialize.
+      # say in the 401 where the metadata is; without it, /mcp answers an
+      # untokened initialize.
       - name: Smoke-test the vault server's token check
         run: |
           set -euo pipefail

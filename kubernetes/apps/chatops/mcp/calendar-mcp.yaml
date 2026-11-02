@@ -24,62 +24,11 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: calendar-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-b464d2e256667b8a8de90be35a26e7c37560e12a
-          imagePullPolicy: IfNotPresent
-          args: ["python", "-m", "calendar_mcp"]
-          ports:
-            - name: http
-              containerPort: 8000
-          env:
-            - name: CALDAV_URL
-              value: http://nextcloud.nextcloud.svc.cluster.local:8080/remote.php/dav/
-            # Nextcloud answers only to its trusted_domains, so the public name
-            # goes out as the Host header; traffic still stays in the cluster.
-            - name: CALDAV_HOST
-              value: cloud.pxldi.de
-            - name: CALDAV_USER
-              value: leopold
-            - name: CALDAV_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: chatops-caldav
-                  key: CALDAV_PASSWORD
-            - name: TZ
-              value: Europe/Berlin
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
-          # The kubernetes client writes certificate material to a temp file
-          # when it loads a config, and a read-only root has nowhere for it.
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-            periodSeconds: 30
-          resources:
-            requests:
-              cpu: 20m
-              memory: 64Mi
-            limits:
-              memory: 256Mi
-        # The same server a second time, for claude.ai, as in the tandoor-mcp
-        # pod: its own port and a bearer-token check that the bot's container
-        # does not have. Tokens are Authentik's, for the calendar-mcp client in
+        # The calendar server for claude.ai. It checks a bearer token itself:
+        # Authentik's, for the calendar-mcp client in
         # terraform/authentik/oidc-apps.tf (the id is public).
         - name: calendar-mcp-claude
-          image: ghcr.io/pxldi/homelab-mcp:sha-b464d2e256667b8a8de90be35a26e7c37560e12a
+          image: ghcr.io/pxldi/homelab-mcp:sha-7e2f07ae85a0c9de53071bea3ec9b8278b0684b7
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "calendar_mcp"]
           ports:
@@ -147,9 +96,6 @@ spec:
   selector:
     app: calendar-mcp
   ports:
-    - name: http
-      port: 8000
-      targetPort: http
     # The claude.ai copy; only the IngressRoute forwards to it.
     - name: claude
       port: 8001

@@ -115,63 +115,14 @@ spec:
               memory: 128Mi
             limits:
               memory: 512Mi
-        - name: vault-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-b464d2e256667b8a8de90be35a26e7c37560e12a
-          imagePullPolicy: IfNotPresent
-          args: ["python", "-m", "vault_mcp"]
-          ports:
-            - name: http
-              containerPort: 8000
-          env:
-            # The whole mirrored vault is readable. Writes stay under Clanky/:
-            # the bot reads Telegram and imported pages, and the rest of the
-            # vault (ops/CLAUDE.md, the skills, the project specs) is what
-            # Claude Code sessions load as instructions. Unset, the server
-            # refuses every write.
-            - name: VAULT_ROOT
-              value: /data/vault
-            - name: VAULT_WRITE_ROOT
-              value: Clanky
-            - name: TZ
-              value: Europe/Berlin
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
-          volumeMounts:
-            - name: data
-              mountPath: /data
-              subPath: vault-root
-            - name: tmp
-              mountPath: /tmp
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-            periodSeconds: 30
-          resources:
-            requests:
-              cpu: 20m
-              memory: 64Mi
-            limits:
-              memory: 256Mi
-        # The same server a second time, for claude.ai. Its own port, its own
-        # write root and a bearer-token check that the Clanky container does
-        # not have: a custom connector calls from Anthropic's network, through
-        # the IngressRoute beside this file, so the NetworkPolicy that stands
-        # in for auth on port 8000 does not cover it. The token is Authentik's,
-        # verified against the provider's JWKS over the in-cluster Service
-        # (oauth.py in the image). Writes may land in ops/, the specs, tasks
-        # and ideas a chat is meant to produce, and nowhere else.
+        # The vault server for claude.ai. A custom connector calls from
+        # Anthropic's network through the IngressRoute beside this file, so the
+        # server checks a bearer token itself: Authentik's, verified against
+        # the provider's JWKS over the in-cluster Service (oauth.py in the
+        # image). Writes may land in ops/, the specs, tasks and ideas a chat is
+        # meant to produce, and nowhere else.
         - name: vault-mcp-claude
-          image: ghcr.io/pxldi/homelab-mcp:sha-b464d2e256667b8a8de90be35a26e7c37560e12a
+          image: ghcr.io/pxldi/homelab-mcp:sha-7e2f07ae85a0c9de53071bea3ec9b8278b0684b7
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "vault_mcp"]
           ports:

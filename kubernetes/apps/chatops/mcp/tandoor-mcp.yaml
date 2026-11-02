@@ -24,55 +24,12 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: tandoor-mcp
-          image: ghcr.io/pxldi/homelab-mcp:sha-b464d2e256667b8a8de90be35a26e7c37560e12a
-          imagePullPolicy: IfNotPresent
-          args: ["python", "-m", "tandoor_mcp"]
-          ports:
-            - name: http
-              containerPort: 8000
-          env:
-            - name: TANDOOR_URL
-              value: http://tandoor.tandoor.svc.cluster.local
-            - name: TANDOOR_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: chatops-credentials
-                  key: TANDOOR_TOKEN
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
-          # The kubernetes client writes certificate material to a temp file
-          # when it loads a config, and a read-only root has nowhere for it.
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-            periodSeconds: 30
-          resources:
-            requests:
-              cpu: 20m
-              memory: 64Mi
-            limits:
-              memory: 256Mi
-        # The same server a second time, for claude.ai, as in the vault pod:
-        # its own port and a bearer-token check that the bot's container does
-        # not have. Tokens are Authentik's, for the tandoor-mcp client in
+        # The recipe server for claude.ai. It checks a bearer token itself:
+        # Authentik's, for the tandoor-mcp client in
         # terraform/authentik/oidc-apps.tf (the id is public), verified against
         # the provider's JWKS over the in-cluster Service.
         - name: tandoor-mcp-claude
-          image: ghcr.io/pxldi/homelab-mcp:sha-b464d2e256667b8a8de90be35a26e7c37560e12a
+          image: ghcr.io/pxldi/homelab-mcp:sha-7e2f07ae85a0c9de53071bea3ec9b8278b0684b7
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "tandoor_mcp"]
           ports:
@@ -134,9 +91,6 @@ spec:
   selector:
     app: tandoor-mcp
   ports:
-    - name: http
-      port: 8000
-      targetPort: http
     # The claude.ai copy; only the IngressRoute forwards to it.
     - name: claude
       port: 8001

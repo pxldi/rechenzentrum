@@ -41,6 +41,13 @@ spec:
     ingress:
       enabled: false
 
+    # The app's own login ran on the chart's default credentials, which 0.12
+    # refuses to start with. The route already requires the LAN or tailnet
+    # and an Authentik login (ingress.yaml), so the second login goes.
+    env:
+      - name: BASIC_AUTH_ENABLED
+        value: "false"
+
     resources:
       requests:
         cpu: 50m

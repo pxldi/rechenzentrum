@@ -2,10 +2,8 @@
 
 The SDK arms DNS-rebinding protection by default and then answers 421 to any
 Host that is not localhost, which is every request a Kubernetes Service
-delivers. Nothing but the ZeroClaw pod can reach these servers (the
-NetworkPolicy beside the Deployment names it), so switching the check off is
-the honest configuration rather than allowlisting a Service name that the
-policy already enforces.
+delivers. Every server here sits behind Traefik and checks an Authentik token
+itself (oauth.py), so the Host check adds nothing and stays off.
 """
 
 import functools
@@ -53,8 +51,7 @@ def guarded(*errors: type[BaseException]) -> Callable:
 
 
 def _describe(e: BaseException) -> str:
-    # kubernetes.client.ApiException carries the status and the API's reason;
-    # httpx errors carry the request; RuntimeError carries what we wrote.
+    # Errors with a status and a reason print both; httpx errors carry the request; RuntimeError carries what we wrote.
     status = getattr(e, "status", None)
     reason = getattr(e, "reason", None)
     if status and reason:
@@ -71,11 +68,9 @@ def serve(mcp: MCPServer) -> None:
 
     # Stateless: every request gets a fresh transport and no session id is
     # issued or checked. With sessions, the SDK terminates one that has been
-    # idle for 30 minutes and answers 404 to its next request; ZeroClaw holds
-    # one session per server from startup, does not replay a failed call,
-    # and so the first tool call after a quiet half hour failed with "MCP
-    # server failed during tool call; outcome unknown". Nothing here keeps
-    # state between calls, so sessions bought nothing.
+    # idle for 30 minutes and answers 404 to its next request, which broke
+    # clients that hold one session open. Nothing here keeps state between
+    # calls, so sessions bought nothing.
     app = mcp.streamable_http_app(
         stateless_http=True,
         json_response=True,

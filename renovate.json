@@ -56,13 +56,6 @@
     },
     {
       "matchPackageNames": [
-        "pymupdf"
-      ],
-      "allowedVersions": "<2.0",
-      "description": "pymupdf 2.0 depends on onnxruntime, numpy and networkx. onnxruntime has no wheel for the image's Python 3.15, so the homelab-mcp build fails. The MCP servers only open PDFs and images and render pages, which 1.x covers."
-    },
-    {
-      "matchPackageNames": [
         "rancher/kubectl"
       ],
       "allowedVersions": "/^v?1\\.33\\./",

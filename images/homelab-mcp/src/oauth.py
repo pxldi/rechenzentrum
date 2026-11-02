@@ -1,9 +1,7 @@
 """Bearer tokens for a server that claude.ai reaches over the internet.
 
-The servers in this image run without any authentication of their own; the
-NetworkPolicy beside each Deployment is what keeps everyone but ZeroClaw out.
 A claude.ai custom connector reaches its server from Anthropic's network, so
-that server has to check who is calling. It does so the way the MCP
+the server has to check who is calling. It does so the way the MCP
 authorization spec asks: the server is an OAuth resource server, Authentik is
 the authorization server, and every request to /mcp carries an access token
 that Authentik issued for this server's client id.

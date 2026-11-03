@@ -84,10 +84,15 @@ spec:
             # pack's own default is RWG2_CONTINENTS; plain RWG2 is not in its
             # generator whitelist. A new level name, because a world keeps the
             # generator it was created with.
+            # Hand-placed on the volume, not from this manifest: mods/ holds an
+            # unreleased RWG2 build from the taint-reduction-config branch
+            # (sha256 1cac3392...), the pack's rwg2-2.0.6.jar sits in
+            # mods-disabled/. Clients need the same jar. A pack version bump
+            # replaces mods/ and undoes this.
             - name: LEVEL_TYPE
               value: "RWG2_CONTINENTS"
             - name: LEVEL
-              value: "World-continents"
+              value: "World-taint-reduced"
             - name: DIFFICULTY
               value: "normal"
             - name: MAX_PLAYERS

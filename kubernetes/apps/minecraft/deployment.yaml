@@ -80,6 +80,13 @@ spec:
               value: "true"
             - name: MOTD
               value: "pxldi — GTNH Extra Nerf"
+            # GTNH 2.9's server zip still defaults to the old RWG generator. RWG2
+            # is the 2.9 terrain. A new level name, because a world keeps the
+            # generator it was created with.
+            - name: LEVEL_TYPE
+              value: "rwg2"
+            - name: LEVEL
+              value: "World-rwg2"
             - name: DIFFICULTY
               value: "normal"
             - name: MAX_PLAYERS

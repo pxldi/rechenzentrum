@@ -7,9 +7,7 @@ metadata:
   labels:
     app: minecraft
 spec:
-  # Scaled to zero. The PVC is kept, so setting this back to 1 resumes the
-  # server with its world and modpack intact.
-  replicas: 0
+  replicas: 1
   selector:
     matchLabels:
       app: minecraft
@@ -20,6 +18,10 @@ spec:
     metadata:
       labels:
         app: minecraft
+      annotations:
+        # The live world is copied mid-write and the pack re-installs itself, so
+        # Velero takes only the restic repository the backup sidecar writes.
+        backup.velero.io/backup-volumes-excludes: "data"
     spec:
       priorityClassName: rechenzentrum-bulk
       # local-ssd PV is node-local, so pin to the node that holds it.
@@ -32,7 +34,7 @@ spec:
       terminationGracePeriodSeconds: 120
       containers:
         - name: minecraft
-          image: itzg/minecraft-server:2026.10.1-java17
+          image: itzg/minecraft-server:2026.10.1-java25
           imagePullPolicy: IfNotPresent
           # Keep a console attachable via `kubectl attach -it`.
           stdin: true
@@ -50,56 +52,65 @@ spec:
               value: "1000"
             - name: EULA
               value: "TRUE"
-            # --- Modpack: installed + kept in sync from the FTB API ---
-            # 127 = "FTB Presents Architect's Exodus", 100428 = version 1.7.0.
-            # itzg installs Forge 1.20.1 + all mods on first boot. Bump the
-            # version id to update the pack; it re-installs on next restart.
+            # --- Modpack: GT New Horizons, pinned so no update rewrites mods/ ---
+            # itzg's GTNH updater deletes and replaces mods/ and config/ when the
+            # pinned version changes. MODS re-adds Extra Nerf after the install.
             - name: TYPE
-              value: "FTBA"
-            - name: FTB_MODPACK_ID
-              value: "127"
-            - name: FTB_MODPACK_VERSION_ID
-              value: "100428"
+              value: "GTNH"
+            - name: GTNH_PACK_VERSION
+              value: "2.9.0"
+            # Extra Nerf 1.0.1 targets exactly GTNH 2.9.0. Players need the same
+            # jar in their client mods folder.
+            - name: MODS
+              value: "https://extranerf.kuba6000.pl/downloads/gtnhextranerf-1.0.1.jar"
             # --- Memory / GC ---
-            # Aikar's flags (Xms=Xmx=6G). The container limit (8Gi) leaves
-            # ~2Gi for off-heap (metaspace, Netty direct buffers, mod native).
-            # If the heap is ever exceeded, only this pod OOMs — other homelab
-            # services are protected by the cgroup limit.
+            # GTNH wants 6G plus headroom for the late game. The 10Gi limit leaves
+            # ~2Gi for off-heap; if exceeded only this pod OOMs.
             - name: INIT_MEMORY
-              value: "6G"
+              value: "8G"
             - name: MAX_MEMORY
-              value: "6G"
+              value: "8G"
             - name: USE_AIKAR_FLAGS
               value: "true"
+            # GTNH clients take long to receive the mod registry on login.
+            - name: JVM_OPTS
+              value: "-Dfml.readTimeout=180"
             # --- Gameplay / server.properties (OVERRIDE lets env win on restart) ---
             - name: OVERRIDE_SERVER_PROPERTIES
               value: "true"
             - name: MOTD
-              value: "pxldi — Architect's Exodus"
+              value: "pxldi — GTNH Extra Nerf"
             - name: DIFFICULTY
               value: "normal"
             - name: MAX_PLAYERS
-              value: "8"
+              value: "4"
             - name: VIEW_DISTANCE
               value: "10"
             # Several pack mods teleport/elytra players; avoids false flight kicks.
             - name: ALLOW_FLIGHT
               value: "TRUE"
-            # Not advertised publicly; share the host:port with friends directly.
+            - name: SPAWN_PROTECTION
+              value: "0"
+            # RCON is for the backup sidecar on localhost. The NetworkPolicy only
+            # admits 25565 from outside the namespace.
             - name: ENABLE_RCON
-              value: "false"
-            # Admin: add your Minecraft username(s) here to get op on join.
+              value: "true"
+            - name: RCON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-secrets
+                  key: RCON_PASSWORD
             - name: OPS
-              value: ""
+              value: "pxldi"
           volumeMounts:
             - name: data
               mountPath: /data
           resources:
             requests:
               cpu: "2"
-              memory: 6Gi
-            limits:
               memory: 8Gi
+            limits:
+              memory: 10Gi
           # First boot downloads the pack, runs the Forge installer and generates
           # the world — minutes of work — so startup gets a long grace window
           # before liveness can kill it.
@@ -107,7 +118,8 @@ spec:
             tcpSocket:
               port: game
             periodSeconds: 15
-            failureThreshold: 60
+            # 30 minutes: the first boot downloads the whole pack.
+            failureThreshold: 120
           livenessProbe:
             tcpSocket:
               port: game
@@ -117,7 +129,72 @@ spec:
             tcpSocket:
               port: game
             periodSeconds: 15
+        # Saves the world over RCON (save-off, save-all), then snapshots it into
+        # a deduplicating restic repository. Velero copies that repository off
+        # site every night.
+        - name: backup
+          image: itzg/mc-backup:2026.10.3
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: BACKUP_METHOD
+              value: "restic"
+            - name: BACKUP_NAME
+              value: "gtnh"
+            # A fixed host keeps retention working across pod restarts.
+            - name: RESTIC_HOST
+              value: "gtnh"
+            - name: RESTIC_REPOSITORY
+              value: "/backups/restic"
+            # UID 1000 has no writable home in this image.
+            - name: RESTIC_CACHE_DIR
+              value: "/backups/.cache"
+            - name: RESTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-secrets
+                  key: RESTIC_PASSWORD
+            - name: RCON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-secrets
+                  key: RCON_PASSWORD
+            # First boot installs the pack; wait for it before the first save.
+            - name: INITIAL_DELAY
+              value: "30m"
+            - name: BACKUP_INTERVAL
+              value: "2h"
+            - name: PRUNE_RESTIC_RETENTION
+              value: "--keep-hourly 24 --keep-daily 14 --keep-weekly 8"
+            # Pack files come back from the GTNH installer; back up world and config.
+            - name: EXCLUDES
+              value: "*.jar,cache,logs,*.tmp,crash-reports,libraries,mods,resources,backups,gtnh-upgrade-*"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+            - name: backups
+              mountPath: /backups
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 1Gi
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: minecraft-data
+            claimName: gtnh-data
+        - name: backups
+          persistentVolumeClaim:
+            claimName: gtnh-backups

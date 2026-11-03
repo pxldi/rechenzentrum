@@ -17,6 +17,8 @@ spec:
       - nextcloud
       - immich
       - gotify
+      # Only the GTNH restic repository; the pod excludes its live world.
+      - minecraft
 
     # Backup all resources in these namespaces
     includedResources:

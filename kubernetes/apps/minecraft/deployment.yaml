@@ -83,7 +83,7 @@ spec:
             - name: DIFFICULTY
               value: "normal"
             - name: MAX_PLAYERS
-              value: "4"
+              value: "2"
             - name: VIEW_DISTANCE
               value: "10"
             # Several pack mods teleport/elytra players; avoids false flight kicks.
@@ -101,6 +101,14 @@ spec:
                   name: minecraft-secrets
                   key: RCON_PASSWORD
             - name: OPS
+              value: "pxldi"
+            # Solo server: only whitelisted accounts may join, even if a router
+            # forward still points at 25565.
+            - name: ENABLE_WHITELIST
+              value: "TRUE"
+            - name: ENFORCE_WHITELIST
+              value: "TRUE"
+            - name: WHITELIST
               value: "pxldi"
           volumeMounts:
             - name: data

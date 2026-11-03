@@ -1,4 +1,6 @@
 ---
+# Architect's Exodus world. No pod mounts it now, so Velero skips it; it is
+# kept so the world can be resumed or copied out.
 # Modpack install (~5 GiB) + world data. local-ssd for chunk-load latency;
 # the PV is node-local, which is why the pod is pinned to rechenzentrum.
 apiVersion: v1
@@ -13,3 +15,31 @@ spec:
   resources:
     requests:
       storage: 30Gi
+---
+# GT New Horizons install + world. Same storage class and node pinning reasons.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gtnh-data
+  namespace: minecraft
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 40Gi
+---
+# restic repository of the GTNH world. The only minecraft volume Velero copies.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gtnh-backups
+  namespace: minecraft
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 40Gi

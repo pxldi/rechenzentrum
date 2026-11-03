@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: minecraft
 resources:
   - pvcs.yaml
+  - secret.yaml
   - deployment.yaml
   - service.yaml
   - networkpolicy.yaml

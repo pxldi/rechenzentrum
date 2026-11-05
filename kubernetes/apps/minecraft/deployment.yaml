@@ -154,7 +154,7 @@ spec:
         # a deduplicating restic repository. Velero copies that repository off
         # site every night.
         - name: backup
-          image: itzg/mc-backup:2026.10.3
+          image: itzg/mc-backup:2026.11.0
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 1000

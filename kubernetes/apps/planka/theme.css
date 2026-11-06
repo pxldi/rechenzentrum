@@ -1,0 +1,489 @@
+/* =============================================================================
+   Planka dark theme
+   Served at /custom/theme.css; the inject-theme init container links it from
+   index.ejs (deployment.yaml).
+
+   Neutral dark: a cool near-black ground, surfaces lifted one step at a time,
+   1px borders instead of shadows, one indigo accent for focus, progress and
+   the active tab. Label colours stay Planka's own.
+
+   Planka builds its CSS modules as _<local>_<hash>_<line>. The hash comes from
+   the content of the source .module.scss, so it changes when Planka edits that
+   file and the rule here then stops matching. Each block names the source
+   file of its hash. After an upgrade, scripts/planka-css-hashes.py lists the
+   hashes that went stale and the new hash for each.
+   ============================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --pk-ground: #0b0c0f;
+  --pk-inset: #08090b;
+  --pk-surface: #13151a;
+  --pk-raised: #1a1d23;
+  --pk-hover: #22262e;
+  --pk-line: #262a33;
+  --pk-line-strong: #343945;
+  --pk-accent: #7c86ff;
+  --pk-accent-soft: #a3aaff;
+  --pk-accent-faint: rgba(124, 134, 255, 0.14);
+  --pk-ink: #e7e9ee;
+  --pk-ink-2: #b4bac6;
+  --pk-ink-3: #808796;
+  --pk-ok: #4cc38a;
+  --pk-font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --pk-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* --- Page ------------------------------------------------------------------ */
+
+html,
+body,
+#app {
+  background: var(--pk-ground);
+  color: var(--pk-ink);
+}
+
+#app,
+#app .ui,
+#app input,
+#app textarea,
+#app button {
+  font-family: var(--pk-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+#app ::selection {
+  background: var(--pk-accent-faint);
+}
+
+/* The project background layer (one fixed div). The ground wins over any
+   gradient or image a project has set. Hash: a one-class module, found on the
+   page as the fixed full-screen div that carries the background class. */
+#app [class*="_wrapper_1tkwi_"] {
+  background: var(--pk-ground) !important;
+}
+
+/* --- Top bar: common/Header (jdrq3), the fixed top area (1o9kk) and the
+       board tab strip (rbzeo) ---------------------------------------------- */
+
+#app [class*="_wrapper_1o9kk_"],
+#app [class*="_wrapper_jdrq3_"],
+#app [class*="_wrapper_rbzeo_"] {
+  background: var(--pk-ground);
+}
+
+#app [class*="_wrapper_jdrq3_"],
+#app [class*="_wrapper_rbzeo_"] {
+  border-bottom: 1px solid var(--pk-line);
+}
+
+#app [class*="_item_jdrq3_"],
+#app [class*="_userName_jdrq3_"] {
+  color: var(--pk-ink-2);
+}
+
+#app [class*="_title_jdrq3_"] {
+  color: var(--pk-ink);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+#app [class*="_itemHoverable_jdrq3_"]:hover {
+  background: var(--pk-raised);
+  color: var(--pk-ink);
+}
+
+/* boards/Boards/Item (cjxaz): one tab per board */
+#app [class*="_tab_cjxaz_"] {
+  background: transparent;
+  border-radius: 6px 6px 0 0;
+}
+
+#app [class*="_tab_cjxaz_"]:hover {
+  background: var(--pk-raised);
+}
+
+#app [class*="_tabActive_cjxaz_"],
+#app [class*="_tabActive_cjxaz_"]:hover {
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--pk-accent);
+}
+
+#app [class*="_link_cjxaz_"],
+#app [class*="_name_cjxaz_"] {
+  color: var(--pk-ink);
+  font-weight: 500;
+}
+
+/* --- Board actions and filters: BoardActions (1cmnv), Filters (uc4mw),
+       RightSide (1cyxy) ----------------------------------------------------- */
+
+#app [class*="_wrapper_1cmnv_"] {
+  background: transparent;
+}
+
+#app [class*="_filterButton_uc4mw_"],
+#app [class*="_filterTitle_uc4mw_"],
+#app [class*="_filterLabel_uc4mw_"] {
+  background: transparent;
+  color: var(--pk-ink-3);
+}
+
+#app [class*="_filterButton_uc4mw_"]:hover,
+#app [class*="_button_1cyxy_"]:hover {
+  background: var(--pk-raised);
+  color: var(--pk-ink);
+}
+
+#app [class*="_search_uc4mw_"],
+#app [class*="_search_uc4mw_"] input {
+  background: var(--pk-surface) !important;
+  border-color: var(--pk-line) !important;
+  border-radius: 6px;
+  color: var(--pk-ink) !important;
+}
+
+#app [class*="_button_1cyxy_"] {
+  background: transparent;
+  color: var(--pk-ink-3);
+}
+
+/* --- Lists: lists/List (1plbe), KanbanContent (11uup) ---------------------- */
+
+#app [class*="_outerWrapper_1plbe_"] {
+  background: var(--pk-surface);
+  border: 1px solid var(--pk-line);
+  border-radius: 10px;
+}
+
+#app [class*="_header_1plbe_"],
+#app [class*="_headerName_1plbe_"] {
+  color: var(--pk-ink-3);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#app [class*="_headerButton_1plbe_"] {
+  background: transparent;
+  color: var(--pk-ink-3);
+}
+
+#app [class*="_headerButton_1plbe_"]:hover {
+  background: var(--pk-hover);
+  color: var(--pk-ink);
+}
+
+#app [class*="_addCardButton_1plbe_"] {
+  background: transparent;
+  border-radius: 6px;
+  color: var(--pk-ink-3);
+  fill: var(--pk-ink-3);
+}
+
+#app [class*="_addCardButton_1plbe_"]:hover {
+  background: var(--pk-raised);
+  color: var(--pk-ink);
+  fill: var(--pk-ink);
+}
+
+#app [class*="_addCardButtonCount_1plbe_"] {
+  background: var(--pk-line-strong);
+  color: var(--pk-ink);
+}
+
+#app [class*="_addListButton_11uup_"] {
+  background: transparent;
+  border: 1px dashed var(--pk-line-strong);
+  border-radius: 10px;
+  color: var(--pk-ink-3);
+  fill: var(--pk-ink-3);
+}
+
+#app [class*="_addListButton_11uup_"]:hover {
+  background: var(--pk-surface);
+  color: var(--pk-ink);
+  fill: var(--pk-ink);
+}
+
+/* --- Cards: cards/Card (36a26), Card/ProjectContent (i28lr),
+       Card/TaskList (kjg3m) ------------------------------------------------- */
+
+#app [class*="_wrapper_36a26_"] {
+  background: var(--pk-raised);
+  border: 1px solid var(--pk-line);
+  border-radius: 8px;
+  box-shadow: none;
+  transition: border-color 150ms var(--pk-ease), background 150ms var(--pk-ease);
+}
+
+#app [class*="_wrapper_36a26_"]:hover {
+  background: var(--pk-hover);
+  border-color: var(--pk-line-strong);
+}
+
+#app [class*="_actionsButton_36a26_"] {
+  color: var(--pk-ink-3);
+}
+
+#app [class*="_actionsButton_36a26_"]:hover {
+  background: var(--pk-line);
+  color: var(--pk-ink);
+}
+
+#app [class*="_name_i28lr_"] {
+  color: var(--pk-ink);
+  font-weight: 500;
+}
+
+#app [class*="_attachmentContent_i28lr_"] {
+  color: var(--pk-ink-3);
+}
+
+#app [class*="_creatorDivider_i28lr_"] {
+  background: var(--pk-line);
+}
+
+#app [class*="_progress_kjg3m_"],
+#app [class*="_progress_1uxqm_"] {
+  background: var(--pk-line) !important;
+  border-radius: 999px;
+}
+
+#app [class*="_progress_kjg3m_"] .bar,
+#app [class*="_progress_1uxqm_"] .bar {
+  background: var(--pk-accent) !important;
+  border-radius: 999px;
+}
+
+#app [class*="_count_kjg3m_"],
+#app [class*="_count_1uxqm_"] {
+  color: var(--pk-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Label chips: labels/LabelChip (1f417) ---------------------------------- */
+
+#app [class*="_wrapper_1f417_"] {
+  border-radius: 5px;
+  font-weight: 600;
+}
+
+/* --- Card window: cards/CardModal (1c0ax), CardModal/ProjectContent (10xqw),
+       CardModal/NameField (xb352), CardModal/TaskLists/Item (vu0dx),
+       task-lists/TaskList (1uxqm), TaskList/Task (170s0),
+       CardModal/Communication (1mevl), comments/Comments/Add (1ohx1) -------- */
+
+#app .ui.dimmer {
+  background: rgba(4, 5, 7, 0.72);
+}
+
+#app .ui.modal,
+#app [class*="_wrapper_1c0ax_"] {
+  background: var(--pk-surface);
+  border: 1px solid var(--pk-line);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  color: var(--pk-ink);
+}
+
+#app .ui.modal > .close {
+  color: var(--pk-ink-3);
+}
+
+#app [class*="_wrapper_10xqw_"] {
+  background: var(--pk-surface);
+}
+
+#app [class*="_field_xb352_"],
+#app [class*="_headerTitle_10xqw_"],
+#app [class*="_moduleHeader_10xqw_"],
+#app [class*="_moduleHeaderTitle_vu0dx_"],
+#app [class*="_name_170s0_"],
+#app .ui.modal p {
+  color: var(--pk-ink);
+}
+
+/* The card title is a textarea; it reads as a heading until it has focus. */
+#app textarea[class*="_field_xb352_"],
+#app [class*="_field_xb352_"] {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+#app textarea[class*="_field_xb352_"]:focus {
+  background: var(--pk-inset) !important;
+  border-color: var(--pk-accent) !important;
+}
+
+#app [class*="_actionIcon_10xqw_"],
+#app [class*="_moreActionsButtonIcon_10xqw_"],
+#app [class*="_listIcon_10xqw_"] {
+  color: var(--pk-ink-3) !important;
+}
+
+#app [class*="_listButton_10xqw_"] {
+  color: var(--pk-ink-2);
+}
+
+#app [class*="_listHoverable_10xqw_"]:hover {
+  background: var(--pk-raised);
+  color: var(--pk-ink);
+}
+
+#app [class*="_text_10xqw_"],
+#app [class*="_actionsTitle_10xqw_"],
+#app [class*="_taskButtonText_1uxqm_"],
+#app [class*="_moduleIcon_10xqw_"],
+#app [class*="_moduleIcon_vu0dx_"] {
+  color: var(--pk-ink-3);
+}
+
+#app [class*="_actionButton_10xqw_"],
+#app [class*="_moreActionsButton_10xqw_"] {
+  background: var(--pk-raised) !important;
+  border: 1px solid var(--pk-line);
+  border-radius: 6px;
+  box-shadow: none !important;
+  color: var(--pk-ink-2) !important;
+}
+
+#app [class*="_actionButton_10xqw_"]:hover,
+#app [class*="_moreActionsButton_10xqw_"]:hover {
+  background: var(--pk-hover) !important;
+  color: var(--pk-ink) !important;
+}
+
+#app [class*="_descriptionButton_10xqw_"] {
+  background: var(--pk-raised);
+  color: var(--pk-ink-3);
+}
+
+#app [class*="_wrapper_vu0dx_"] {
+  background: transparent;
+}
+
+#app [class*="_contentHoverable_170s0_"]:hover,
+#app [class*="_taskButton_1uxqm_"]:hover {
+  background: var(--pk-raised);
+}
+
+#app [class*="_nameCompleted_170s0_"] {
+  color: var(--pk-ink-3);
+}
+
+#app [class*="_menuItem_1mevl_"] {
+  color: var(--pk-ink-3) !important;
+}
+
+#app [class*="_menuItem_1mevl_"].active {
+  border-color: var(--pk-accent) !important;
+  color: var(--pk-ink) !important;
+}
+
+#app .ui.modal .ui.secondary.pointing.menu {
+  border-bottom-color: var(--pk-line);
+}
+
+#app [class*="_field_1ohx1_"] {
+  background: var(--pk-inset);
+}
+
+/* --- Semantic UI parts used in the card window and popups ------------------ */
+
+#app .ui.popup {
+  background: var(--pk-raised);
+  border: 1px solid var(--pk-line-strong);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  color: var(--pk-ink);
+}
+
+#app .ui.popup::before {
+  background: var(--pk-raised);
+  box-shadow: 1px 1px 0 0 var(--pk-line-strong);
+}
+
+#app .ui.popup .header,
+#app .ui.popup .content,
+#app .ui.popup .item,
+#app .ui.popup .menu .item {
+  color: var(--pk-ink-2);
+}
+
+/* lib/popup header (1i7p6): the title row with its divider */
+#app [class*="_content_1i7p6_"] {
+  border-bottom-color: var(--pk-line-strong);
+  color: var(--pk-ink);
+  font-weight: 600;
+}
+
+#app [class*="_backButton_1i7p6_"] {
+  color: var(--pk-ink-3);
+}
+
+#app .ui.popup .menu .item:hover {
+  background: var(--pk-hover);
+  color: var(--pk-ink);
+}
+
+#app .ui.checkbox label::before {
+  background: var(--pk-inset);
+  border-color: var(--pk-line-strong);
+}
+
+#app .ui.checkbox input:checked ~ label::before {
+  background: var(--pk-accent);
+  border-color: var(--pk-accent);
+}
+
+#app .ui.checkbox input:checked ~ label::after {
+  color: #0b0c0f;
+}
+
+#app .ui.input input,
+#app .ui.form input,
+#app .ui.form textarea,
+#app textarea,
+#app .mentions-input__input {
+  background: var(--pk-inset) !important;
+  border: 1px solid var(--pk-line) !important;
+  border-radius: 6px;
+  color: var(--pk-ink) !important;
+}
+
+#app .ui.input input:focus,
+#app .ui.form input:focus,
+#app .ui.form textarea:focus,
+#app textarea:focus {
+  border-color: var(--pk-accent) !important;
+  box-shadow: 0 0 0 3px var(--pk-accent-faint) !important;
+}
+
+#app .ui.button.positive,
+#app .ui.button.primary {
+  background: var(--pk-accent);
+  color: #0b0c0f;
+}
+
+#app .ui.button.positive:hover,
+#app .ui.button.primary:hover {
+  background: var(--pk-accent-soft);
+}
+
+/* --- Scrollbars ------------------------------------------------------------- */
+
+#app ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#app ::-webkit-scrollbar-thumb {
+  background: var(--pk-line-strong);
+  border-radius: 999px;
+}
+
+#app * {
+  scrollbar-color: var(--pk-line-strong) transparent;
+}

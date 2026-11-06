@@ -32,6 +32,35 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
+      # Planka has no theme setting. This copies the image's own index.ejs and
+      # links theme.css (served from /app/public/custom) after Planka's
+      # stylesheet, so the copy always matches the running image. If a release
+      # drops </head>, the page is copied unchanged and Planka starts unthemed.
+      initContainers:
+        - name: inject-theme
+          image: ghcr.io/plankanban/planka:2.3.1@sha256:f767ab97b878265ea1fff826867718d6ffa95dac04cd979fb5db82489806fb51
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - >-
+              sed 's#</head>#<link rel="stylesheet" href="<%- basePath %>/custom/theme.css"></head>#'
+              /app/views/index.ejs > /views/index.ejs
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: views
+              mountPath: /views
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
       containers:
         - name: planka
           image: ghcr.io/plankanban/planka:2.3.1@sha256:f767ab97b878265ea1fff826867718d6ffa95dac04cd979fb5db82489806fb51
@@ -93,6 +122,12 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /app/data
+            - name: views
+              mountPath: /app/views
+              readOnly: true
+            - name: theme
+              mountPath: /app/public/custom
+              readOnly: true
             - name: scratch
               mountPath: /app/.tmp
               subPath: app-tmp
@@ -133,3 +168,8 @@ spec:
             claimName: planka-data
         - name: scratch
           emptyDir: {}
+        - name: views
+          emptyDir: {}
+        - name: theme
+          configMap:
+            name: planka-theme

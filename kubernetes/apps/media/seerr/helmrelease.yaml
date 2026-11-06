@@ -21,18 +21,6 @@ spec:
   upgrade:
     remediation:
       retries: 3
-  # Scaled to zero to free memory for the GTNH server. The chart has no
-  # replicaCount, so the patch sets it. Remove this block to resume.
-  postRenderers:
-    - kustomize:
-        patches:
-          - target:
-              kind: StatefulSet
-              name: seerr-seerr-chart
-            patch: |
-              - op: replace
-                path: /spec/replicas
-                value: 0
   values:
     image:
       repository: ghcr.io/seerr-team/seerr

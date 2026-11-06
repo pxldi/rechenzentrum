@@ -2,22 +2,14 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: minecraft
+# No server runs here. The namespace only keeps the old Architect's Exodus world.
 resources:
   - pvcs.yaml
-  - secret.yaml
-  - deployment.yaml
-  - service.yaml
-  - networkpolicy.yaml
 components:
-  # Egress. Mojang authentication and the server's own update checks.
   - ../../../components/default-deny-egress
-  - ../../../components/allow-dns
-  - ../../../components/allow-internet-egress
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
-  - ../../infrastructure-config/networkpolicies/allow-intra-namespace
-  - ../../infrastructure-config/networkpolicies/allow-from-monitoring
 
-# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+# Resource metadata only: preserve existing PVC specs.
 labels:
   - pairs:
       app.kubernetes.io/name: minecraft

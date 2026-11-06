@@ -114,6 +114,12 @@ endpoints:
     <<: *public
     conditions:
       - "[STATUS] == 200"
+  - name: Seerr
+    group: public
+    url: https://request.pxldi.de/api/v1/status
+    <<: *public
+    conditions:
+      - "[STATUS] == 200"
   - name: openGym
     group: public
     url: https://gym.pxldi.de/api/health
@@ -165,6 +171,12 @@ endpoints:
   - name: slskd
     group: house
     url: http://slskd.slskd.svc.cluster.local:5030/health
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
+  - name: SearXNG
+    group: house
+    url: http://searxng.searxng.svc.cluster.local:8080/healthz
     <<: *house
     conditions:
       - "[STATUS] == 200"

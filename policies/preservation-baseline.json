@@ -98,6 +98,9 @@
   "apps/v1/Deployment/paperless/paperless-redis": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/planka/planka": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/searxng/searxng": {
     "kind": "Deployment"
   },
@@ -189,6 +192,10 @@
   "postgresql.cnpg.io/v1/Cluster/media/cantus-postgresql": {
     "kind": "Cluster",
     "spec_sha256": "4b8a4355241046b2e2fbc4277b00e80f8c2b7cefa3d4f5ffb1a767a9fd7f2c2b"
+  },
+  "postgresql.cnpg.io/v1/Cluster/planka/planka-postgresql": {
+    "kind": "Cluster",
+    "spec_sha256": "afeae04f5d9133323a31683da4c6d72859467fa71ac58298312fc02ea3fb51de"
   },
   "postgresql.cnpg.io/v1/Cluster/tandoor/tandoor-postgresql": {
     "kind": "Cluster",
@@ -285,6 +292,9 @@
     "kind": "Namespace"
   },
   "v1/Namespace//paperless": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//planka": {
     "kind": "Namespace"
   },
   "v1/Namespace//renovate": {
@@ -470,6 +480,10 @@
   "v1/PersistentVolumeClaim/paperless/paperless-redis-pvc": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "a6777e4e1b11fd9f8d491776e5fff1ea48ae86dc340612ff25e603bcf655d96d"
+  },
+  "v1/PersistentVolumeClaim/planka/planka-data": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
   },
   "v1/PersistentVolumeClaim/slskd/slskd-config": {
     "kind": "PersistentVolumeClaim",

@@ -20,7 +20,7 @@ day; see below.
 
 ## Weekly automated restore test
 
-Every Wednesday morning (Europe/Berlin) four CronJobs named `restore-test`
+Every Wednesday morning (Europe/Berlin) five CronJobs named `restore-test`
 restore the newest backups and check what came back. Each run starts by removing
 whatever the previous one left, and ends by deleting its copy.
 
@@ -29,6 +29,7 @@ whatever the previous one left, and ends by deleting its copy.
 | `tandoor/restore-test` | 10:00 | `tandoor-postgresql`, newest base backup plus all archived WAL | Cluster Ready, same table count as live, at least 90% of live rows, a write reads back |
 | `media/restore-test` | 10:15 | `cantus-postgresql`, likewise | likewise |
 | `immich/restore-test` | 10:30 | `immich-postgresql`, likewise | likewise |
+| `planka/restore-test` | 11:00 | `planka-postgresql`, likewise | likewise |
 | `velero-restore-test/restore-test` | 10:45 | gotify's `data` volume from the newest `daily-critical-backup` | Restore `Completed`, PodVolumeRestore `Completed`, gotify Ready on the restored database |
 
 The database tests create a Cluster named `restore-test` in the source

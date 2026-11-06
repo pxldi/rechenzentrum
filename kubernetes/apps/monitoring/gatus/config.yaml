@@ -187,6 +187,12 @@ endpoints:
     conditions:
       - "[CONNECTED] == true"
       - "[STATUS] < 500"
+  - name: Planka
+    group: house
+    url: http://planka.planka.svc.cluster.local:1337/
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
   - name: Excalidraw
     group: house
     url: http://excalidraw.excalidraw.svc.cluster.local:80/

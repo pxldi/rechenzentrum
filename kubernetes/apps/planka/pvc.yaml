@@ -1,0 +1,15 @@
+# Attachments, avatars, board backgrounds and favicons. The boards themselves
+# are in Postgres (kubernetes/databases/planka), which barman archives to B2.
+# Velero copies this volume.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: planka-data
+  namespace: planka
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 5Gi

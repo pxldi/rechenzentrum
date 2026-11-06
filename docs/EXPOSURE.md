@@ -31,6 +31,9 @@ as it always did for every app without such a route. They were removed on
   app it binds its own group, `survivorlike-viewers`, so an account in that
   group reaches this app and nothing else, and `rechenzentrum-users` does not
   open it (`terraform/authentik/forward-auth-apps.tf`).
+- **Planka** (`todo.pxldi.de`) is Authentik-only for the same two people and
+  binds the same `survivorlike-viewers` group. Planka keeps its own accounts
+  behind the gate, because its free edition has no OIDC since 2.2.0.
 - **Karakeep** (`links.pxldi.de`) stays Authentik-only, through Karakeep's own
   OIDC login rather than forward-auth: its password form is off, and the browser
   extension and phone apps send bearer tokens to `/api`, which a forward-auth
@@ -138,6 +141,7 @@ is on Tailscale" is not an answer on its own.
 | snacky | `snacky.pxldi.de` | Authentik | authentik-forward-auth |
 | media | `sonarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | survivorlike | `assets.pxldi.de` | Authentik | authentik-forward-auth |
+| planka | `todo.pxldi.de` | Authentik | authentik-forward-auth |
 | traefik | `traefik.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | adventurelog | `travel-admin.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | adventurelog | `travel.pxldi.de` | public | none |

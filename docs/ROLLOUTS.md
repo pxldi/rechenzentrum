@@ -54,6 +54,7 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | media | Deployment/sonarr | Recreate | sonarr-config-pvc, downloads-pvc, media-pvc | yes |
 | monitoring | Deployment/gatus | RollingUpdate | none | yes |
 | opengym | Deployment/opengym | Recreate | opengym-data, opengym-media | yes |
+| planka | Deployment/planka | Recreate | planka-data | yes |
 | snacky | Deployment/snacky | Recreate | snacky-data | yes |
 | survivorlike | Deployment/asset-viewer | RollingUpdate | none | yes |
 | wealthfolio | Deployment/wealthfolio | Recreate | wealthfolio-data | yes |

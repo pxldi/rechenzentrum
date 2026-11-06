@@ -21,6 +21,7 @@ resources:
   - opengym.yaml
   - palworld.yaml
   - paperless-ngx.yaml
+  - planka.yaml
   - searxng.yaml
   - slskd.yaml
   - snacky.yaml

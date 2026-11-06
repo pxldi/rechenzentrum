@@ -1,0 +1,23 @@
+# Authentik forward-auth without the house allowlist, so a player outside the
+# house and the tailnet reaches it. Planka keeps its own accounts behind this:
+# its free edition has no OIDC since 2.2.0. The forward-auth app binds
+# survivorlike-viewers (terraform/authentik/forward-auth-apps.tf).
+# Priority 10 matches the rest of the repo's IngressRoutes.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: planka
+  namespace: planka
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`todo.pxldi.de`)
+      priority: 10
+      middlewares:
+        - name: authentik-forward-auth
+          namespace: traefik
+      services:
+        - name: planka
+          port: 1337

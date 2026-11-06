@@ -46,6 +46,7 @@ Every application namespace except the two at the end of this section.
 | `ollama` | internet | Pulls models on demand |
 | `palworld` | internet | Server list and updates |
 | `paperless` | own namespace, internet, Traefik | Postgres, Redis, Gotenberg and Tika here |
+| `planka` | own namespace, internet, API server | Postgres here; barman ships WAL to B2; favicons of attached links |
 | `searxng` | own namespace, internet | Querying upstream engines is the job |
 | `slskd` | own namespace, internet | gluetun's tunnel and Soulseek peers |
 | `snacky` | internet, `tandoor`, `opengym` | Open Food Facts outside; recipes and workouts by Service name. Its pod takes MCP from the claude.ai gate in `chatops` only |

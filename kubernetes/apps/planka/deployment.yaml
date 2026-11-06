@@ -1,0 +1,135 @@
+# Planka: kanban boards for the game projects. Boards live in Postgres, uploads
+# on planka-data.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: planka
+  namespace: planka
+  labels:
+    app: planka
+spec:
+  replicas: 1
+  # planka-data is RWO on the one node, and every start runs the database
+  # migrations, so two pods must never run at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: planka
+  template:
+    metadata:
+      labels:
+        app: planka
+      annotations:
+        backup.velero.io/backup-volumes: data
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: planka
+          image: ghcr.io/plankanban/planka:2.3.1@sha256:f767ab97b878265ea1fff826867718d6ffa95dac04cd979fb5db82489806fb51
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 1337
+          env:
+            - name: TZ
+              value: Europe/Berlin
+            - name: BASE_URL
+              value: https://todo.pxldi.de
+            # Traefik passes the client address (externalTrafficPolicy Local),
+            # and the sign-in rate limit is keyed on it.
+            - name: TRUST_PROXY
+              value: "true"
+            - name: LOG_FILE
+              value: none
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: planka-app
+                  key: DATABASE_URL
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: planka-app
+                  key: SECRET_KEY
+            # The first admin. Planka refuses to edit or delete the account
+            # whose email is set here, which keeps one admin for good.
+            - name: DEFAULT_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: planka-app
+                  key: DEFAULT_ADMIN_EMAIL
+            - name: DEFAULT_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: planka-app
+                  key: DEFAULT_ADMIN_USERNAME
+            - name: DEFAULT_ADMIN_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: planka-app
+                  key: DEFAULT_ADMIN_NAME
+            - name: DEFAULT_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: planka-app
+                  key: DEFAULT_ADMIN_PASSWORD
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          # The start script refuses to run unless .tmp and logs are writable.
+          # /tmp holds the config of the outgoing-request proxy it starts.
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: scratch
+              mountPath: /app/.tmp
+              subPath: app-tmp
+            - name: scratch
+              mountPath: /app/logs
+              subPath: logs
+            - name: scratch
+              mountPath: /tmp
+              subPath: tmp
+          # Every start migrates the database before the port opens.
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 192Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: planka-data
+        - name: scratch
+          emptyDir: {}

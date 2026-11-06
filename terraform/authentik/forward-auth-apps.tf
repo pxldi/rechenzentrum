@@ -125,6 +125,12 @@ locals {
       icon        = ""
       description = "Asset viewer of the survivorlike game"
     }
+    planka = {
+      name        = "Planka"
+      host        = "todo.${var.domain}"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/planka.png"
+      description = "Kanban boards for the game projects"
+    }
   }
 
   all_forward_auth_apps = merge(local.forward_auth_apps, local.restricted_forward_auth_apps)
@@ -201,8 +207,9 @@ resource "authentik_policy_binding" "forward_auth_users" {
 # account.
 #
 # The asset viewer is for the two people who work on the game. Its group is
-# the only one bound to it, so rechenzentrum-users does not open it, and this
-# group opens nothing else. Members are managed here, like rechenzentrum-users.
+# the only one bound to it, so rechenzentrum-users does not open it. The same
+# group also opens Planka, the game's kanban board, and nothing else. Members
+# are managed here, like rechenzentrum-users.
 # To add someone: create the account in authentik first (with MFA), then add a
 # data "authentik_user" block for the username and its id to the list. A
 # username that does not exist yet fails the plan.
@@ -221,6 +228,12 @@ resource "authentik_group" "survivorlike_viewers" {
 
 resource "authentik_policy_binding" "survivorlike_viewers" {
   target = authentik_application.forward_auth["survivorlike-assets"].uuid
+  group  = authentik_group.survivorlike_viewers.id
+  order  = 0
+}
+
+resource "authentik_policy_binding" "planka_users" {
+  target = authentik_application.forward_auth["planka"].uuid
   group  = authentik_group.survivorlike_viewers.id
   order  = 0
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check kubernetes/apps/planka/theme.css against the running Planka build.
+"""Check kubernetes/apps/planka/theme/theme.css against the running Planka build.
 
 Planka names its CSS module classes _<local>_<hash>_<line>, and the hash
 changes whenever Planka edits that module. After an upgrade, run:
@@ -15,7 +15,7 @@ import re
 import sys
 from pathlib import Path
 
-THEME = Path(__file__).resolve().parents[1] / 'kubernetes/apps/planka/theme.css'
+THEME = Path(__file__).resolve().parents[1] / 'kubernetes/apps/planka/theme/theme.css'
 
 built = Path(sys.argv[1]).read_text()
 built_locals = collections.defaultdict(set)

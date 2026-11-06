@@ -32,10 +32,13 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
-      # Planka has no theme setting. This copies the image's own index.ejs and
-      # links theme.css (served from /app/public/custom) after Planka's
-      # stylesheet, so the copy always matches the running image. If a release
-      # drops </head>, the page is copied unchanged and Planka starts unthemed.
+      # Planka has no theme setting. On the running image, this:
+      # 1. builds generated.css from Planka's compiled CSS with remap.js (a dark
+      #    copy of every rule that sets a light neutral colour),
+      # 2. copies theme.css beside it,
+      # 3. copies index.ejs and links both after Planka's own stylesheet.
+      # Both are served from /app/public/custom. A failed remap leaves
+      # generated.css empty; a release without </head> starts unthemed.
       initContainers:
         - name: inject-theme
           image: ghcr.io/plankanban/planka:2.3.1@sha256:f767ab97b878265ea1fff826867718d6ffa95dac04cd979fb5db82489806fb51
@@ -43,9 +46,12 @@ spec:
           command:
             - sh
             - -c
-            - >-
-              sed 's#</head>#<link rel="stylesheet" href="<%- basePath %>/custom/theme.css"></head>#'
-              /app/views/index.ejs > /views/index.ejs
+            - |
+              node /theme/remap.js /app/public/assets/index-*.css > /custom/generated.css \
+                || { echo "remap.js failed; generated.css is empty" >&2; : > /custom/generated.css; }
+              cp /theme/theme.css /custom/theme.css
+              sed 's#</head>#<link rel="stylesheet" href="<%- basePath %>/custom/generated.css"><link rel="stylesheet" href="<%- basePath %>/custom/theme.css"></head>#' \
+                /app/views/index.ejs > /views/index.ejs
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -53,14 +59,19 @@ spec:
               drop:
                 - ALL
           volumeMounts:
+            - name: theme
+              mountPath: /theme
+              readOnly: true
+            - name: custom
+              mountPath: /custom
             - name: views
               mountPath: /views
           resources:
             requests:
-              cpu: 10m
-              memory: 16Mi
-            limits:
+              cpu: 50m
               memory: 64Mi
+            limits:
+              memory: 256Mi
       containers:
         - name: planka
           image: ghcr.io/plankanban/planka:2.3.1@sha256:f767ab97b878265ea1fff826867718d6ffa95dac04cd979fb5db82489806fb51
@@ -125,7 +136,7 @@ spec:
             - name: views
               mountPath: /app/views
               readOnly: true
-            - name: theme
+            - name: custom
               mountPath: /app/public/custom
               readOnly: true
             - name: scratch
@@ -169,6 +180,8 @@ spec:
         - name: scratch
           emptyDir: {}
         - name: views
+          emptyDir: {}
+        - name: custom
           emptyDir: {}
         - name: theme
           configMap:

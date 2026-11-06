@@ -1,7 +1,9 @@
 /* =============================================================================
    Planka dark theme
-   Served at /custom/theme.css; the inject-theme init container links it from
-   index.ejs (deployment.yaml).
+   Served at /custom/theme.css, after /custom/generated.css, which remap.js
+   builds from Planka's own CSS at every start (deployment.yaml, inject-theme).
+   The generated layer turns every light neutral colour dark; this sheet sets
+   the look and fixes what a colour swap cannot decide.
 
    Neutral dark: a cool near-black ground, surfaces lifted one step at a time,
    1px borders instead of shadows, one indigo accent for focus, progress and
@@ -92,6 +94,11 @@ body,
 #app [class*="_itemHoverable_jdrq3_"]:hover {
   background: var(--pk-raised);
   color: var(--pk-ink);
+}
+
+/* The lock icon while edit mode is on; Planka's own is lime. */
+#app [class*="_itemIconEnabled_jdrq3_"] {
+  color: var(--pk-accent);
 }
 
 /* boards/Boards/Item (cjxaz): one tab per board */
@@ -224,6 +231,12 @@ body,
   border-color: var(--pk-line-strong);
 }
 
+/* A recently changed card gets a light sweep across it. A gradient, so the
+   generated layer leaves it alone. */
+#app [class*="_wrapperRecent_36a26_"]:not(:hover)::after {
+  background: linear-gradient(to right, transparent, rgba(124, 134, 255, 0.12) 50%, transparent);
+}
+
 #app [class*="_actionsButton_36a26_"] {
   color: var(--pk-ink-3);
 }
@@ -262,6 +275,14 @@ body,
 #app [class*="_count_1uxqm_"] {
   color: var(--pk-ink-3);
   font-variant-numeric: tabular-nums;
+}
+
+/* The open/close arrow beside the task count is a black GIF; no colour rule
+   reaches it. */
+#app [class*="_countOpened_kjg3m_"]::after,
+#app [class*="_countClosed_kjg3m_"]::after {
+  filter: invert(1);
+  opacity: 0.7;
 }
 
 /* --- Label chips: labels/LabelChip (1f417) ---------------------------------- */
@@ -443,6 +464,25 @@ body,
   color: #0b0c0f;
 }
 
+#app .ui.toggle.checkbox input:checked ~ label::before {
+  background-color: var(--pk-accent) !important;
+}
+
+#app .ui.toggle.checkbox label::before {
+  background: var(--pk-line-strong);
+}
+
+/* Due date picker (react-datepicker) */
+#app .react-datepicker__day--selected,
+#app .react-datepicker__day--keyboard-selected {
+  background-color: var(--pk-accent);
+  color: #0b0c0f;
+}
+
+#app .react-datepicker__day:not(.react-datepicker__day--selected):hover {
+  background-color: var(--pk-hover);
+}
+
 #app .ui.input input,
 #app .ui.form input,
 #app .ui.form textarea,
@@ -471,6 +511,17 @@ body,
 #app .ui.button.positive:hover,
 #app .ui.button.primary:hover {
   background: var(--pk-accent-soft);
+}
+
+/* Semantic UI draws the lines of a labelled divider ("Language") with a light
+   PNG. */
+#app .ui.horizontal.divider::before,
+#app .ui.horizontal.divider::after {
+  background: linear-gradient(var(--pk-line-strong), var(--pk-line-strong)) no-repeat center / 100% 1px;
+}
+
+#app .ui.divider:not(.horizontal) {
+  border-color: var(--pk-line) !important;
 }
 
 /* --- Scrollbars ------------------------------------------------------------- */

@@ -28,6 +28,7 @@ spec:
     - name: database-cantus
     - name: database-immich
     - name: database-tandoor
+    - name: database-planka
   decryption:
     provider: sops
     secretRef:

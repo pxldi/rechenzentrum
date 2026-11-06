@@ -18,6 +18,7 @@ CASES = {
     "tandoor": ("postgres-cluster.yaml", "secret.yaml"),
     "immich": ("immich-cnpg.yaml", "secret.yaml"),
     "cantus": ("postgres-cluster.yaml", None),
+    "planka": ("postgres-cluster.yaml", "secret.yaml"),
 }
 
 

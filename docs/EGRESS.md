@@ -40,7 +40,6 @@ Every application namespace except the two at the end of this section.
 | `opengym` | internet | The init container clones the exercise media from GitHub; the API sends Web Push |
 | `wealthfolio` | internet | Market quotes and exchange rates; the backup job installs sqlite3 |
 | `media` | own namespace, internet, Traefik, API server, `slskd` | Nine workloads; indexers and metadata. The API server is for the cantus CNPG cluster and, by its own policy, the schall-follower Job |
-| `minecraft` | internet | Mojang authentication |
 | `monitoring` | internet, cluster, Traefik | Gatus checks public apps on their public names and house-only apps on their Services |
 | `nextcloud` | own namespace, internet, Traefik | Postgres and Redis here; app updates; its own public name |
 | `obsidian-sync` | nothing | CouchDB, single node, clients connect inbound |

@@ -41,7 +41,6 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | karakeep | StatefulSet/karakeep-meilisearch | RollingUpdate | none | yes |
 | kube-system | Deployment/coredns | RollingUpdate | none | yes |
 | kube-system | Deployment/metrics-server | RollingUpdate | none | yes |
-| kube-system | DaemonSet/svclb-minecraft-7b0e2051 | RollingUpdate | none | no |
 | kube-system | DaemonSet/svclb-palworld-68fa85b4 | RollingUpdate | none | no |
 | kube-system | DaemonSet/svclb-traefik-c7aec652 | RollingUpdate | none | no |
 | media | Deployment/cantus | Recreate | cantus-music-pvc, downloads-pvc, cantus-uploads-pvc | yes |
@@ -53,7 +52,6 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | media | StatefulSet/seerr-seerr-chart | RollingUpdate | seerr-config-pvc | yes |
 | media | Deployment/slskd | Recreate | slskd-config-pvc, downloads-pvc, cantus-music-pvc | yes |
 | media | Deployment/sonarr | Recreate | sonarr-config-pvc, downloads-pvc, media-pvc | yes |
-| minecraft | Deployment/minecraft | Recreate | minecraft-data | yes |
 | monitoring | Deployment/gatus | RollingUpdate | none | yes |
 | opengym | Deployment/opengym | Recreate | opengym-data, opengym-media | yes |
 | snacky | Deployment/snacky | Recreate | snacky-data | yes |

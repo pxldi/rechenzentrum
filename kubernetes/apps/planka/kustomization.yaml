@@ -2,6 +2,12 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: planka
+# Generated so the name carries a content hash: an edit to theme.css rolls the
+# pod, which is what makes the new sheet reach the browser.
+configMapGenerator:
+  - name: planka-theme
+    files:
+      - theme.css
 resources:
   - secret.yaml
   - pvc.yaml

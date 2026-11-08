@@ -7,7 +7,7 @@
 #                           none, so claude.ai can reach Snacky
 # One image because they share the SDK and the build, and because a manifest
 # that names one tag for all of them is one thing to bump.
-FROM python:3.15-slim@sha256:94d3426f1def7db4a106a232ac121bfd975393e5dfd40a619b955fae45fe7913
+FROM python:3.15-slim@sha256:65a65fc7b30b06cb6df4930fd4650697cb23f4c2698ab81fc87e4b031bc36928
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

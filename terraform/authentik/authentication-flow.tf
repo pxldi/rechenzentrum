@@ -80,8 +80,8 @@ resource "authentik_stage_authenticator_validate" "authentication" {
     authentik_stage_authenticator_totp.setup.id,
   ]
   webauthn_user_verification = "preferred"
-  # Ask every time. Forward-auth sessions last 24 hours, so this is at most
-  # once a day per browser.
+  # Ask every time. Forward-auth sessions last 24 hours (Planka: 30 days), so
+  # this is at most once a day per browser.
   last_auth_threshold = "seconds=0"
 }
 

@@ -130,6 +130,9 @@ locals {
       host        = "todo.${var.domain}"
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/planka.png"
       description = "Kanban boards for the game projects"
+      # A board people keep open all day. The outpost turns this into the
+      # cookie's MaxAge, so the login survives a browser restart for 30 days.
+      token_validity = "days=30"
     }
   }
 
@@ -147,7 +150,7 @@ resource "authentik_provider_proxy" "forward_auth" {
   authorization_flow = data.authentik_flow.default-authorization-flow.id
   invalidation_flow  = data.authentik_flow.default-invalidation-flow.id
 
-  access_token_validity = "hours=24"
+  access_token_validity = try(each.value.token_validity, "hours=24")
 }
 
 # --- Applications (one per app) ---

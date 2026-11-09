@@ -21,8 +21,10 @@ spec:
       # A failed bench is rerun by hand once the cause is known; a retry would
       # repeat the same failure for hours.
       backoffLimit: 0
-      # The hard stop. bench-job's UNTIL ends the queue earlier if set.
-      activeDeadlineSeconds: 86400
+      # The backstop. The queue's own deadline (UNTIL, by default 24 hours
+      # after the start) is the normal stop and lets bench-job write run.json;
+      # this one kills the pod an hour later if that did not happen.
+      activeDeadlineSeconds: 90000
       ttlSecondsAfterFinished: 86400
       template:
         metadata:
@@ -184,7 +186,9 @@ spec:
 ---
 # One bench at a time. A second Job's pod is refused until the first ends
 # (the Job controller retries it), so two queues started by mistake cannot
-# take twice the memory. Sized to one bench pod plus the reader.
+# take twice the memory. Each value is one bench pod (2 / 4 cores, 4 / 6 GiB)
+# plus the reader (5m / 100m, 8 / 64 MiB) plus a little slack, and below two
+# bench pods.
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -192,10 +196,10 @@ metadata:
   namespace: survivorlike-bench
 spec:
   hard:
-    requests.cpu: 2100m
-    requests.memory: 4200Mi
-    limits.cpu: 4200m
-    limits.memory: 6200Mi
+    requests.cpu: 2200m
+    requests.memory: 4300Mi
+    limits.cpu: 4300m
+    limits.memory: 6400Mi
 ---
 # The bench fetches the game from GitHub over ssh.github.com:443 and needs
 # nothing else. The except list is allow-internet-egress's: no pod or service

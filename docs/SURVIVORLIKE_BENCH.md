@@ -103,4 +103,5 @@ has. Push the branch, then queue it like a bench:
   "--jobs", "4", "--out", "{out}/pilot"]}]
 ```
 
-For a run longer than a day, raise `activeDeadlineSeconds` in `bench.yaml`.
+A queue stops within 24 hours, since `night_bench.py --until` is a time of
+day. A longer training continues in a new run with `pilot_train.py --resume`.

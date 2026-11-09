@@ -1,0 +1,106 @@
+#!/bin/bash
+# One bench run in the cluster: fetch the game at REF, import it, prove the
+# native library loaded, then work QUEUE with the game's own night_bench.py.
+#
+# Environment:
+#   REF       commit, branch or tag of the game repository (required)
+#   RUN       name of this run's folder under /results (required)
+#   QUEUE     JSON list in night_bench.py's queue format (required); the text
+#             {out} in any argument becomes this run's results folder
+#   MAX_JOBS  most Godot runs one queue entry may start at once (default 4)
+#   UNTIL     HH:MM Berlin time to stop at (default: 24 hours from now; the
+#             Job's activeDeadlineSeconds is the hard stop)
+#   REPO      clone URL (default: the game repository over SSH)
+#   CHECKOUT  an existing checkout to use instead of fetching (local tests)
+set -euo pipefail
+
+: "${REF:?set REF to the game commit, branch or tag}"
+: "${RUN:?set RUN to a name for this run}"
+: "${QUEUE:?set QUEUE to a night_bench.py queue (JSON)}"
+MAX_JOBS=${MAX_JOBS:-4}
+REPO=${REPO:-git@github.com:pxldi/dice-and-doom.git}
+
+out=/results/$RUN
+mkdir -p "$out" "$HOME/.ssh"
+exec > >(tee -a "$out/job.log") 2>&1
+started=$(date -Iseconds)
+echo "run $RUN, ref $REF, started $started"
+
+# The queue is checked before the fetch, so a bad one fails in seconds.
+# Every entry must name its parallelism: the scripts' default reads free
+# memory and CPU count from /proc, which in a pod describe the whole node,
+# not the pod's limit.
+python3 -I - "$out" "$MAX_JOBS" > /work/queue.json <<'EOF'
+import json, os, sys
+out, max_jobs = sys.argv[1], int(sys.argv[2])
+queue = json.loads(os.environ["QUEUE"])
+if not isinstance(queue, list) or not queue:
+    sys.exit("QUEUE must be a non-empty JSON list")
+for job in queue:
+    cmd = [str(a).replace("{out}", out) for a in job["cmd"]]
+    jobs = None
+    for i, a in enumerate(cmd):
+        if a in ("-j", "--jobs") and i + 1 < len(cmd):
+            jobs = int(cmd[i + 1])
+        elif a.startswith("--jobs="):
+            jobs = int(a.split("=", 1)[1])
+    if jobs is None or not 1 <= jobs <= max_jobs:
+        sys.exit(f"queue entry {job.get('name')!r} must pass --jobs (or -j for run_bench.py) between 1 and {max_jobs}")
+    job["cmd"] = cmd
+json.dump(queue, sys.stdout, indent=1)
+EOF
+cp /work/queue.json "$out/queue.json"
+
+if [ -n "${CHECKOUT:-}" ]; then
+    repo=$CHECKOUT
+else
+    # The deploy key arrives as a read-only Secret file; ssh wants it private
+    # to the user that reads it.
+    install -m 0600 /secrets/deploy-key "$HOME/.ssh/deploy-key"
+    repo=/work/repo
+    git init -q "$repo"
+    git -C "$repo" remote add origin "$REPO"
+    # Shallow and without submodules: native/godot-cpp is only needed to
+    # build the library, which is committed.
+    git -C "$repo" fetch -q --depth 1 --no-tags origin "$REF"
+    git -C "$repo" checkout -q FETCH_HEAD
+fi
+commit=$(git -C "$repo" rev-parse HEAD)
+echo "commit $commit"
+cd "$repo"
+
+echo "importing"
+godot --headless --path game --import >"$out/import.log" 2>&1 \
+    || { echo "import failed, see import.log"; exit 1; }
+
+# Godot skips a GDExtension it cannot load and the game falls back to GDScript
+# without an error. Results would still come, only slower; stop instead.
+cat > /work/native_check.gd <<'EOF'
+extends SceneTree
+func _init() -> void:
+	var ok := ClassDB.class_exists("HordeSim") and ClassDB.class_exists("ChipSim")
+	print("NATIVE_LOADED=", ok)
+	quit(0 if ok else 3)
+EOF
+if ! godot --headless --path game --script /work/native_check.gd >"$out/native_check.log" 2>&1 \
+    || ! grep -q "NATIVE_LOADED=true" "$out/native_check.log"; then
+    echo "the native library did not load, see native_check.log"
+    exit 1
+fi
+echo "native library loaded"
+
+until=${UNTIL:-$(date -d '-1 minute' +%H:%M)}
+status=0
+# --no-wait: the load average in a pod is the node's, and the pod's limits
+# already keep it from crowding the house services.
+python3 tools/night_bench.py --queue /work/queue.json --until "$until" \
+    --out "$out" --no-wait || status=$?
+
+python3 -I - "$out/run.json" <<EOF
+import json, sys
+json.dump({"run": "$RUN", "ref": "$REF", "commit": "$commit",
+           "started": "$started", "finished": "$(date -Iseconds)",
+           "exit": $status}, open(sys.argv[1], "w"), indent=1)
+EOF
+echo "finished with exit $status"
+exit "$status"

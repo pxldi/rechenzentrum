@@ -1,0 +1,12 @@
+# The game repository is fetched with a read-only deploy key over GitHub's SSH
+# endpoint on port 443, so the pod needs no egress on port 22. The host keys
+# are GitHub's published ones (api.github.com/meta), pinned in the image.
+Host github.com
+    HostName ssh.github.com
+    Port 443
+    User git
+    HostKeyAlias github.com
+    IdentityFile /work/home/.ssh/deploy-key
+    IdentitiesOnly yes
+    UserKnownHostsFile /etc/ssh/github_known_hosts
+    StrictHostKeyChecking yes

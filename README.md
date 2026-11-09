@@ -44,4 +44,5 @@ Terraform state and kubeconfigs are excluded.
 - [Exposure inventory](docs/EXPOSURE.md)
 - [Rollout inventory](docs/ROLLOUTS.md)
 - [Host power settings](docs/QUIET_MODE.md)
+- [Survivorlike benches on the node](docs/SURVIVORLIKE_BENCH.md)
 - [Masterplan and open work](docs/MASTERPLAN.md)

@@ -51,6 +51,7 @@ Every application namespace except the two at the end of this section.
 | `slskd` | own namespace, internet | gluetun's tunnel and Soulseek peers |
 | `snacky` | internet, `tandoor`, `opengym` | Open Food Facts outside; recipes and workouts by Service name. Its pod takes MCP from the claude.ai gate in `chatops` only |
 | `survivorlike` | per pod: the viewer gets nothing; the follower Job gets internet on 443 and the API server on 6443 | Static files; the browser loads three.js from the CDN itself. The follower reads the `main` digest from ghcr.io and patches the Deployment, see `follower.yaml` |
+| `survivorlike-bench` | per pod: the bench Job gets internet on 443; the results reader gets nothing | Fetches the game from `ssh.github.com:443` with a deploy key, see `bench.yaml` |
 | `tandoor` | own namespace, internet, API server | Postgres here; recipe import; CNPG |
 
 ### One namespace deliberately left alone

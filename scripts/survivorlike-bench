@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Start survivorlike game benches on the node and fetch their results.
+# docs/SURVIVORLIKE_BENCH.md has the queue format and the limits.
+#
+# Usage:
+#   scripts/survivorlike-bench start <ref> <queue.json> [name]
+#   scripts/survivorlike-bench status
+#   scripts/survivorlike-bench logs <name>
+#   scripts/survivorlike-bench list
+#   scripts/survivorlike-bench fetch <name> [dir]
+#   scripts/survivorlike-bench stop <name>
+#   scripts/survivorlike-bench delete <name>
+#
+# <ref> is a commit, branch or tag of the game repository that GitHub has.
+# A run's results stay on the node until deleted; fetch copies them to
+# <dir>/<name> (default ~/bench_results/survivorlike/rechenzentrum).
+#
+# Needs kubectl with this cluster's context and jq. UNTIL=HH:MM (Berlin time)
+# in the environment stops the queue at that time instead of after 24 hours.
+set -euo pipefail
+
+ns=survivorlike-bench
+k() { kubectl --namespace "$ns" "$@"; }
+die() { echo "$*" >&2; exit 1; }
+reader() { k get pod -l app=survivorlike-bench-results --field-selector=status.phase=Running \
+    -o jsonpath='{.items[0].metadata.name}'; }
+
+cmd=${1:-}
+shift || true
+case "$cmd" in
+start)
+    [ $# -ge 2 ] || die "usage: $0 start <ref> <queue.json> [name]"
+    ref=$1 queue=$2
+    queue_json=$(jq -c . "$queue") || die "$queue is not valid JSON"
+    # A Job name is a DNS label: lowercase, digits and dashes, 63 at most.
+    slug=$(printf '%s' "${ref##*/}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | cut -c1-20)
+    name=${3:-bench-$(date +%m%d-%H%M)-$slug}
+    name=${name%-}
+    printf '%s' "$name" | grep -Eqx '[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?' \
+        || die "'$name' is not a valid Job name"
+    # The CronJob is the reviewed template. The owner reference is dropped so
+    # a recreated CronJob cannot take a running Job with it.
+    k create job "$name" --from=cronjob/bench --dry-run=client -o json \
+        | jq --arg ref "$ref" --arg run "$name" --arg queue "$queue_json" --arg until "${UNTIL:-}" '
+            del(.metadata.ownerReferences)
+            | .spec.template.spec.containers[0].env += (
+                [{name: "REF", value: $ref}, {name: "RUN", value: $run},
+                 {name: "QUEUE", value: $queue}]
+                + (if $until == "" then [] else [{name: "UNTIL", value: $until}] end))' \
+        | kubectl create -f -
+    echo "started $name; follow with: $0 logs $name"
+    ;;
+status)
+    k get jobs,pods -o wide
+    k describe resourcequota one-bench-at-a-time | sed -n '/Resource/,$p'
+    ;;
+logs)
+    [ $# -eq 1 ] || die "usage: $0 logs <name>"
+    k logs -f "job/$1"
+    ;;
+list)
+    k exec "$(reader)" -- sh -c 'cd /results && du -sh -- * 2>/dev/null'
+    ;;
+fetch)
+    [ $# -ge 1 ] || die "usage: $0 fetch <name> [dir]"
+    dir=${2:-$HOME/bench_results/survivorlike/rechenzentrum}
+    mkdir -p "$dir"
+    k cp "$(reader):/results/$1" "$dir/$1"
+    echo "copied to $dir/$1"
+    ;;
+stop)
+    [ $# -eq 1 ] || die "usage: $0 stop <name>"
+    # Deleting the Job stops its pod; the results written so far stay.
+    k delete job "$1"
+    ;;
+delete)
+    [ $# -eq 1 ] || die "usage: $0 delete <name>"
+    case "$1" in */*|.|..|'') die "'$1' is not a run name" ;; esac
+    k exec "$(reader)" -- rm -rf -- "/results/$1"
+    echo "deleted /results/$1"
+    ;;
+*)
+    sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
+    exit 1
+    ;;
+esac

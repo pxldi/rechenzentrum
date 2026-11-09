@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: survivorlike-bench
+resources:
+  - deploy-key-secret.yaml
+  - bench.yaml
+components:
+  # DNS for every pod; bench.yaml opens GitHub on 443 for the bench pods only.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  # Nothing here serves anything.
+  - ../../infrastructure-config/networkpolicies/default-deny-ingress
+
+# Resource metadata only: preserve existing selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: survivorlike-bench
+      app.kubernetes.io/instance: survivorlike-bench
+      app.kubernetes.io/component: batch
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

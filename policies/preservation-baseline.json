@@ -110,6 +110,9 @@
   "apps/v1/Deployment/snacky/snacky": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/survivorlike-bench/results": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/survivorlike/asset-viewer": {
     "kind": "Deployment"
   },
@@ -309,6 +312,9 @@
   "v1/Namespace//survivorlike": {
     "kind": "Namespace"
   },
+  "v1/Namespace//survivorlike-bench": {
+    "kind": "Namespace"
+  },
   "v1/Namespace//tandoor": {
     "kind": "Namespace"
   },
@@ -500,6 +506,10 @@
   "v1/PersistentVolumeClaim/snacky/snacky-data": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "a6777e4e1b11fd9f8d491776e5fff1ea48ae86dc340612ff25e603bcf655d96d"
+  },
+  "v1/PersistentVolumeClaim/survivorlike-bench/survivorlike-bench-results": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "96093a8145a2ec319c79a32d855e7f209747dc092a63846f3d7dd93e988714c4"
   },
   "v1/PersistentVolumeClaim/tandoor/tandoor-media-pvc": {
     "kind": "PersistentVolumeClaim",

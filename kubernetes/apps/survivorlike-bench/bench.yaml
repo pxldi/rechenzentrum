@@ -1,0 +1,230 @@
+# Long headless Godot jobs for the survivorlike game: balance benches and,
+# later, autopilot training. They used to run on the desktop, whose RAM the
+# other work there needs. docs/SURVIVORLIKE_BENCH.md says how to start a run and
+# fetch its results.
+#
+# The CronJob never fires. It is the reviewed template that
+# scripts/survivorlike-bench copies into a one-off Job with
+# `kubectl create job --from=cronjob/bench`, adding the game commit, a run
+# name and the queue. A Job listed here would run on every Flux apply.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: bench
+  namespace: survivorlike-bench
+spec:
+  suspend: true
+  schedule: "0 0 1 1 *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      # A failed bench is rerun by hand once the cause is known; a retry would
+      # repeat the same failure for hours.
+      backoffLimit: 0
+      # The backstop. The queue's own deadline (UNTIL, by default 24 hours
+      # after the start) is the normal stop and lets bench-job write run.json;
+      # this one kills the pod an hour later if that did not happen.
+      activeDeadlineSeconds: 90000
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app: survivorlike-bench
+          annotations:
+            # Results are re-runnable and fetched to the desktop; the clone and
+            # the import cache are rebuilt by every run.
+            backup.velero.io/backup-volumes-excludes: results,work,tmp
+        spec:
+          # Lowest class in the cluster and PreemptionPolicy Never: a bench
+          # never pushes a house service off the node, and waits when the
+          # node is full.
+          priorityClassName: rechenzentrum-bulk
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: bench
+              image: ghcr.io/pxldi/survivorlike-bench:sha-a996d8143c4ad0ad29ad263fe44d47271f4cf661
+              env:
+                - name: MAX_JOBS
+                  value: "4"
+              # Sized for four Godot runs at about 1.2 GB and one core each:
+              # 4.7 GB peak in a local test under the same limit.
+              #
+              # The request sits below what the pod uses on purpose. On 7 to
+              # 9 Nov 2026 the node had 9 to 10 GiB available, and it fell to
+              # 2 GiB on 3 to 5 Nov (before the GTNH server was removed), with
+              # no swap. Under memory pressure the kubelet evicts pods above
+              # their request first, lowest priority first, and the kernel's
+              # OOM killer prefers pods with a small request relative to the
+              # node. Both make this pod the first to go, not a house service.
+              # A request equal to the limit would do the opposite.
+              #
+              # CPU: the node's p95 over seven days was 1.6 of 11 cores busy.
+              # The request of 2 keeps the bench's share small when the house
+              # services want CPU; the limit caps it at four runs.
+              resources:
+                requests:
+                  cpu: "2"
+                  memory: 4Gi
+                limits:
+                  cpu: "4"
+                  memory: 6Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              volumeMounts:
+                - name: work
+                  mountPath: /work
+                - name: tmp
+                  mountPath: /tmp
+                - name: results
+                  mountPath: /results
+                - name: deploy-key
+                  mountPath: /secrets
+                  readOnly: true
+          volumes:
+            # The shallow clone (about 1.4 GB) and Godot's import cache
+            # (about 0.6 GB) of the game's main on 2026-11-09.
+            - name: work
+              emptyDir:
+                sizeLimit: 6Gi
+            # The bench scripts keep each Godot run's log here.
+            - name: tmp
+              emptyDir:
+                sizeLimit: 2Gi
+            - name: results
+              persistentVolumeClaim:
+                claimName: survivorlike-bench-results
+            - name: deploy-key
+              secret:
+                secretName: game-deploy-key
+                defaultMode: 0440
+---
+# Holds every run's results until someone deletes them. The reader below keeps
+# it bound: with WaitForFirstConsumer and no pod, the claim would stay Pending
+# and Flux's wait would hold the apps Kustomization.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: survivorlike-bench-results
+  namespace: survivorlike-bench
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 20Gi
+---
+# A pod to fetch and delete results from after the Job's pod is gone:
+# `kubectl cp` needs a running container with tar. It holds no secret and has
+# no egress. Both pods share the RWO claim, which is one node, not one pod.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: results
+  namespace: survivorlike-bench
+  labels:
+    app: survivorlike-bench-results
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: survivorlike-bench-results
+  template:
+    metadata:
+      labels:
+        app: survivorlike-bench-results
+      annotations:
+        backup.velero.io/backup-volumes-excludes: results
+    spec:
+      priorityClassName: rechenzentrum-bulk
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: results
+          image: busybox:1.38@sha256:a46257e06c82ad85242d0d38077d0a52d9896389ca60a1a59d3463db586e5fa4
+          command: ["sleep", "2147483647"]
+          resources:
+            requests:
+              cpu: 5m
+              memory: 8Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: results
+              mountPath: /results
+      volumes:
+        - name: results
+          persistentVolumeClaim:
+            claimName: survivorlike-bench-results
+---
+# One bench at a time. A second Job's pod is refused until the first ends
+# (the Job controller retries it), so two queues started by mistake cannot
+# take twice the memory. Each value is one bench pod (2 / 4 cores, 4 / 6 GiB)
+# plus the reader (5m / 100m, 8 / 64 MiB) plus a little slack, and below two
+# bench pods.
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: one-bench-at-a-time
+  namespace: survivorlike-bench
+spec:
+  hard:
+    requests.cpu: 2200m
+    requests.memory: 4300Mi
+    limits.cpu: 4300m
+    limits.memory: 6400Mi
+---
+# The bench fetches the game from GitHub over ssh.github.com:443 and needs
+# nothing else. The except list is allow-internet-egress's: no pod or service
+# network, no LAN, no tailnet, no link-local. The reader gets no egress.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: bench-egress-github
+  namespace: survivorlike-bench
+spec:
+  podSelector:
+    matchLabels:
+      app: survivorlike-bench
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443

@@ -8,7 +8,7 @@
 # and needs glibc 2.43. Debian 13 has 2.41, and with an older glibc Godot does
 # not fail: it skips the library and the horde runs in GDScript, slower and
 # without any error. bench-job checks for that before the first run.
-FROM docker.io/library/ubuntu:26.04@sha256:6a06111c3b0a8600feadb270aec771dc239bf407b25625f93f44ab00e11f4d3c
+FROM docker.io/library/ubuntu:26.04@sha256:065aa8626841f16057b78b027b464cd59c4fac36c204c72dcbf48d66f5fa8a96
 
 # The version the game is developed on. Not tracked by Renovate: the engine
 # moves when the game moves, in a PR that changes both.

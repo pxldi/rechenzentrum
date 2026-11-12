@@ -95,7 +95,21 @@ spec:
       # running agent keeps its heartbeat fresh, so only dead ones age out, and
       # only once max_age has flushed their alerts: the LAPI keeps any machine
       # that still owns an alert.
+      # This value replaces the chart's default config.yaml.local, which
+      # carries auto_registration. Without that block the LAPI registers the
+      # agent but never validates it (#532 broke this way), so it is copied
+      # from chart 0.24.3's values.yaml.
       config.yaml.local: |
+        api:
+          server:
+            auto_registration:
+              enabled: true
+              token: "${REGISTRATION_TOKEN}"
+              allowed_ranges:
+                - "127.0.0.1/32"
+                - "192.168.0.0/16"
+                - "10.0.0.0/8"
+                - "172.16.0.0/12"
         db_config:
           flush:
             max_items: 5000

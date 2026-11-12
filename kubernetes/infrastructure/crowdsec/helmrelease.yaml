@@ -49,6 +49,36 @@ spec:
     remediation:
       retries: 3
 
+  # The chart registers the agent under its pod name. A pod that survives a
+  # node reboot keeps that name, the LAPI answers 403 "user already exist", and
+  # the init container crash-loops until someone deletes the pod (2026-11-10 to
+  # 2026-11-12). A timestamp suffix makes every registration a new machine;
+  # agents_autodelete below removes the old ones.
+  postRenderers:
+    - kustomize:
+        patches:
+          - target:
+              kind: Deployment
+              name: crowdsec-agent
+            patch: |
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: crowdsec-agent
+              spec:
+                template:
+                  spec:
+                    initContainers:
+                      - name: wait-for-lapi-and-register
+                        command:
+                          - sh
+                          - -c
+                          - >-
+                            until nc "$LAPI_HOST" "$LAPI_PORT" -z; do echo waiting for lapi to start; sleep 5; done;
+                            ln -s /staging/etc/crowdsec /etc/crowdsec &&
+                            cscli lapi register --machine "$USERNAME-$(date +%s)" -u "$LAPI_URL" --token "$REGISTRATION_TOKEN" &&
+                            cp /etc/crowdsec/local_api_credentials.yaml /tmp_config/local_api_credentials.yaml
+
   values:
     # The chart's default mounts /var/lib/docker/containers from the host even
     # when the agent is a Deployment. containerd mounts nothing.
@@ -61,6 +91,17 @@ spec:
     config:
       simulation.yaml: |
         simulation: false
+      # Every agent start registers a new machine (see postRenderers). A
+      # running agent keeps its heartbeat fresh, so only dead ones age out, and
+      # only once max_age has flushed their alerts: the LAPI keeps any machine
+      # that still owns an alert.
+      config.yaml.local: |
+        db_config:
+          flush:
+            max_items: 5000
+            max_age: 7d
+            agents_autodelete:
+              login_password: 72h
       parsers:
         s02-enrich:
           # The image's own whitelist covers the private ranges: the LAN, pods,

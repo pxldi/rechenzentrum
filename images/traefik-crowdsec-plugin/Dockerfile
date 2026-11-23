@@ -7,7 +7,7 @@
 # included. This image carries the source at a pinned commit instead; an init
 # container copies it into an emptyDir that Traefik loads as a local plugin, and
 # the image itself sits in the node's containerd cache.
-FROM docker.io/alpine/git:v2.54.1@sha256:2306e2b05ee0ef99f5d25b0779f645b24ae9f91ba187107503592fcdfe78da3a AS src
+FROM docker.io/alpine/git:v2.54.1@sha256:29cff25811f790b9f72fc266bf8009a5a911714c0e03c31c47339c50909d9aef AS src
 ARG PLUGIN_TAG=v1.7.1
 ARG PLUGIN_COMMIT=bef5dfaadbb07381af02ec4e7391e49214ebf953
 RUN git clone --quiet --depth 1 --branch "$PLUGIN_TAG" \

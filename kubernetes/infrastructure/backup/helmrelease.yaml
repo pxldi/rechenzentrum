@@ -82,10 +82,17 @@ spec:
           cpu: 100m
 
     # Velero server resources
+    #
+    # The limit is a guard. On 2026-11-24 the server held 7.9 GiB while it
+    # retried the same failing deletions of expired backups every hour. Kopia
+    # uploads run in the node-agent, so an OOM kill here restarts the
+    # controller and does not cut a volume backup short.
     resources:
       requests:
-        memory: 128Mi
+        memory: 256Mi
         cpu: 100m
+      limits:
+        memory: 2Gi
 
     # Init containers for plugins
     initContainers:

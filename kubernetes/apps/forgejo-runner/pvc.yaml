@@ -1,6 +1,6 @@
-# The runner's registration file and the Docker daemon's image and build cache.
-# Nothing here needs a backup: a lost registration is re-made from the token in
-# secret.yaml, and images are pulled again. No Velero annotation on purpose.
+# The Actions cache and the Docker daemon's image and build cache. Nothing here
+# needs a backup: the runner's identity is in secret.yaml, and images are
+# pulled again. No Velero annotation on purpose.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

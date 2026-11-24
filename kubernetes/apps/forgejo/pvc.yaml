@@ -1,0 +1,15 @@
+# Repositories, LFS objects, attachments and avatars. The accounts, issues and
+# settings are in Postgres (kubernetes/databases/forgejo), which barman archives
+# to B2. Velero copies this volume.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: forgejo-data
+  namespace: forgejo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 20Gi

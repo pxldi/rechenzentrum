@@ -43,6 +43,7 @@ Every application namespace except the two at the end of this section.
 | `monitoring` | internet, cluster, Traefik | Gatus checks public apps on their public names and house-only apps on their Services |
 | `nextcloud` | own namespace, internet, Traefik | Postgres and Redis here; app updates; its own public name |
 | `obsidian-sync` | nothing | CouchDB, single node, clients connect inbound |
+| `forgejo` | own namespace, internet, API server | Postgres here; barman ships WAL to B2; webhooks and mirrors |
 | `ollama` | internet | Pulls models on demand |
 | `palworld` | internet | Server list and updates |
 | `paperless` | own namespace, internet, Traefik | Postgres, Redis, Gotenberg and Tika here |

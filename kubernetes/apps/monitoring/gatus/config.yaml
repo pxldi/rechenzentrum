@@ -193,6 +193,12 @@ endpoints:
     <<: *house
     conditions:
       - "[STATUS] == 200"
+  - name: Forgejo
+    group: house
+    url: http://forgejo.forgejo.svc.cluster.local:3000/api/healthz
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
   - name: Excalidraw
     group: house
     url: http://excalidraw.excalidraw.svc.cluster.local:80/

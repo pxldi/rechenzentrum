@@ -23,6 +23,7 @@ resources:
   - claudebox
   - minecraft
   - excalidraw
+  - forgejo
   - karakeep
   - opengym
   - chatops

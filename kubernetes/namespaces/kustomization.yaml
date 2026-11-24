@@ -5,6 +5,7 @@ resources:
   - chatops.yaml
   - claudebox.yaml
   - excalidraw.yaml
+  - forgejo.yaml
   - fredy.yaml
   - gotify.yaml
   - grimmory.yaml

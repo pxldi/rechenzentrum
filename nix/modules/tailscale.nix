@@ -15,6 +15,12 @@
     # a router. "server" would enable IP forwarding, which this node does not
     # need and which interacts with flannel in ways not worth inviting.
     useRoutingFeatures = "client";
+    # A tailnet request to Traefik's externalIP is DNATed to the pod and then
+    # forwarded from tailscale0 to cni0. Tailscale marks every packet forwarded
+    # from tailscale0 and masquerades it in ts-postrouting, so Traefik saw
+    # 10.42.0.1 and `internal-only` refused every tailnet client. This node
+    # advertises no subnet routes, so the masquerade had nothing to do here.
+    extraSetFlags = [ "--snat-subnet-routes=false" ];
   };
 
   # Split DNS for the tailnet. The house-only routes (the `internal-only`

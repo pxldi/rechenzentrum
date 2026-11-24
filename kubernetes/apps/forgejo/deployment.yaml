@@ -95,11 +95,10 @@ spec:
                 secretKeyRef:
                   name: forgejo-app
                   key: LFS_JWT_SECRET
-            # Open on purpose for the first start: the first account to
-            # register becomes the admin, and the route is house only. Set this
-            # to "true" in the PR that follows the first login.
+            # The admin registered on the first start. New accounts come from
+            # the admin panel only.
             - name: FORGEJO__service__DISABLE_REGISTRATION
-              value: "false"
+              value: "true"
             - name: FORGEJO__service__REQUIRE_SIGNIN_VIEW
               value: "true"
             - name: FORGEJO__actions__ENABLED

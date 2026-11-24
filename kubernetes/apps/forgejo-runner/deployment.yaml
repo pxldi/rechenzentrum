@@ -102,10 +102,16 @@ spec:
         - name: dind
           image: docker.io/library/docker:29.9.3-dind@sha256:7bf70dcb85c822e3fa6f2d332143e474b99147b9d7b39102b0cfe8b04a7dd61b
           imagePullPolicy: IfNotPresent
+          # Not the image's dockerd-entrypoint.sh: with TLS off it adds
+          # tcp://0.0.0.0:2375 on its own, which collides with the loopback
+          # listener below. `dind` is the image's cgroup setup wrapper.
+          command: [dind, dockerd]
           args:
             # Loopback only: the runner is in the same pod, and nothing else
             # should ever reach an unauthenticated Docker API.
             - --host=tcp://127.0.0.1:2375
+            # Says so explicitly; without it dockerd stalls its start to warn.
+            - --tls=false
             # flannel's MTU. Docker's default of 1500 stalls large downloads
             # inside job containers.
             - --mtu=1450

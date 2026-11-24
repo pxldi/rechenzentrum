@@ -1,0 +1,32 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: forgejo-runner
+configMapGenerator:
+  - name: runner-config
+    files:
+      - config.yaml
+resources:
+  - secret.yaml
+  - pvc.yaml
+  - deployment.yaml
+components:
+  # Egress: the internet only. Forgejo is reached by its public name through
+  # the router (see deployment.yaml), image registries and package mirrors are
+  # public, and nothing in the house or the cluster is reachable from a job.
+  # No allow-dns: the pod asks public resolvers directly.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-internet-egress
+  # Ingress: nothing. The runner polls Forgejo; nobody connects to it.
+  - ../../infrastructure-config/networkpolicies/default-deny-ingress
+
+# Resource metadata only: preserve existing Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: forgejo-runner
+      app.kubernetes.io/instance: forgejo-runner
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

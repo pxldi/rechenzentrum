@@ -1,0 +1,21 @@
+# forgejo-runner daemon configuration. Labels come from the registration in
+# deployment.yaml and are stored in /data/.runner.
+log:
+  level: info
+runner:
+  file: /data/.runner
+  # One job at a time. Two would compete for the node with everything else.
+  capacity: 1
+  timeout: 3h
+  fetch_timeout: 5s
+  fetch_interval: 5s
+cache:
+  enabled: true
+  dir: /data/cache
+container:
+  # Jobs get their own bridge network per run inside the pod's daemon.
+  network: ""
+  privileged: false
+  # Do not hand the daemon's socket to job containers.
+  docker_host: "-"
+  valid_volumes: []

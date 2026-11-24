@@ -24,6 +24,7 @@ resources:
   - minecraft
   - excalidraw
   - forgejo
+  - forgejo-runner
   - karakeep
   - opengym
   - chatops

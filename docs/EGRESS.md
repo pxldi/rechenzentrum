@@ -44,6 +44,7 @@ Every application namespace except the two at the end of this section.
 | `nextcloud` | own namespace, internet, Traefik | Postgres and Redis here; app updates; its own public name |
 | `obsidian-sync` | nothing | CouchDB, single node, clients connect inbound |
 | `forgejo` | own namespace, internet, API server | Postgres here; barman ships WAL to B2; webhooks and mirrors |
+| `forgejo-runner` | internet | Image pulls and package mirrors for Actions jobs; Forgejo by its public name through the router. Public DNS only |
 | `ollama` | internet | Pulls models on demand |
 | `palworld` | internet | Server list and updates |
 | `paperless` | own namespace, internet, Traefik | Postgres, Redis, Gotenberg and Tika here |

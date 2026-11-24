@@ -6,6 +6,7 @@ resources:
   - claudebox.yaml
   - excalidraw.yaml
   - forgejo.yaml
+  - forgejo-runner.yaml
   - fredy.yaml
   - gotify.yaml
   - grimmory.yaml

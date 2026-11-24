@@ -38,6 +38,9 @@
   "apps/v1/Deployment/flux-system/source-controller": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/forgejo-runner/forgejo-runner": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/forgejo/forgejo": {
     "kind": "Deployment"
   },
@@ -253,6 +256,9 @@
   "v1/Namespace//forgejo": {
     "kind": "Namespace"
   },
+  "v1/Namespace//forgejo-runner": {
+    "kind": "Namespace"
+  },
   "v1/Namespace//fredy": {
     "kind": "Namespace"
   },
@@ -348,6 +354,10 @@
   "v1/PersistentVolumeClaim/claudebox/claudebox-data-pvc": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "e0f1c01c78cf03ca1fce2ae9ed978deaefd670efb009209ae8217da540fbabcd"
+  },
+  "v1/PersistentVolumeClaim/forgejo-runner/runner-data": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "733cb5e48806feb3ec25ed06f1630d0f5159f42d6c1ebcf215948c3a31a31c4b"
   },
   "v1/PersistentVolumeClaim/forgejo/forgejo-data": {
     "kind": "PersistentVolumeClaim",

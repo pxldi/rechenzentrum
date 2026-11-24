@@ -26,6 +26,7 @@
 # the Flux build plus every HelmRelease rendered with its own values:
 #
 #   privileged      device-plugins  generic-device-plugin hands /dev/dri to pods
+#                   forgejo-runner  dind: the Docker daemon the Actions jobs run on
 #                   home-assistant  otbr (Thread border router: radio, tun, nft)
 #                   openebs         localpv helper pods create and wipe volume dirs
 #   hostPath        device-plugins  /dev, kubelet device-plugin socket
@@ -62,7 +63,7 @@ spec:
         resources: [pods, pods/ephemeralcontainers]
   variables:
     - name: privilegedNamespaces
-      expression: "['device-plugins', 'home-assistant', 'openebs']"
+      expression: "['device-plugins', 'forgejo-runner', 'home-assistant', 'openebs']"
     - name: hostPathNamespaces
       expression: "['device-plugins', 'home-assistant', 'openebs', 'observability', 'velero', 'falco']"
     - name: hostNamespaceNamespaces

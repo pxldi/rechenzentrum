@@ -53,6 +53,7 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | media | Deployment/slskd | Recreate | slskd-config-pvc, downloads-pvc, cantus-music-pvc | yes |
 | media | Deployment/sonarr | Recreate | sonarr-config-pvc, downloads-pvc, media-pvc | yes |
 | forgejo | Deployment/forgejo | Recreate | forgejo-data | yes |
+| forgejo-runner | Deployment/forgejo-runner | Recreate | runner-data | yes |
 | monitoring | Deployment/gatus | RollingUpdate | none | yes |
 | opengym | Deployment/opengym | Recreate | opengym-data, opengym-media | yes |
 | planka | Deployment/planka | Recreate | planka-data | yes |

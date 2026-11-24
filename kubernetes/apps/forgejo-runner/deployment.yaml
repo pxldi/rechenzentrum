@@ -1,0 +1,144 @@
+# Forgejo Actions runner with its own Docker daemon. Every job runs in a fresh
+# container on that daemon; the daemon is the one privileged container.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forgejo-runner
+  namespace: forgejo-runner
+  labels:
+    app: forgejo-runner
+spec:
+  replicas: 1
+  # runner-data is RWO and holds the registration; two runners on one
+  # registration would both claim jobs.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: forgejo-runner
+  template:
+    metadata:
+      labels:
+        app: forgejo-runner
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      # Public resolvers only, for the runner and (via --dns below) for every
+      # job. A cluster or house resolver can answer git.pxldi.de with the
+      # node's address; that path reaches Traefik with the pod's address and
+      # internal-only answers 403. The public answer goes out through the
+      # router and back in as a LAN address, which internal-only accepts.
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+          - 9.9.9.9
+          - 149.112.112.112
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: runner
+          image: code.forgejo.org/forgejo/runner:13.2.2@sha256:a8543a45fe62bebef0534d5c223cf485d3294e6dd2e42a82dbcbfd40c54a6a22
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              # Registers once; the result lives on the volume. Delete
+              # /data/.runner to register again with a new token.
+              if [ ! -s /data/.runner ]; then
+                forgejo-runner register --no-interactive \
+                  --instance https://git.pxldi.de \
+                  --token "$REGISTRATION_TOKEN" \
+                  --name rechenzentrum \
+                  --labels "ubuntu-latest:docker://ghcr.io/catthehacker/ubuntu:act-24.04,ubuntu-24.04:docker://ghcr.io/catthehacker/ubuntu:act-24.04" \
+                  --config /config/config.yaml
+              fi
+              until wget -q -O /dev/null http://127.0.0.1:2375/_ping; do
+                echo "waiting for the docker daemon"; sleep 2
+              done
+              exec forgejo-runner daemon --config /config/config.yaml
+          env:
+            - name: DOCKER_HOST
+              value: tcp://127.0.0.1:2375
+            - name: REGISTRATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: forgejo-runner
+                  key: REGISTRATION_TOKEN
+          workingDir: /data
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              subPath: runner
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+        - name: dind
+          image: docker.io/library/docker:29.9.3-dind@sha256:7bf70dcb85c822e3fa6f2d332143e474b99147b9d7b39102b0cfe8b04a7dd61b
+          imagePullPolicy: IfNotPresent
+          args:
+            # Loopback only: the runner is in the same pod, and nothing else
+            # should ever reach an unauthenticated Docker API.
+            - --host=tcp://127.0.0.1:2375
+            # flannel's MTU. Docker's default of 1500 stalls large downloads
+            # inside job containers.
+            - --mtu=1450
+            - --dns=9.9.9.9
+            - --dns=149.112.112.112
+          env:
+            # No TLS: the API listens on loopback only.
+            - name: DOCKER_TLS_CERTDIR
+              value: ""
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/docker
+              subPath: docker
+          startupProbe:
+            exec:
+              command: [docker, -H, tcp://127.0.0.1:2375, info]
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            exec:
+              command: [docker, -H, tcp://127.0.0.1:2375, info]
+            periodSeconds: 60
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            # Jobs run inside this container, so this is the cap for a build.
+            limits:
+              memory: 4Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: runner-data
+        - name: config
+          configMap:
+            name: runner-config
+        - name: tmp
+          emptyDir: {}

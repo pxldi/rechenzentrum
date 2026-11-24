@@ -1,0 +1,15 @@
+# The runner's registration file and the Docker daemon's image and build cache.
+# Nothing here needs a backup: a lost registration is re-made from the token in
+# secret.yaml, and images are pulled again. No Velero annotation on purpose.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: runner-data
+  namespace: forgejo-runner
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 50Gi

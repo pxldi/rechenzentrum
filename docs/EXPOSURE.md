@@ -34,6 +34,10 @@ as it always did for every app without such a route. They were removed on
 - **Planka** (`todo.pxldi.de`) is Authentik-only for the same two people and
   binds the same `survivorlike-viewers` group. Planka keeps its own accounts
   behind the gate, because its free edition has no OIDC since 2.2.0.
+- **Forgejo** (`git.pxldi.de`) is LAN/tailnet only, with no forward-auth. Git
+  clients and Actions runners cannot follow a login redirect, so Forgejo keeps
+  its own login behind `internal-only`. Do not open it to the internet while
+  runners can execute workflow code.
 - **Karakeep** (`links.pxldi.de`) stays Authentik-only, through Karakeep's own
   OIDC login rather than forward-auth: its password form is off, and the browser
   extension and phone apps send bearer tokens to `/api`, which a forward-auth
@@ -141,6 +145,7 @@ is on Tailscale" is not an answer on its own.
 | snacky | `snacky.pxldi.de` | Authentik | authentik-forward-auth |
 | media | `sonarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | survivorlike | `assets.pxldi.de` | Authentik | authentik-forward-auth |
+| forgejo | `git.pxldi.de` | LAN/tailnet | internal-only |
 | planka | `todo.pxldi.de` | Authentik | authentik-forward-auth |
 | traefik | `traefik.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | adventurelog | `travel-admin.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |

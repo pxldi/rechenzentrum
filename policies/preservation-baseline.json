@@ -38,6 +38,9 @@
   "apps/v1/Deployment/flux-system/source-controller": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/forgejo/forgejo": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/fredy/fredy": {
     "kind": "Deployment"
   },
@@ -188,6 +191,10 @@
   "helm.toolkit.fluxcd.io/v2/HelmRelease/velero/velero-ui": {
     "kind": "HelmRelease"
   },
+  "postgresql.cnpg.io/v1/Cluster/forgejo/forgejo-postgresql": {
+    "kind": "Cluster",
+    "spec_sha256": "b0f290538077e38128aedda665930e32ae77d82d19938bf310d5caeeeab95338"
+  },
   "postgresql.cnpg.io/v1/Cluster/immich/immich-postgresql": {
     "kind": "Cluster",
     "spec_sha256": "92966a3c293a2a804079657bca480c3f871da193e3db54c77a1061879b7b6368"
@@ -241,6 +248,9 @@
     "kind": "Namespace"
   },
   "v1/Namespace//flux-system": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//forgejo": {
     "kind": "Namespace"
   },
   "v1/Namespace//fredy": {
@@ -338,6 +348,10 @@
   "v1/PersistentVolumeClaim/claudebox/claudebox-data-pvc": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "e0f1c01c78cf03ca1fce2ae9ed978deaefd670efb009209ae8217da540fbabcd"
+  },
+  "v1/PersistentVolumeClaim/forgejo/forgejo-data": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "96093a8145a2ec319c79a32d855e7f209747dc092a63846f3d7dd93e988714c4"
   },
   "v1/PersistentVolumeClaim/fredy/fredy-config": {
     "kind": "PersistentVolumeClaim",

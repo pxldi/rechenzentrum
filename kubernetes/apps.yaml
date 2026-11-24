@@ -29,6 +29,7 @@ spec:
     - name: database-immich
     - name: database-tandoor
     - name: database-planka
+    - name: database-forgejo
   decryption:
     provider: sops
     secretRef:

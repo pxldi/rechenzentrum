@@ -9,4 +9,5 @@ resources:
   - database-immich.yaml
   - database-cantus.yaml
   - database-planka.yaml
+  - database-forgejo.yaml
   - namespaces.yaml

@@ -47,28 +47,30 @@ spec:
             - -c
             - |
               set -e
-              # Registers once; the result lives on the volume. Delete
-              # /data/.runner to register again with a new token.
-              if [ ! -s /data/.runner ]; then
-                forgejo-runner register --no-interactive \
-                  --instance https://git.pxldi.de \
-                  --token "$REGISTRATION_TOKEN" \
-                  --name rechenzentrum \
-                  --labels "ubuntu-latest:docker://ghcr.io/catthehacker/ubuntu:act-24.04,ubuntu-24.04:docker://ghcr.io/catthehacker/ubuntu:act-24.04" \
-                  --config /config/config.yaml
-              fi
+              # Forgejo creates the runner (Site administration, Actions,
+              # Runners) and hands out a UUID and a token; there is no register
+              # step. The token is read from the mounted Secret file.
+              cp /config/config.yaml /tmp/config.yaml
+              cat >> /tmp/config.yaml <<EOF
+              server:
+                connections:
+                  forgejo:
+                    url: https://git.pxldi.de/
+                    uuid: ${RUNNER_UUID}
+                    token_url: file:/credentials/token.txt
+              EOF
               until wget -q -O /dev/null http://127.0.0.1:2375/_ping; do
                 echo "waiting for the docker daemon"; sleep 2
               done
-              exec forgejo-runner daemon --config /config/config.yaml
+              exec forgejo-runner daemon --config /tmp/config.yaml
           env:
             - name: DOCKER_HOST
               value: tcp://127.0.0.1:2375
-            - name: REGISTRATION_TOKEN
+            - name: RUNNER_UUID
               valueFrom:
                 secretKeyRef:
                   name: forgejo-runner
-                  key: REGISTRATION_TOKEN
+                  key: RUNNER_UUID
           workingDir: /data
           securityContext:
             runAsNonRoot: true
@@ -85,6 +87,9 @@ spec:
               subPath: runner
             - name: config
               mountPath: /config
+              readOnly: true
+            - name: credentials
+              mountPath: /credentials
               readOnly: true
             - name: tmp
               mountPath: /tmp
@@ -140,5 +145,12 @@ spec:
         - name: config
           configMap:
             name: runner-config
+        - name: credentials
+          secret:
+            secretName: forgejo-runner
+            items:
+              - key: token.txt
+                path: token.txt
+            defaultMode: 0440
         - name: tmp
           emptyDir: {}

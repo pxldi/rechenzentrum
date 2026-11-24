@@ -6,7 +6,10 @@ metadata:
   labels:
     app: ollama
 spec:
-  replicas: 1
+  # Off since 2026-11-24 to free about 2.3 GiB for Forgejo and its runners.
+  # The model volume stays, so setting this back to 1 brings tagging and
+  # search vectors back without a download.
+  replicas: 0
   strategy:
     type: Recreate
   selector:

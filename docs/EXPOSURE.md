@@ -127,7 +127,7 @@ is on Tailscale" is not an answer on its own.
 | observability | `grafana.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | home-assistant | `home.pxldi.de` | public | none |
 | fredy | `immo.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| media | `holyarrs.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| media | `watch.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `jellyfin.pxldi.de` | public | none |
 | karakeep | `links.pxldi.de` | public | none |
 | opengym | `gym.pxldi.de` | public | none |

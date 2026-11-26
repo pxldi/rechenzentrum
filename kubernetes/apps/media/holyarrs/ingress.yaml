@@ -10,7 +10,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`holyarrs.pxldi.de`)
+    - match: Host(`watch.pxldi.de`)
       kind: Rule
       middlewares:
         - name: internal-only

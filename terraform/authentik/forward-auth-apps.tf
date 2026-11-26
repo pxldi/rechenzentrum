@@ -25,7 +25,7 @@ locals {
     }
     holyarrs = {
       name        = "HolyArrs"
-      host        = "holyarrs.${var.domain}"
+      host        = "watch.${var.domain}"
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/holyarrs.png"
       description = "Movies, TV and Music Management"
     }

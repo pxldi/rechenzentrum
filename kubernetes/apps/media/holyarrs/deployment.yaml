@@ -21,6 +21,10 @@ spec:
       annotations:
         backup.velero.io/backup-volumes-excludes: "media,downloads,tmp"
     spec:
+      # The Service is also named holyarrs, so Kubernetes would inject
+      # HOLYARRS_PORT=tcp://<ip>:6262. HolyArrs reads that variable as its
+      # listen port and exits.
+      enableServiceLinks: false
       # 568 is the user the TrueCharts *arr pods and SABnzbd write as, so files
       # HolyArrs moves into the library keep the owner Radarr and Sonarr expect.
       # With runAsUser set the image ignores PUID and PGID.

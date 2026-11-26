@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: holyarrs
+  namespace: media
+  labels:
+    app: holyarrs
+spec:
+  replicas: 1
+  # One writer on the config database, and the library and downloads claims
+  # are shared with the other *arr apps.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: holyarrs
+  template:
+    metadata:
+      labels:
+        app: holyarrs
+      annotations:
+        backup.velero.io/backup-volumes-excludes: "media,downloads,tmp"
+    spec:
+      # 568 is the user the TrueCharts *arr pods and SABnzbd write as, so files
+      # HolyArrs moves into the library keep the owner Radarr and Sonarr expect.
+      # With runAsUser set the image ignores PUID and PGID.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
+        # The library is 4Ti. Without this every start would walk it to fix
+        # group ownership that is already right.
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: holyarrs
+          image: docker.io/holyarrs/holyarrs:1.3.1
+          ports:
+            - containerPort: 6262
+              name: http
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            - name: UMASK
+              value: "002"
+          securityContext:
+            allowPrivilegeEscalation: false
+            # The README documents a read-only mode where only /config and
+            # /tmp are written.
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          # The image's own Docker HEALTHCHECK. Kubernetes ignores that field,
+          # so it is repeated here.
+          startupProbe:
+            exec:
+              command: ["/holyarrs", "-healthcheck"]
+            periodSeconds: 10
+            failureThreshold: 30
+            timeoutSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["/holyarrs", "-healthcheck"]
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command: ["/holyarrs", "-healthcheck"]
+            periodSeconds: 15
+            timeoutSeconds: 10
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            # Same paths Radarr and Sonarr use, so an import from them keeps
+            # every root folder and download path as it is.
+            - name: media
+              mountPath: /media
+            - name: downloads
+              mountPath: /downloads
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            # The README measures about 140 MiB with 55,000 items. The node
+            # is short on memory, so a leak stops here.
+            limits:
+              memory: "768Mi"
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: holyarrs-config-pvc
+        - name: media
+          persistentVolumeClaim:
+            claimName: media-pvc
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: downloads-pvc
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi

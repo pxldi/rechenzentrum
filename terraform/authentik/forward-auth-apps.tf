@@ -23,6 +23,12 @@ locals {
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/prowlarr.png"
       description = "Indexer Management"
     }
+    holyarrs = {
+      name        = "HolyArrs"
+      host        = "holyarrs.${var.domain}"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/holyarrs.png"
+      description = "Movies, TV and Music Management"
+    }
     sabnzbd = {
       name        = "SABnzbd"
       host        = "sabnzbd.${var.domain}"

@@ -154,6 +154,13 @@ endpoints:
     <<: *house
     conditions:
       - "[STATUS] == 200"
+  - name: HolyArrs
+    group: house
+    url: http://holyarrs.media.svc.cluster.local:6262/
+    <<: *house
+    conditions:
+      - "[CONNECTED] == true"
+      - "[STATUS] < 400"
   - name: SABnzbd
     group: house
     url: http://sabnzbd.media.svc.cluster.local:10097/

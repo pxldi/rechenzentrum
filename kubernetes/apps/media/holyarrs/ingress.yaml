@@ -1,0 +1,22 @@
+---
+# HolyArrs makes the first visitor its owner and has no default password, so
+# the route is house-only and behind Authentik from the first deploy.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: holyarrs
+  namespace: media
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`holyarrs.pxldi.de`)
+      kind: Rule
+      middlewares:
+        - name: internal-only
+          namespace: traefik
+        - name: authentik-forward-auth
+          namespace: traefik
+      services:
+        - name: holyarrs
+          port: 6262

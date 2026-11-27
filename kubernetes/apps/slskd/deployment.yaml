@@ -125,6 +125,17 @@ spec:
       containers:
         - name: slskd
           image: slskd/slskd:0.26.2
+          # Global upload cap. slskd uploaded 172 GB in the 30 days to
+          # 2026-11-27 over a shared house Wi-Fi: the group limits (50 + 25
+          # KiB/s) running all day. 25 KiB/s caps a month at about 65 GB.
+          # Flags because they override slskd.yml and remote configuration,
+          # which env vars do not.
+          args:
+            - ./slskd
+            - --upload-slots
+            - "2"
+            - --upload-speed-limit
+            - "25"
           securityContext:
             runAsUser: 568
             runAsGroup: 568

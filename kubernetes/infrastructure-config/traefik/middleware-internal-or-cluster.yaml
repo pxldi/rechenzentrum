@@ -1,0 +1,26 @@
+---
+# internal-only plus the cluster's pod range, for websecure routes that pods
+# also call: Gatus checks these hosts through Traefik's Service, and apps
+# resolve auth.pxldi.de or their own name to the node half the time (CoreDNS
+# asks AdGuard, which rewrites them, or Quad9, which does not). internal-only
+# would refuse those requests, because their source is a pod.
+#
+# The pod range adds nothing reachable from outside. A packet from the
+# internet keeps its own source address here (externalTrafficPolicy: Local),
+# so it matches none of these ranges. The routes that carry this were open to
+# any source on websecure until 2026-11-27; their internet path is the tunnel
+# entrypoint, on separate routers without an allowlist.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: internal-or-cluster
+  namespace: traefik
+spec:
+  ipAllowList:
+    sourceRange:
+      # The LAN.
+      - 192.168.8.0/24
+      # The tailnet.
+      - 100.64.0.0/10
+      # Pods.
+      - 10.42.0.0/16

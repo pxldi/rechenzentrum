@@ -7,6 +7,25 @@ metadata:
 spec:
   entryPoints:
     - websecure
+  routes:
+    - match: Host(`branding.pxldi.de`)
+      kind: Rule
+      middlewares:
+        - name: internal-only
+          namespace: traefik
+      services:
+        - name: branding
+          port: 80
+---
+# The same routes on the Cloudflare Tunnel entrypoint, without the house
+# allowlist: the remote address there is a cloudflared pod.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: branding-tunnel
+  namespace: branding
+spec:
+  entryPoints:
     # The authentik login page loads its logo, wallpaper and fonts from here,
     # so it is on the tunnel wherever auth.pxldi.de is.
     - tunnel

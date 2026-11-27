@@ -11,6 +11,9 @@ spec:
     - kind: Rule
       match: Host(`obsidian.pxldi.de`)
       priority: 10
+      middlewares:
+        - name: internal-or-cluster
+          namespace: traefik
       services:
         - name: obsidian-sync
           port: 5984

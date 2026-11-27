@@ -11,6 +11,9 @@ spec:
     - kind: Rule
       match: Host(`recipes.pxldi.de`)
       priority: 10
+      middlewares:
+        - name: internal-or-cluster
+          namespace: traefik
       services:
         - name: tandoor
           port: 80

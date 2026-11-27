@@ -10,6 +10,9 @@ spec:
   routes:
     - match: Host(`music.pxldi.de`)
       kind: Rule
+      middlewares:
+        - name: internal-or-cluster
+          namespace: traefik
       services:
         - name: navidrome
           port: 4533

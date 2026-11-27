@@ -4,4 +4,5 @@ resources:
   - dashboard-ingress.yaml
   - middleware-authentik.yaml
   - middleware-internal-only.yaml
+  - middleware-internal-or-cluster.yaml
   - middleware-crowdsec.yaml

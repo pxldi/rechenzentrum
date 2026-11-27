@@ -24,6 +24,10 @@ spec:
   values:
     workload:
       main:
+        # Off since 2026-11-27: HolyArrs writes the library and downloads now.
+        # The release and radarr-config-pvc stay until HolyArrs has run on
+        # its own for two weeks.
+        replicas: 0
         podSpec:
           annotations:
             backup.velero.io/backup-volumes-excludes: "media,downloads"

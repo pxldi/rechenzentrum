@@ -22,6 +22,9 @@ spec:
     remediation:
       retries: 3
   values:
+    # Off since 2026-11-27: requests go through HolyArrs. seerr-config-pvc
+    # stays until HolyArrs has run on its own for two weeks.
+    replicaCount: 0
     image:
       repository: ghcr.io/seerr-team/seerr
       tag: "v3.5.2"

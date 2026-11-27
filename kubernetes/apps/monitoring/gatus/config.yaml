@@ -144,14 +144,6 @@ endpoints:
       Host: links.pxldi.de
     conditions:
       - "[STATUS] == 200"
-  - name: Seerr
-    group: public
-    url: https://traefik.traefik.svc.cluster.local/api/v1/status
-    <<: *via-traefik
-    headers:
-      Host: request.pxldi.de
-    conditions:
-      - "[STATUS] == 200"
   - name: openGym
     group: public
     url: https://traefik.traefik.svc.cluster.local/api/health
@@ -170,18 +162,6 @@ endpoints:
       - "[STATUS] < 300"
 
   # --- House-only, checked on the Service ---
-  - name: Sonarr
-    group: house
-    url: http://sonarr.media.svc.cluster.local:8989/ping
-    <<: *house
-    conditions:
-      - "[STATUS] == 200"
-  - name: Radarr
-    group: house
-    url: http://radarr.media.svc.cluster.local:7878/ping
-    <<: *house
-    conditions:
-      - "[STATUS] == 200"
   - name: Prowlarr
     group: house
     url: http://prowlarr.media.svc.cluster.local:9696/ping

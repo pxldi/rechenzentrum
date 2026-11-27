@@ -8,6 +8,7 @@
     ./modules/tailscale.nix
     ./modules/storage.nix
     ./modules/k3s.nix
+    ./modules/cluster-dns.nix
     ./modules/backup.nix
     ./modules/quiet.nix
     ./modules/otbr-host.nix

@@ -18,7 +18,7 @@ spec:
       labels:
         app: navidrome
       annotations:
-        backup.velero.io/backup-volumes-excludes: "music,aurral-downloads"
+        backup.velero.io/backup-volumes-excludes: "music,music-aurral"
     spec:
       securityContext:
         fsGroup: 1000
@@ -94,6 +94,10 @@ spec:
           volumeMounts:
             - name: music-soundcloud
               mountPath: /music-soundcloud
+            # Aurral writes this tree. Added in Navidrome as its own library.
+            - name: music-aurral
+              mountPath: /music-aurral
+              readOnly: true
             # Schall owns this tree and is its only writer; Navidrome reads it
             # and is told when it changes. Read-only so that stays true however
             # the player is configured.
@@ -122,6 +126,9 @@ spec:
         - name: music-soundcloud
           persistentVolumeClaim:
             claimName: soundcloud-music-pvc
+        - name: music-aurral
+          persistentVolumeClaim:
+            claimName: aurral-music-pvc
         - name: music
           persistentVolumeClaim:
             claimName: cantus-music-pvc

@@ -1,0 +1,22 @@
+---
+# Aurral makes the first account its admin, so the route is house-only and
+# behind Authentik from the first deploy.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: aurral
+  namespace: media
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`aurral.pxldi.de`)
+      kind: Rule
+      middlewares:
+        - name: internal-only
+          namespace: traefik
+        - name: authentik-forward-auth
+          namespace: traefik
+      services:
+        - name: aurral
+          port: 3001

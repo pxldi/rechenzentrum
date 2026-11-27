@@ -68,6 +68,9 @@
   "apps/v1/Deployment/karakeep/karakeep": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/media/aurral": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/media/holyarrs": {
     "kind": "Deployment"
   },
@@ -425,6 +428,14 @@
   "v1/PersistentVolumeClaim/karakeep/karakeep-data": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "eebe9bb88a2cb4d66748e587222cad199b9e934ad6034974e56eadb9c1230139"
+  },
+  "v1/PersistentVolumeClaim/media/aurral-config-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/media/aurral-music-pvc": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "d05b54c471896af2d8e25a2eff1e49258f0f5b8474e77ef1b40f35e76d52f70f"
   },
   "v1/PersistentVolumeClaim/media/cantus-music-pvc": {
     "kind": "PersistentVolumeClaim",

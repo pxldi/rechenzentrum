@@ -53,6 +53,12 @@ locals {
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/soulsync.png"
       description = "Music Discovery / Media Management & Soulseek Downloads"
     }
+    aurral = {
+      name        = "Aurral"
+      host        = "aurral.${var.domain}"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/aurral.png"
+      description = "Music Discovery & Requests"
+    }
     schall = {
       name        = "Schall"
       host        = "schall.${var.domain}"

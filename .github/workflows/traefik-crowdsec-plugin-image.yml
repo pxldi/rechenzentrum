@@ -27,30 +27,30 @@ env:
   SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
-  build:
-    if: vars.ENABLE_IMAGE_PUBLISH == 'true'
-    name: Build and push
+  # Both jobs run the same steps. A pull request gets `check` and a token that
+  # can only read, so code from a branch never holds packages: write or an OIDC
+  # token. The login, push and sign steps also test the event themselves.
+  check:
+    if: github.event_name == 'pull_request' && vars.ENABLE_IMAGE_PUBLISH == 'true'
+    name: Build and scan
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
-      # Keyless signing: cosign trades this token for a short-lived certificate.
-      id-token: write
-    steps:
+    steps: &build-steps
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Lint the Dockerfile
-        uses: hadolint/hadolint-action@v3.5.0
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387  # v3.5.0
         with:
           dockerfile: images/traefik-crowdsec-plugin/Dockerfile
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069  # v4.4.1
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v4
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -58,7 +58,7 @@ jobs:
 
       - name: Build and push
         id: build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc  # v7.4.0
         with:
           context: images/traefik-crowdsec-plugin
           platforms: linux/amd64
@@ -76,13 +76,13 @@ jobs:
       # job log; the second fails the build on a CRITICAL with a fix available.
       # An unfixed one does not fail, because no change here could clear it.
       - name: List high and critical vulnerabilities
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           image-ref: ${{ env.IMAGE }}:sha-${{ env.SHA }}
           severity: HIGH,CRITICAL
           format: table
       - name: Gate on fixable critical vulnerabilities
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
         with:
           image-ref: ${{ env.IMAGE }}:sha-${{ env.SHA }}
           severity: CRITICAL
@@ -93,7 +93,7 @@ jobs:
 
       - name: Install cosign
         if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@881c63bd87e38389154debd8331404ce7ca8a3ab # v4.1.4
+        uses: sigstore/cosign-installer@881c63bd87e38389154debd8331404ce7ca8a3ab  # v4.1.4
 
       # Keyless: the signature binds the pushed digest to this workflow in this
       # repository through GitHub's OIDC identity, so there is no key to keep.
@@ -118,3 +118,14 @@ jobs:
           test -f /tmp/plugin/bouncer.go
           test -d /tmp/plugin/vendor
           grep -q "import: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin" /tmp/plugin/.traefik.yml
+
+  publish:
+    if: github.event_name != 'pull_request' && vars.ENABLE_IMAGE_PUBLISH == 'true'
+    name: Build and push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      # Keyless signing: cosign trades this token for a short-lived certificate.
+      id-token: write
+    steps: *build-steps

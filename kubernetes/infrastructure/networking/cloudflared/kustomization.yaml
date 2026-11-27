@@ -6,3 +6,6 @@ resources:
   - secret.yaml
   - deployment.yaml
   - networkpolicy.yaml
+components:
+  - ../../../../components/default-deny-egress
+  - ../../../../components/allow-dns

@@ -57,6 +57,20 @@ spec:
       # Use node-agent (formerly restic) for volume backups
       uploaderType: kopia
 
+      # Kopia maintenance once a day per repository instead of Velero's hourly
+      # default. 42 repositories at hourly meant about a thousand maintenance
+      # pods a day, most for volumes backed up once a week. Velero writes this
+      # into a BackupRepository only when it creates one, so the repositories
+      # that existed before 2026-11-27 were patched to 24h by hand.
+      defaultRepoMaintainFrequency: 24h
+      # One finished maintenance pod per repository is enough to read the last
+      # run's log; the default of 3 left 126 Completed pods in velero.
+      repositoryMaintenanceJob:
+        repositoryConfigData:
+          name: velero-repo-maintenance
+          global:
+            keepLatestMaintenanceJobs: 1
+
     # Credentials for B2
     credentials:
       useSecret: true

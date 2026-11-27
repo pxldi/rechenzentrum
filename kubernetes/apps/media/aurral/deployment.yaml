@@ -1,0 +1,128 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aurral
+  namespace: media
+  labels:
+    app: aurral
+spec:
+  replicas: 1
+  # One writer on the SQLite database in /config.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: aurral
+  template:
+    metadata:
+      labels:
+        app: aurral
+      annotations:
+        backup.velero.io/backup-volumes-excludes: "library,music,downloads,tmp"
+    spec:
+      # The Service is named aurral, so Kubernetes would inject AURRAL_PORT and
+      # similar variables, and Aurral reads AURRAL_* variables as settings.
+      enableServiceLinks: false
+      # 568 is the user slskd and SABnzbd write as, so Aurral can move their
+      # completed files. The entrypoint switches user only when started as
+      # root; started as 568 it runs the server directly.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 568
+        runAsGroup: 568
+        fsGroup: 568
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: aurral
+          image: ghcr.io/lklynet/aurral:3.1.0@sha256:17d1f8ff2aaa3907d846c38b47eebdd44b10fbe00b2c993373a6da940ac2504f
+          ports:
+            - containerPort: 3001
+              name: http
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Berlin"
+            # No passwd entry exists for 568, so HOME would be /.
+            - name: HOME
+              value: /tmp
+            - name: AURRAL_DATA_DIR
+              value: /config
+            # Aurral's own claim, which Navidrome mounts as /music-aurral.
+            # Schall treats all of /music as its library, so Aurral does not
+            # write there.
+            - name: LIBRARY_FOLDER
+              value: /data/library
+            - name: FILE_BROWSE_ROOTS
+              value: "/data/library,/music,/downloads"
+            - name: AURRAL_PUBLIC_URL
+              value: "https://aurral.pxldi.de"
+            # The default is 2048, above the container limit below.
+            - name: AURRAL_WORKER_MAX_HEAP_MB
+              value: "768"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          startupProbe:
+            httpGet:
+              path: /api/health/live
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health/live
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health/live
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: library
+              mountPath: /data/library
+            # Schall's library, read-only, so Aurral knows what is already
+            # here and does not fetch it again.
+            - name: music
+              mountPath: /music
+              readOnly: true
+            # Same path as in slskd, so the paths slskd reports for completed
+            # downloads resolve here unchanged.
+            - name: downloads
+              mountPath: /downloads
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "50m"
+            # The node is short on memory, so a leak stops here.
+            limits:
+              memory: "1536Mi"
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: aurral-config-pvc
+        - name: library
+          persistentVolumeClaim:
+            claimName: aurral-music-pvc
+        - name: music
+          persistentVolumeClaim:
+            claimName: cantus-music-pvc
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: downloads-pvc
+        - name: tmp
+          emptyDir:
+            sizeLimit: 2Gi

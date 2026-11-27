@@ -8,8 +8,8 @@ sidecar. Both restores it depends on are verified (see [BACKUPS.md](BACKUPS.md))
 
 | Volume | PV directory | Mounted by | Reclaim |
 | --- | --- | --- | --- |
-| `downloads-pvc` (500Gi, hdd2) | `/mnt/hdd2/openebs/pvc-a9c8f61f-…` | cantus, slskd, sabnzbd, radarr, sonarr, holyarrs | Delete |
-| `cantus-music-pvc` (500Gi, hdd1) | `/mnt/hdd1/openebs/pvc-e9719f98-…` | cantus, navidrome, slskd | Delete |
+| `downloads-pvc` (500Gi, hdd2) | `/mnt/hdd2/openebs/pvc-a9c8f61f-…` | cantus, slskd, sabnzbd, radarr, sonarr, holyarrs, aurral | Delete |
+| `cantus-music-pvc` (500Gi, hdd1) | `/mnt/hdd1/openebs/pvc-e9719f98-…` | cantus, navidrome, slskd, aurral (read-only) | Delete |
 | `cantus-uploads-pvc` (50Gi, hdd1) | `/mnt/hdd1/openebs/pvc-a93a4df8-…` | cantus only | Delete |
 
 None of the three is in any Velero backup. The music library is 5.8 TB on the

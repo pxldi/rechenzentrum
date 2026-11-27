@@ -165,6 +165,7 @@ is on Tailscale" is not an answer on its own.
 
 | Namespace | Route | State | Middlewares |
 | --- | --- | --- | --- |
+| media | `aurral.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | authentik | `auth.pxldi.de` | public | none |
 | grimmory | `books.pxldi.de` | public | none |
 | branding | `branding.pxldi.de` | public | none |

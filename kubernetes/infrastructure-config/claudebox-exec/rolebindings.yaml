@@ -25,7 +25,7 @@
 #
 # CAVEAT, restated because it has not changed: `media` is not a single-app
 # namespace. It holds schall, but also jellyfin, sonarr, radarr, prowlarr,
-# holyarrs, sabnzbd, slskd, navidrome and seerr — and jellyfin runs privileged with a
+# holyarrs, aurral, sabnzbd, slskd, navidrome and seerr — and jellyfin runs privileged with a
 # hostPath at /dev/dri. This binding therefore grants exec into a privileged
 # pod, which is a route to root on the node.
 #

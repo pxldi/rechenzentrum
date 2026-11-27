@@ -13,6 +13,7 @@ resources:
   - navidrome
   - seerr
   - schall
+  - aurral
   - networkpolicy-egress-slskd.yaml
 components:
   # Egress. Nine workloads that talk to each other by Service name: the *arr

@@ -175,6 +175,13 @@ endpoints:
     conditions:
       - "[CONNECTED] == true"
       - "[STATUS] < 400"
+  - name: Aurral
+    group: house
+    url: http://aurral.media.svc.cluster.local:3001/api/health/live
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == ok"
   - name: SABnzbd
     group: house
     url: http://sabnzbd.media.svc.cluster.local:10097/

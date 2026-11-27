@@ -133,6 +133,38 @@ spec:
     requests:
       storage: 5Gi
 ---
+# Aurral's SQLite database, settings and users.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aurral-config-pvc
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Music Aurral fetches. Navidrome reads it as a second library.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aurral-music-pvc
+  namespace: media
+  labels:
+    # Downloaded audio that Aurral can fetch again. Navidrome rebuilds its
+    # index from the files.
+    backup.rechenzentrum.dev/reproducible: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-hdd1
+  resources:
+    requests:
+      storage: 200Gi
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

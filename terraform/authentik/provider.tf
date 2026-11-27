@@ -31,4 +31,10 @@ terraform {
 
 provider "authentik" {
   # Set via env: AUTHENTIK_URL, AUTHENTIK_TOKEN
+  #
+  # GitHub's runners sit outside the countries Cloudflare lets through. The
+  # zone's `OpenTF Action` rule skips that block only for /api/v3/ on
+  # auth.pxldi.de and only when this header carries the shared key, so the
+  # rule no longer opens the API path to every source (docs/EXPOSURE.md).
+  headers = var.waf_skip_key == "" ? {} : { "X-Tofu-Runner-Key" = var.waf_skip_key }
 }

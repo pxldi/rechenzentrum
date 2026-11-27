@@ -15,3 +15,10 @@ variable "karakeep_oidc_client_secret" {
   type        = string
   sensitive   = true
 }
+
+variable "waf_skip_key" {
+  description = "Value of the X-Tofu-Runner-Key header that Cloudflare's OpenTF Action rule requires before it skips the country block. Set via TF_VAR_waf_skip_key from the OPENTF_WAF_KEY secret; empty when run from inside the house."
+  type        = string
+  sensitive   = true
+  default     = ""
+}

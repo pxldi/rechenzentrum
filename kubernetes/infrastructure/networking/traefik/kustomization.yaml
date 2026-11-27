@@ -12,3 +12,4 @@ resources:
   - crowdsec-log-reader.yaml
   - traefik-api.yaml
   - traefik-tunnel.yaml
+  - networkpolicy.yaml

@@ -3,7 +3,7 @@
 # outbound tunnel instead.
 #
 # The tunnel is managed in the Cloudflare dashboard: its public hostnames
-# (cloud and photos only) and their CNAME records live there, not here. Each
+# (listed in docs/EXPOSURE.md) and their CNAME records live there, not here. Each
 # hostname points at http://traefik-tunnel.traefik.svc.cluster.local:8090, the
 # `tunnel` entrypoint, which only the routes meant to be public are bound to.
 # The zone also has a Transform Rule that drops client-sent X-Forwarded-For,

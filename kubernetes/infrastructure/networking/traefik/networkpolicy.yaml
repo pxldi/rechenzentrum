@@ -1,0 +1,91 @@
+---
+# Traefik's namespace had no NetworkPolicy, so every pod in the cluster could
+# reach every entrypoint. The one that matters is `tunnel` on 8090: it trusts
+# X-Forwarded-For from the pod range, so a pod reaching it directly could claim
+# any client address, including Anthropic's range on the MCP routes. Only
+# cloudflared may reach it now.
+#
+# Ports are the container ports. A policy matches after kube-proxy's DNAT, so
+# the LoadBalancer's 80 and 443 arrive here as 8000 and 8443.
+#
+# 8080 has no allowance on purpose. It serves only /ping for the kubelet's
+# probes, which come from the node, and kube-router always admits the node.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: traefik
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# web and websecure, from anywhere: LAN and tailnet clients arrive with their
+# own address (externalTrafficPolicy: Local), and pods reach Traefik for Gatus
+# checks and for apps that call a public name. UDP 8443 is HTTP/3.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-web
+  namespace: traefik
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8000
+        - protocol: TCP
+          port: 8443
+        - protocol: UDP
+          port: 8443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-tunnel-from-cloudflared
+  namespace: traefik
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cloudflared
+          podSelector:
+            matchLabels:
+              app: cloudflared
+      ports:
+        - protocol: TCP
+          port: 8090
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-metrics-from-observability
+  namespace: traefik
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 9100

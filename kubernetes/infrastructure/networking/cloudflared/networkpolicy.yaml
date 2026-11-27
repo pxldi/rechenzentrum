@@ -1,6 +1,7 @@
 ---
 # cloudflared only dials out: to Cloudflare's edge, and to Traefik's `tunnel`
-# entrypoint. Nothing in the cluster has a reason to connect to it.
+# entrypoint. Nothing in the cluster has a reason to connect to it. Its
+# kubelet probes come from the node, which kube-router always admits.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -10,3 +11,49 @@ spec:
   podSelector: {}
   policyTypes:
     - Ingress
+---
+# Egress is DNS (components/allow-dns), the edge and Traefik, nothing else.
+# The edge is 7844 over QUIC or, as fallback, TCP; 443 covers the API calls
+# cloudflared makes at start. NetworkPolicy cannot name Cloudflare's ranges by
+# hostname, so this is "the internet on those ports", with every house and
+# cluster range excluded as in components/allow-internet-egress.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-edge-and-traefik
+  namespace: cloudflared
+spec:
+  podSelector:
+    matchLabels:
+      app: cloudflared
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+      ports:
+        - protocol: UDP
+          port: 7844
+        - protocol: TCP
+          port: 7844
+        - protocol: TCP
+          port: 443
+    # The Traefik pod and its container port: an egress rule matches after
+    # DNAT, so the traefik-tunnel Service address would match nothing.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - protocol: TCP
+          port: 8090

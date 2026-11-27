@@ -240,7 +240,7 @@ spec:
         # its series with it and every expression returns nothing.
         - alert: RestoreTestMissing
           expr: |
-            count(kube_cronjob_created{cronjob=~"restore-test|restore-test-authentik-db"}) < 8
+            count(kube_cronjob_created{cronjob=~"restore-test|restore-test-authentik-db"}) < 9
             or absent(kube_cronjob_created{cronjob=~"restore-test|restore-test-authentik-db"})
           for: 1h
           labels:
@@ -249,7 +249,7 @@ spec:
             summary: "A weekly restore test CronJob is missing"
             description: >-
               Expected restore-test CronJobs in tandoor, media, immich, planka,
-              forgejo, anchor and velero-restore-test, and
+              forgejo, anchor, romm and velero-restore-test, and
               restore-test-authentik-db in velero-restore-test. If one was
               removed on purpose, lower the count in this rule.
 

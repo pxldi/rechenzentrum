@@ -51,6 +51,7 @@ spec:
           'system:serviceaccount:planka:restore-test-runner',
           'system:serviceaccount:forgejo:restore-test-runner',
           'system:serviceaccount:anchor:restore-test-runner',
+          'system:serviceaccount:romm:restore-test-runner',
           'system:serviceaccount:velero-restore-test:restore-test']
   variables:
     - name: isCluster

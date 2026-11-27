@@ -23,7 +23,8 @@ metadata:
 spec:
   # 30 days, matching velero's daily-critical-backup TTL. WAL is archived
   # continuously, so this is also the PITR window: any point in the last 30
-  # days, not just the nightly marks.
+  # days, not just the weekly base backups. Barman keeps the newest base
+  # backup older than the window too, so up to 37 days are stored.
   retentionPolicy: "30d"
   configuration:
     destinationPath: s3://rechenzentrum-cnpg/anchor/anchor-postgresql

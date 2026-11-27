@@ -1,5 +1,12 @@
 ---
-# Base backup nightly; WAL streams continuously between them.
+# Base backup once a week, on Sunday; WAL streams continuously between them,
+# so any point in the retention window can still be recovered. Daily base
+# backups were full copies kept for 30 days, most of rechenzentrum-cnpg's
+# 91 GB in November 2026. A weekly base means a restore replays up to a week
+# of WAL, and the Wednesday restore test replays three days of it.
+#
+# The name still says daily. Renaming would make Flux delete this object and
+# with it every Backup object it owns.
 #
 # Staggered across clusters and kept clear of velero's 02:00 window so six
 # Postgres uploads and a full cluster backup are not competing for the same
@@ -11,7 +18,7 @@ metadata:
   namespace: tandoor
 spec:
   # Six fields, not five: CNPG's cron includes a leading seconds specifier.
-  schedule: "0 0 1 * * *"
+  schedule: "0 0 1 * * 0"
   immediate: true
   backupOwnerReference: self
   cluster:

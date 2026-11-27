@@ -41,7 +41,7 @@ this order (Cloudflare dashboard, Security, WAF, Custom rules):
 2. `claude.ai connectors` skips the rest for Anthropic's range
    (`160.79.104.0/21`) on the five `*-mcp` hosts and on `auth.pxldi.de`
    paths under `/application/o/` (token and discovery).
-3. `Not in Country` blocks every source outside AT, DE, CH and JP. A user
+3. `Not in Country` blocks every source outside AT, DE and CH. A user
    travelling elsewhere is refused at Cloudflare and never reaches the house.
 
 Cloudflare's free plan caps a request body at 100 MB. Immich uploads of

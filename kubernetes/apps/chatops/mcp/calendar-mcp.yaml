@@ -28,7 +28,7 @@ spec:
         # Authentik's, for the calendar-mcp client in
         # terraform/authentik/oidc-apps.tf (the id is public).
         - name: calendar-mcp-claude
-          image: ghcr.io/pxldi/homelab-mcp:sha-7e2f07ae85a0c9de53071bea3ec9b8278b0684b7
+          image: ghcr.io/pxldi/homelab-mcp:sha-7e2f07ae85a0c9de53071bea3ec9b8278b0684b7@sha256:e540fa39a4057a9ea39a4dd2f16edb40928c79f3aef77c650f5e0559e4b28c72
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "calendar_mcp"]
           ports:

@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: db
-          image: postgis/postgis:15-3.3
+          image: postgis/postgis:15-3.3@sha256:a2fc46b52819d25add4ed93d3da83e106e17ea3ace6883cce3791631c9820bb2
           imagePullPolicy: IfNotPresent
           env:
             - name: POSTGRES_DB
@@ -91,7 +91,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: ghcr.io/seanmorley15/adventurelog-backend:beta
+          image: ghcr.io/seanmorley15/adventurelog-backend:beta@sha256:bf3f1e2631ef3fc4e5f58cddf63ef1425bc7bdc110adca521e49ea2fb68d7250
           imagePullPolicy: IfNotPresent
           env:
             - name: PGHOST
@@ -180,7 +180,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/seanmorley15/adventurelog-frontend:beta
+          image: ghcr.io/seanmorley15/adventurelog-frontend:beta@sha256:c6bc91532e16416f77f6f8091276e27927a2e6862f2531228fc8997426f04d50
           imagePullPolicy: IfNotPresent
           env:
             - name: PUBLIC_SERVER_URL

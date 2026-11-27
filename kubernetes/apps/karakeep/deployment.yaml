@@ -42,7 +42,7 @@ spec:
       # container no longer owns it, and chmod without CAP_FOWNER then fails.
       initContainers:
         - name: fix-run
-          image: alpine:3.24
+          image: alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
           command: ["sh", "-c", "chmod 0755 /run && chown 1000:1000 /run"]
           securityContext:
             runAsUser: 0
@@ -63,7 +63,7 @@ spec:
               mountPath: /run
       containers:
         - name: karakeep
-          image: ghcr.io/karakeep-app/karakeep:0.35.0
+          image: ghcr.io/karakeep-app/karakeep:0.35.0@sha256:6f7d32ef296ddf1fc7c67ff56b8a201b7006a6a47b92b202afee1338841b353d
           imagePullPolicy: IfNotPresent
           # The image runs its own migrations at start, so schema changes apply
           # on rollout with no init container.
@@ -147,7 +147,7 @@ spec:
         - name: chrome
           # Tagged by the Chromium version it carries, not by the Karakeep
           # release, so this does not move with the image above.
-          image: ghcr.io/karakeep-app/karakeep-chrome:156.0.8078.47-r1
+          image: ghcr.io/karakeep-app/karakeep-chrome:156.0.8078.47-r1@sha256:4ad61127638dd27bfe685222787c5780dd1d083d23a7658c39af657775814c44
           imagePullPolicy: IfNotPresent
           args:
             - --disable-gpu

@@ -40,7 +40,7 @@ spec:
         # mirror directory: the bridge stats its baseDir at start and exits
         # when it is missing, and a subPath mount only creates the subPath.
         - name: render-config
-          image: alpine:3.24
+          image: alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
           command:
             - sh
             - -c
@@ -88,7 +88,7 @@ spec:
               mountPath: /data
       containers:
         - name: bridge
-          image: ghcr.io/pxldi/livesync-bridge:sha-00d9b6cbf891d01a5225a1ad8bea5006ba8458bd
+          image: ghcr.io/pxldi/livesync-bridge:sha-00d9b6cbf891d01a5225a1ad8bea5006ba8458bd@sha256:f0b08d80ced074766139eb27ea32ee2f13e43268e2858ce6ca344ed98a87bb7d
           imagePullPolicy: IfNotPresent
           env:
             - name: LSB_CONFIG
@@ -122,7 +122,7 @@ spec:
         # image). Writes may land in ops/, the specs, tasks and ideas a chat is
         # meant to produce, and nowhere else.
         - name: vault-mcp-claude
-          image: ghcr.io/pxldi/homelab-mcp:sha-7e2f07ae85a0c9de53071bea3ec9b8278b0684b7
+          image: ghcr.io/pxldi/homelab-mcp:sha-7e2f07ae85a0c9de53071bea3ec9b8278b0684b7@sha256:e540fa39a4057a9ea39a4dd2f16edb40928c79f3aef77c650f5e0559e4b28c72
           imagePullPolicy: IfNotPresent
           args: ["python", "-m", "vault_mcp"]
           ports:

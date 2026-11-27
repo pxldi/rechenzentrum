@@ -31,6 +31,8 @@ spec:
     - match: Host(`auth.pxldi.de`)
       kind: Rule
       middlewares:
+        - name: internal-or-cluster
+          namespace: traefik
         - name: auth-rate-limit
       services:
         - name: authentik-server
@@ -54,8 +56,9 @@ spec:
       requestHeaderName: Cf-Connecting-Ip
 ---
 # Public through the tunnel, so a user off the tailnet can log in to the apps
-# that are public (keep.pxldi.de). Forward-auth apps stay on websecure only and
-# are not reachable this way.
+# bound to the tunnel entrypoint: OIDC apps such as keep.pxldi.de, and
+# todo.pxldi.de through forward-auth. Every other forward-auth app is on
+# websecure only and is not reachable this way.
 #
 # authentik's reputation policy takes the client address from the leftmost
 # X-Forwarded-For entry. Cloudflare would append to an XFF the client sent, so

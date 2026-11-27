@@ -31,9 +31,11 @@ spec:
     - websecure
   routes:
     - kind: Rule
-      match: Host(`travel.pxldi.de`) && (PathPrefix(`/media`) || PathPrefix(`/static`) || PathPrefix(`/accounts`) || PathPrefix(`/csrf`) || PathPrefix(`/admin`))
+      match: Host(`travel.pxldi.de`) && (PathPrefix(`/media`) || PathPrefix(`/static`) || PathPrefix(`/accounts`) || PathPrefix(`/csrf`))
       priority: 20
       middlewares:
+        - name: internal-only
+          namespace: traefik
         - name: add-trailing-slash
           namespace: adventurelog
         - name: adventurelog-headers
@@ -44,6 +46,9 @@ spec:
     - kind: Rule
       match: Host(`travel.pxldi.de`)
       priority: 10
+      middlewares:
+        - name: internal-only
+          namespace: traefik
       services:
         - name: adventurelog-frontend
           port: 3000

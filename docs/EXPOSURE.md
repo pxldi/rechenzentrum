@@ -1,6 +1,6 @@
 # Exposure inventory
 
-Generated from the live cluster on 2026-09-13, after the internal-only rollout.
+The route table at the end was regenerated from the manifests on 2026-11-27.
 Routes do not prove internet reachability; DNS and the router decide that too.
 
 ## Since 2026-11-27: Cloudflare Tunnel only
@@ -14,10 +14,17 @@ Public through the Cloudflare Tunnel (`infrastructure/networking/cloudflared`):
 (Anchor), `todo.pxldi.de` (Planka, behind forward-auth), the five claude.ai
 connectors (`*-mcp.pxldi.de`), and `auth.pxldi.de` and `branding.pxldi.de` so
 authentik logins work from outside. These are the only routes bound to
-Traefik's `tunnel` entrypoint. Every other route
-marked "public" or "Authentik" below is reachable from the LAN and the tailnet
-only, until it is bound to `tunnel` and given a hostname in the tunnel's
-dashboard config. Each claude.ai connector has a second IngressRoute on
+Traefik's `tunnel` entrypoint. Every other route is reachable from the LAN
+and the tailnet only, until it is bound to `tunnel` and given a hostname in
+the tunnel's dashboard config.
+
+Since 2026-11-27 every `websecure` router also carries a source allowlist,
+so a port forward to the house would expose nothing even if one came back.
+A route bound to both entrypoints is two IngressRoutes, `<name>` on
+`websecure` and `<name>-tunnel` on `tunnel`, because an allowlist on the
+tunnel router would see a cloudflared pod as the client. Two exceptions are
+left for the sessions removing them: Seerr (scaled to 0) and Schall's API
+route. Each claude.ai connector has a second IngressRoute on
 `tunnel` with the `anthropic-tunnel` allowlist, which reads the client from
 `X-Forwarded-For` (`ipStrategy.depth: 1`). That is safe only because of the
 Transform Rule below.
@@ -47,17 +54,21 @@ this order (Cloudflare dashboard, Security, WAF, Custom rules):
 Cloudflare's free plan caps a request body at 100 MB. Immich uploads of
 larger files fail through the tunnel and work on the LAN and the tailnet.
 
-Three states:
+The states in the table below:
 
 - **LAN/tailnet + Authentik** — the `internal-only` middleware refuses any source
   address outside the house LAN and the tailnet, and an Authentik login follows.
-  Unreachable from the internet.
 - **LAN/tailnet** — the `internal-only` middleware alone. The application's own
-  login follows; used where that login is already Authentik (OIDC) and a second
-  forward-auth prompt would only add a redirect.
-- **Authentik** — reachable from the internet, gated by an Authentik login.
-- **public** — reachable from the internet, protected only by whatever the
-  application itself enforces.
+  login follows.
+- **LAN/tailnet/pods** — the `internal-or-cluster` middleware: `internal-only`
+  plus the pod range. For routes that pods also call: Gatus checks them through
+  Traefik's Service, and apps reach `auth.pxldi.de` or their own name through
+  the node whenever CoreDNS gets AdGuard's rewritten answer. A packet from the
+  internet keeps its own source address, so the pod range admits nothing from
+  outside.
+- **tunnel** — the `-tunnel` router: reachable from the internet through
+  Cloudflare, behind the zone's firewall rules, protected by the application's
+  own login or by forward-auth where the table says so.
 
 Four apps used to carry a `/outpost.goauthentik.io/` sub-route to authentik.
 Each named port 9000, which the `authentik-server` Service does not expose (it
@@ -76,8 +87,10 @@ still search through it.
 
 ## Deliberate exceptions
 
-- **Snacky** (`snacky.pxldi.de`) stays Authentik-only, so a phone off the
-  tailnet can reach it. The MCP port has no route.
+- **Snacky** (`snacky.pxldi.de`) is LAN/tailnet + Authentik. It is not on the
+  tunnel, so a phone off the tailnet cannot reach it; binding it to `tunnel`
+  would need a `snacky-tunnel` route and a hostname in the tunnel config. The
+  MCP port has no route.
 - **Planka** (`todo.pxldi.de`) is Authentik-only, through the tunnel, for the
   two people on the game projects, and binds the `survivorlike-viewers` group. Planka keeps its own accounts
   behind the gate, because its free edition has no OIDC since 2.2.0.
@@ -122,7 +135,7 @@ still search through it.
   vault's: Anthropic's range and the house, and a token from each one's own
   Authentik client. Snacky's token check is the gate in front of it.
 - **Authentik itself** (`auth.pxldi.de`) and **branding** (`branding.pxldi.de`)
-  stay public. The login page is what every other gate redirects to, and it
+  stay public on the tunnel. The login page is what every other gate redirects to, and it
   loads its logo, wallpaper and fonts from branding; gating either breaks every
   login from outside the house.
 
@@ -178,50 +191,63 @@ is on Tailscale" is not an answer on its own.
 | Namespace | Route | State | Middlewares |
 | --- | --- | --- | --- |
 | media | `aurral.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| authentik | `auth.pxldi.de` | public | none |
-| grimmory | `books.pxldi.de` | public | none |
-| branding | `branding.pxldi.de` | public | none |
-| media | `schall.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth,cantus-proxy-key |
-| media | `schall.pxldi.de PathPrefix(`/api/`) && HeaderRegexp(`Authorization`, `^Beare` | public | none |
-| nextcloud | `cloud.pxldi.de` | public | nextcloud-headers |
-| nextcloud | `cloud.pxldi.de (Path(`/.well-known/carddav`) \|\| Path(`/.well-known/caldav` | public | nextcloud-wellknown-dav |
-| nextcloud | `cloud.pxldi.de PathPrefix(`/remote.php/dav`)` | public | nextcloud-headers,nextcloud-dav-no-compress |
+| authentik | `auth.pxldi.de` | LAN/tailnet/pods | internal-or-cluster,auth-rate-limit |
+| authentik | `auth.pxldi.de` | tunnel | auth-rate-limit-tunnel |
+| grimmory | `books.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
+| branding | `branding.pxldi.de` | LAN/tailnet | internal-only |
+| branding | `branding.pxldi.de` | tunnel | none |
+| chatops | `calendar-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | Anthropic range and house | anthropic-and-house |
+| chatops | `calendar-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | tunnel, Anthropic range only | anthropic-tunnel |
+| nextcloud | `cloud.pxldi.de` `(Path(`/.well-known/carddav`) \|\| Path(`/.well-known/caldav`)` | LAN/tailnet/pods | internal-or-cluster,nextcloud-wellknown-dav |
+| nextcloud | `cloud.pxldi.de` `PathPrefix(`/remote.php/dav`)` | LAN/tailnet/pods | internal-or-cluster,nextcloud-headers,nextcloud-dav-no-compress |
+| nextcloud | `cloud.pxldi.de` | LAN/tailnet/pods | internal-or-cluster,nextcloud-headers |
+| nextcloud | `cloud.pxldi.de` `(Path(`/.well-known/carddav`) \|\| Path(`/.well-known/caldav`)` | tunnel | nextcloud-wellknown-dav |
+| nextcloud | `cloud.pxldi.de` `PathPrefix(`/remote.php/dav`)` | tunnel | nextcloud-headers,nextcloud-dav-no-compress |
+| nextcloud | `cloud.pxldi.de` | tunnel | nextcloud-headers |
 | jdownloader | `download.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | excalidraw | `draw.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| gotify | `gotify.pxldi.de` | public | none |
+| forgejo | `git.pxldi.de` | LAN/tailnet | internal-only |
+| gotify | `gotify.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
 | observability | `grafana.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| home-assistant | `home.pxldi.de` | public | none |
+| opengym | `gym.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
+| home-assistant | `home.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
 | fredy | `immo.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| media | `watch.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| media | `jellyfin.pxldi.de` | public | none |
-| karakeep | `links.pxldi.de` | public | none |
-| anchor | `keep.pxldi.de` | public (tunnel) | none |
-| opengym | `gym.pxldi.de` | public | none |
-| wealthfolio | `wealth.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| audiobookshelf | `listen.pxldi.de` | LAN/tailnet + Authentik (OIDC) | internal-only |
-| media | `music.pxldi.de` | public | none |
-| obsidian-sync | `obsidian.pxldi.de` | public | none |
-| paperless | `paperless.pxldi.de` | public | none |
-| immich | `photos.pxldi.de` | public | none |
+| media | `jellyfin.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
+| anchor | `keep.pxldi.de` | LAN/tailnet | internal-only |
+| anchor | `keep.pxldi.de` | tunnel | none |
+| karakeep | `links.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
+| audiobookshelf | `listen.pxldi.de` | LAN/tailnet | internal-only |
+| media | `music.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
+| obsidian-sync | `obsidian.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
+| chatops | `opengym-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | Anthropic range and house | anthropic-and-house |
+| chatops | `opengym-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | tunnel, Anthropic range only | anthropic-tunnel |
+| paperless | `paperless.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
+| immich | `photos.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
+| immich | `photos.pxldi.de` | tunnel | none |
 | media | `prowlarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `radarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| tandoor | `recipes.pxldi.de` | public | none |
-| media | `request.pxldi.de` | public | none |
+| tandoor | `recipes.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
+| media | `request.pxldi.de` | LAN/tailnet (no allowlist) | none |
 | media | `sabnzbd.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| media | `schall.pxldi.de` `PathPrefix(`/api/`) && HeaderRegexp(`Authorization`, `^Beare` | LAN/tailnet (no allowlist) | none |
+| media | `schall.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth,cantus-proxy-key |
 | searxng | `search.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | slskd | `slskd.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| snacky | `snacky.pxldi.de` | Authentik | authentik-forward-auth |
+| chatops | `snacky-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | Anthropic range and house | anthropic-and-house |
+| chatops | `snacky-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | tunnel, Anthropic range only | anthropic-tunnel |
+| snacky | `snacky.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `sonarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| forgejo | `git.pxldi.de` | LAN/tailnet | internal-only |
-| planka | `todo.pxldi.de` | Authentik | authentik-forward-auth |
+| chatops | `tandoor-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | Anthropic range and house | anthropic-and-house |
+| chatops | `tandoor-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | tunnel, Anthropic range only | anthropic-tunnel |
+| planka | `todo.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| planka | `todo.pxldi.de` | tunnel + Authentik | authentik-forward-auth |
 | traefik | `traefik.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | adventurelog | `travel-admin.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| adventurelog | `travel.pxldi.de` | public | none |
-| adventurelog | `travel.pxldi.de (PathPrefix(`/media`) \|\| PathPrefix(`/static`) \|\| PathPr` | public | add-trailing-slash,adventurelog-headers |
+| adventurelog | `travel.pxldi.de` `(PathPrefix(`/media`) \|\| PathPrefix(`/static`) \|\| PathPrefix` | LAN/tailnet | internal-only,add-trailing-slash,adventurelog-headers |
+| adventurelog | `travel.pxldi.de` | LAN/tailnet | internal-only |
 | monitoring | `uptime.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| chatops | `vault-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | Anthropic range and house | anthropic-and-house |
+| chatops | `vault-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | tunnel, Anthropic range only | anthropic-tunnel |
 | velero | `velero.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| chatops | `vault-mcp.pxldi.de` (`/mcp`, `/.well-known/` only) | Anthropic range and house | anthropic-and-house |
-| chatops | `tandoor-mcp.pxldi.de` (`/mcp`, `/.well-known/` only) | Anthropic range and house | anthropic-and-house |
-| chatops | `snacky-mcp.pxldi.de` (`/mcp`, `/.well-known/` only) | Anthropic range and house | anthropic-and-house |
-| chatops | `calendar-mcp.pxldi.de` (`/mcp`, `/.well-known/` only) | Anthropic range and house | anthropic-and-house |
-| chatops | `opengym-mcp.pxldi.de` (`/mcp`, `/.well-known/` only) | Anthropic range and house | anthropic-and-house |
+| media | `watch.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| wealthfolio | `wealth.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |

@@ -16,6 +16,26 @@ metadata:
 spec:
   entryPoints:
     - websecure
+  routes:
+    - kind: Rule
+      match: Host(`keep.pxldi.de`)
+      priority: 10
+      middlewares:
+        - name: internal-only
+          namespace: traefik
+      services:
+        - name: anchor
+          port: 3000
+---
+# The same routes on the Cloudflare Tunnel entrypoint, without the house
+# allowlist: the remote address there is a cloudflared pod.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: anchor-tunnel
+  namespace: anchor
+spec:
+  entryPoints:
     - tunnel
   routes:
     - kind: Rule

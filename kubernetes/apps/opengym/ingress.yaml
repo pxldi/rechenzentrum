@@ -13,6 +13,9 @@ spec:
   routes:
     - kind: Rule
       match: Host(`gym.pxldi.de`)
+      middlewares:
+        - name: internal-or-cluster
+          namespace: traefik
       services:
         - name: opengym
           port: 80

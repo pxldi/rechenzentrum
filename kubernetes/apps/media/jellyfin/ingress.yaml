@@ -10,6 +10,9 @@ spec:
   routes:
     - match: Host(`jellyfin.pxldi.de`)
       kind: Rule
+      middlewares:
+        - name: internal-or-cluster
+          namespace: traefik
       services:
         - name: jellyfin
           port: 8096

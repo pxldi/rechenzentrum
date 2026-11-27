@@ -18,6 +18,9 @@ spec:
   routes:
     - kind: Rule
       match: "Host(`links.pxldi.de`)"
+      middlewares:
+        - name: internal-or-cluster
+          namespace: traefik
       services:
         - name: karakeep
           port: 3000

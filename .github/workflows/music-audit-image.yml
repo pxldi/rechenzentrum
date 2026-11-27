@@ -1,0 +1,132 @@
+---
+# Builds music-audit, the fingerprint check for the music library in
+# kubernetes/apps/media/music-audit. Same shape as survivorlike-bench-image.yml:
+# pull requests build and smoke-test, a push to main or a manual run
+# publishes, tagged with the commit it built.
+name: Music Audit Image
+
+on:
+  # So a build can be started by hand once ENABLE_IMAGE_PUBLISH is set,
+  # without a commit to trigger it.
+  workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "images/music-audit/**"
+      - ".github/workflows/music-audit-image.yml"
+  push:
+    branches: ["main"]
+    paths:
+      - "images/music-audit/**"
+      - ".github/workflows/music-audit-image.yml"
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/music-audit
+  # On a pull_request `github.sha` is the ephemeral merge commit; the branch
+  # head is the commit that actually holds the Dockerfile.
+  SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  build:
+    if: vars.ENABLE_IMAGE_PUBLISH == 'true'
+    name: Build and push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      # Keyless signing: cosign trades this token for a short-lived certificate.
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Lint the Dockerfile
+        uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: images/music-audit/Dockerfile
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: images/music-audit
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: |
+            ${{ env.IMAGE }}:sha-${{ env.SHA }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:main', env.IMAGE) || '' }}
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+          cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref={0}:buildcache,mode=max', env.IMAGE) || '' }}
+          provenance: false
+
+      # Scans the image just built: loaded locally on a pull request, pulled
+      # from GHCR after a push. The first step lists HIGH and CRITICAL in the
+      # job log; the second fails the build on a CRITICAL with a fix available.
+      # An unfixed one does not fail, because no change here could clear it.
+      - name: List high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:sha-${{ env.SHA }}
+          severity: HIGH,CRITICAL
+          format: table
+      - name: Gate on fixable critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}:sha-${{ env.SHA }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+          skip-setup-trivy: true
+
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@881c63bd87e38389154debd8331404ce7ca8a3ab # v4.1.4
+
+      # Keyless: the signature binds the pushed digest to this workflow in this
+      # repository through GitHub's OIDC identity, so there is no key to keep.
+      # Check one with
+      #   cosign verify "$IMAGE@<digest>" \
+      #     --certificate-identity-regexp '^https://github.com/pxldi/rechenzentrum/' \
+      #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+      - name: Sign the pushed digest
+        if: github.event_name != 'pull_request'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
+
+      # Fingerprints a generated tone end to end, up to the AcoustID call,
+      # which a dummy key makes fail on purpose. That proves fpcalc, mutagen,
+      # the walk and the database without a real key in CI.
+      - name: Smoke-test the image
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/music/a /tmp/state && chmod 777 /tmp/state
+          python3 - <<'PY'
+          import math, struct, wave
+          with wave.open("/tmp/music/a/tone.wav", "wb") as w:
+              w.setnchannels(1); w.setsampwidth(2); w.setframerate(22050)
+              w.writeframes(b"".join(struct.pack("<h", int(8000 * math.sin(i / 10) * math.sin(i / 5000))) for i in range(22050 * 15)))
+          PY
+          chmod -R a+rX /tmp/music
+          docker run --rm --entrypoint fpcalc -v /tmp/music:/music:ro "${IMAGE}:sha-${SHA}" -json /music/a/tone.wav | grep fingerprint > /dev/null
+          if docker run --rm -e ACOUSTID_KEY=ci-dummy -v /tmp/music:/music:ro -v /tmp/state:/state \
+              "${IMAGE}:sha-${SHA}" scan > /tmp/out.log 2>&1; then
+            cat /tmp/out.log; echo "scan accepted a dummy AcoustID key" >&2; exit 1
+          fi
+          cat /tmp/out.log
+          grep -q "1 audio files under /music, 1 to check" /tmp/out.log
+          grep -q "AcoustID re" /tmp/out.log
+          docker run --rm -v /tmp/state:/state "${IMAGE}:sha-${SHA}" report | grep "== Summary" > /dev/null

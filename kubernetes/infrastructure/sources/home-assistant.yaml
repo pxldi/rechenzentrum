@@ -1,3 +1,7 @@
+# pajikos.github.io answers with a redirect to the chart's custom domain over
+# plain http, which is why this URL used to be http://. The custom domain
+# serves the same index over https, and the chart tarballs come from GitHub
+# releases, so naming it directly keeps the whole fetch on TLS.
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -5,4 +9,4 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  url: http://pajikos.github.io/home-assistant-helm-chart/
+  url: https://blog.pavelsklenar.com/home-assistant-helm-chart/

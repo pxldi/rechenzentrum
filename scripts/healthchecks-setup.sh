@@ -44,16 +44,16 @@ $checks_only || [ -n "$HC_PING_KEY" ] || { echo "the ping key is required" >&2; 
 # Cron schedules are the CronJobs' and the timer's own, in their time zone.
 # Grace is how long after the due time a check may stay quiet, and doubles as
 # the longest a started run may take before it counts as hung.
+# wealthfolio-db-backup and adventurelog-db-dump are left out while both apps
+# are parked and their CronJobs suspended; add them back with the apps.
 checks=(
   "watchdog|300|600|Alertmanager Watchdog, every 2m. Missing = node, WAN, k3s, Prometheus or Alertmanager down."
   "renovate|30 3 * * *|7200|Renovate CronJob (renovate namespace)."
   "karakeep-db-backup|30 3 * * *|3600|SQLite copy for Velero (karakeep namespace)."
-  "wealthfolio-db-backup|45 3 * * *|3600|SQLite copy for Velero (wealthfolio namespace)."
   "snacky-db-backup|0 4 * * *|3600|SQLite copy for Velero (snacky namespace)."
   "authentik-db-dump|0 1 * * *|3600|pg_dump for Velero (authentik namespace)."
   "nextcloud-db-dump|10 1 * * *|3600|pg_dump for Velero (nextcloud namespace)."
   "paperless-db-dump|20 1 * * *|3600|pg_dump for Velero (paperless namespace)."
-  "adventurelog-db-dump|30 1 * * *|3600|pg_dump for Velero (adventurelog namespace)."
   "grimmory-db-dump|40 1 * * *|3600|mariadb-dump for Velero (grimmory namespace)."
   "nixos-upgrade|45 4 * * *|7200|NixOS system.autoUpgrade on the node."
 )

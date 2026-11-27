@@ -19,7 +19,6 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | cnpg-system | Deployment/barman-cloud-plugin-barman-cloud | Recreate | none | yes |
 | cnpg-system | Deployment/cnpg-cloudnative-pg | RollingUpdate | none | yes |
 | device-plugins | DaemonSet/generic-device-plugin | RollingUpdate | none | no |
-| excalidraw | Deployment/excalidraw | RollingUpdate | none | yes |
 | flux-system | Deployment/helm-controller | RollingUpdate | none | yes |
 | flux-system | Deployment/kustomize-controller | RollingUpdate | none | yes |
 | flux-system | Deployment/notification-controller | RollingUpdate | none | yes |
@@ -34,7 +33,6 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | immich | Deployment/immich-machine-learning | RollingUpdate | immich-machine-learning | yes |
 | immich | Deployment/immich-server | RollingUpdate | immich-library-pvc | yes |
 | immich | Deployment/immich-valkey | Recreate | immich-valkey | yes |
-| jdownloader | Deployment/jdownloader | Recreate | jdownloader-config, jdownloader-downloads | no |
 | karakeep | Deployment/karakeep | Recreate | karakeep-data | no |
 | karakeep | StatefulSet/karakeep-meilisearch | RollingUpdate | none | yes |
 | kube-system | Deployment/coredns | RollingUpdate | none | yes |
@@ -75,13 +73,11 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | observability | StatefulSet/prometheus-kube-prometheus-stack-prometheus | RollingUpdate | none | no |
 | observability | Deployment/speedtest-exporter | RollingUpdate | none | yes |
 | obsidian-sync | StatefulSet/obsidian-sync | RollingUpdate | obsidian-sync-data-pvc | yes |
-| ollama | Deployment/ollama | Recreate | ollama-models | yes |
 | openebs | Deployment/openebs-localpv-provisioner | Recreate | none | no |
 | palworld | Deployment/palworld | Recreate | palworld-data | no |
 | paperless | Deployment/paperless | Recreate | paperless-data-pvc, paperless-media-pvc, paperless-consume-pvc, paperless-export-pvc | yes |
 | paperless | Deployment/paperless-postgres | Recreate | paperless-postgres-pvc | yes |
 | paperless | Deployment/paperless-redis | Recreate | paperless-redis-pvc | yes |
-| searxng | Deployment/searxng | RollingUpdate | none | yes |
 | tandoor | Deployment/tandoor | Recreate | tandoor-media-pvc | yes |
 | traefik | Deployment/traefik | RollingUpdate | traefik | yes |
 | velero | DaemonSet/node-agent | RollingUpdate | none | no |

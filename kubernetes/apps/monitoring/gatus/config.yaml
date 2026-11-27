@@ -195,12 +195,6 @@ endpoints:
     <<: *house
     conditions:
       - "[STATUS] == 200"
-  - name: SearXNG
-    group: house
-    url: http://searxng.searxng.svc.cluster.local:8080/healthz
-    <<: *house
-    conditions:
-      - "[STATUS] == 200"
   - name: Fredy
     group: house
     url: http://fredy.fredy.svc.cluster.local:9998/
@@ -235,12 +229,6 @@ endpoints:
   - name: Forgejo
     group: house
     url: http://forgejo.forgejo.svc.cluster.local:3000/api/healthz
-    <<: *house
-    conditions:
-      - "[STATUS] == 200"
-  - name: Excalidraw
-    group: house
-    url: http://excalidraw.excalidraw.svc.cluster.local:80/
     <<: *house
     conditions:
       - "[STATUS] == 200"

@@ -7,7 +7,8 @@ metadata:
   labels:
     app: adventurelog-db
 spec:
-  replicas: 1
+  # Parked; see adventurelog-frontend below.
+  replicas: 0
   selector:
     matchLabels:
       app: adventurelog-db
@@ -76,7 +77,8 @@ metadata:
   labels:
     app: adventurelog-backend
 spec:
-  replicas: 1
+  # Parked; see adventurelog-frontend below.
+  replicas: 0
   selector:
     matchLabels:
       app: adventurelog-backend
@@ -160,10 +162,10 @@ metadata:
   labels:
     app: adventurelog-frontend
 spec:
-  # Parked between holidays: the frontend held 1.05 GiB and served no request
-  # in 30 days. Backend and db keep running on purpose, because Velero backs up
-  # only volumes mounted by a running pod and adventurelog-media holds uploads.
-  # Set back to 1 before the next trip.
+  # Parked on 2026-11-27 with the backend and db (all three at 0). Velero backs
+  # up only volumes mounted by a running pod, so adventurelog-media and the
+  # database get no new copies while parked; the last ones expire 90 days after
+  # the final weekly backup. Set all three back to 1 before the next trip.
   replicas: 0
   selector:
     matchLabels:

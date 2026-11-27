@@ -14,7 +14,10 @@ metadata:
   labels:
     app: wealthfolio
 spec:
-  replicas: 1
+  # Parked on 2026-11-27: not in use. wealthfolio-data stays; set back to 1 to
+  # return. While at 0 no Velero run copies the volume, so the last copy
+  # expires 90 days after the final weekly backup.
+  replicas: 0
   # SQLite on a volume.
   strategy:
     type: Recreate

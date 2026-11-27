@@ -17,6 +17,8 @@ metadata:
 spec:
   # 03:45, after the nightly WAN blip at 03:00 and karakeep's copy at 03:30.
   schedule: "45 3 * * *"
+  # Suspended while the app is parked; the database does not change.
+  suspend: true
   timeZone: Europe/Berlin
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 2

@@ -228,8 +228,6 @@ is on Tailscale" is not an answer on its own.
 | nextcloud | `cloud.pxldi.de` `(Path(`/.well-known/carddav`) \|\| Path(`/.well-known/caldav`)` | tunnel | nextcloud-wellknown-dav |
 | nextcloud | `cloud.pxldi.de` `PathPrefix(`/remote.php/dav`)` | tunnel | nextcloud-headers,nextcloud-dav-no-compress |
 | nextcloud | `cloud.pxldi.de` | tunnel | nextcloud-headers |
-| jdownloader | `download.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| excalidraw | `draw.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | forgejo | `git.pxldi.de` | LAN/tailnet | internal-only |
 | romm | `games.pxldi.de` | LAN/tailnet | internal-only |
 | gotify | `gotify.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
@@ -256,7 +254,6 @@ is on Tailscale" is not an answer on its own.
 | media | `sabnzbd.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `schall.pxldi.de` `PathPrefix(`/api/`) && HeaderRegexp(`Authorization`, `^Beare` | LAN/tailnet (no allowlist) | none |
 | media | `schall.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth,cantus-proxy-key |
-| searxng | `search.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | slskd | `slskd.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | chatops | `snacky-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | Anthropic range and house | anthropic-and-house |
 | chatops | `snacky-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | tunnel, Anthropic range only | anthropic-tunnel |

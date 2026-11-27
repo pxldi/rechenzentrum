@@ -3,8 +3,11 @@ terraform {
 
   required_providers {
     authentik = {
-      source  = "goauthentik/authentik"
-      version = "~> 2026.0"
+      source = "goauthentik/authentik"
+      # The provider is released per authentik server version. Hold it on the
+      # server's minor series (kubernetes/infrastructure/authentik) and move
+      # both in the same PR.
+      version = "~> 2026.8.0"
     }
   }
 

@@ -21,7 +21,10 @@
 #                    new one), no hooks, never overwriting what exists
 #   delete           only those names (RBAC says the same)
 #
-# It matches nothing but requests from the four test ServiceAccounts.
+# It matches nothing but requests from the seven test ServiceAccounts. A runner
+# left out of the list is held by RBAC alone; planka, forgejo and anchor were,
+# from their restore tests' creation until 2026-11-27.
+# tests/test_restore_tests.py fails when a database test's runner is missing.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -45,6 +48,9 @@ spec:
           'system:serviceaccount:tandoor:restore-test-runner',
           'system:serviceaccount:immich:restore-test-runner',
           'system:serviceaccount:media:restore-test-runner',
+          'system:serviceaccount:planka:restore-test-runner',
+          'system:serviceaccount:forgejo:restore-test-runner',
+          'system:serviceaccount:anchor:restore-test-runner',
           'system:serviceaccount:velero-restore-test:restore-test']
   variables:
     - name: isCluster

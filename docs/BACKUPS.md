@@ -129,6 +129,13 @@ Restore into an empty database owned by the app's role, on the same or a newer
 major; AdventureLog needs a PostGIS server. `restore-test-authentik-db` does
 exactly this every Wednesday for authentik, from B2.
 
+| Run | Source | Duration | Result |
+| --- | --- | --- | --- |
+| 2026-11-27 | `authentik-20261127T205707Z.dump` (25 MB) in `daily-critical-backup-20261127205751` | 47 s restore, 570 MB volume; under 1 min for the check | 230 tables, 6 users, 29 applications and 16 flows, the same as live; copy deleted |
+
+All five dumps were run by hand the same evening: authentik 25 MB, Nextcloud
+7.4 MB, Paperless 1.6 MB, AdventureLog 2.8 MB, Grimmory 68 KB.
+
 ## Monthly full volume restore test
 
 The two volumes that hold files nothing else can recreate are restored in full

@@ -32,6 +32,18 @@ the visitor address alone. It lives in the Cloudflare dashboard, not in this
 repository. Verified on 2026-11-27: a request sent with a forged
 `X-Forwarded-For` was logged under its real address by authentik and Traefik.
 
+Custom firewall rules in the zone decide who reaches the tunnel at all, in
+this order (Cloudflare dashboard, Security, WAF, Custom rules):
+
+1. `OpenTF Action` skips the rest for `auth.pxldi.de` paths containing
+   `/api/`, so the OpenTofu workflow's GitHub runner can reach authentik's API.
+   It applies to any source address.
+2. `claude.ai connectors` skips the rest for Anthropic's range
+   (`160.79.104.0/21`) on the five `*-mcp` hosts and on `auth.pxldi.de`
+   paths under `/application/o/` (token and discovery).
+3. `Not in Country` blocks every source outside AT, DE, CH and JP. A user
+   travelling elsewhere is refused at Cloudflare and never reaches the house.
+
 Cloudflare's free plan caps a request body at 100 MB. Immich uploads of
 larger files fail through the tunnel and work on the LAN and the tailnet.
 

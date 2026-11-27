@@ -46,6 +46,12 @@ jobs:
 
       - name: OpenTofu Validate
         run: tofu validate -no-color
+        # The provider block sets headers, so validate checks its required url
+        # and token. They normally come from these variables; placeholders
+        # satisfy the check, and validate never contacts the API.
+        env:
+          AUTHENTIK_URL: https://auth.example.invalid
+          AUTHENTIK_TOKEN: validate-only
 
   # Full plan against real state. Manual only — you run this from the Actions tab
   # when you want to review a terraform change before merging it.

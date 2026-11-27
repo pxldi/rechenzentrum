@@ -8,7 +8,11 @@ metadata:
   labels:
     app: forgejo-runner
 spec:
-  replicas: 1
+  # Scaled to 0 on 2026-11-27. Since the Cloudflare Tunnel change git.pxldi.de
+  # has no public DNS record, so the runner could not reach Forgejo and asked
+  # Quad9 for it in plain text every 5 seconds. Back to 1 once it reaches
+  # Forgejo another way.
+  replicas: 0
   # runner-data is RWO and holds the registration; two runners on one
   # registration would both claim jobs.
   strategy:

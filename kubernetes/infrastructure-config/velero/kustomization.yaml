@@ -7,3 +7,4 @@ resources:
   - volume-policy-configmap.yaml
   - restore-test.yaml
   - restore-test-monthly.yaml
+  - restore-test-dumps.yaml

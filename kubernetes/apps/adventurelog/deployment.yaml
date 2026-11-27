@@ -35,6 +35,11 @@ spec:
           volumeMounts:
             - name: db-data
               mountPath: /var/lib/postgresql/data
+            # Not used by Postgres. Velero only backs up volumes of running
+            # pods, and the dump Job is not running at 02:20.
+            - name: db-dumps
+              mountPath: /var/lib/postgresql/dumps
+              readOnly: true
           readinessProbe:
             exec:
               command:
@@ -59,6 +64,9 @@ spec:
         - name: db-data
           persistentVolumeClaim:
             claimName: adventurelog-db
+        - name: db-dumps
+          persistentVolumeClaim:
+            claimName: adventurelog-db-dumps
 ---
 apiVersion: apps/v1
 kind: Deployment

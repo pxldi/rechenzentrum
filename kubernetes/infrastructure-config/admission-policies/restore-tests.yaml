@@ -13,12 +13,12 @@
 #   Cluster create   named restore-test, one instance, bootstrapped by recovery,
 #                    no spec.plugins (so no WAL archiver), no spec.backup, no
 #                    superuser access, no extra env or projected volumes
-#   Restore create   in velero, one of three names, each restoring its one
-#                    source namespace (gotify weekly; immich and nextcloud
-#                    monthly) into velero-restore-test only, pods, claims and their PVs
-#                    only (Velero never creates a file-system-backed PV; it
-#                    needs to see it to provision a new one), no hooks, never
-#                    overwriting what exists
+#   Restore create   in velero, one of four names, each restoring its one
+#                    source namespace (gotify and authentik weekly; immich and
+#                    nextcloud monthly) into velero-restore-test only, pods,
+#                    claims and their PVs only (Velero never creates a
+#                    file-system-backed PV; it needs to see it to provision a
+#                    new one), no hooks, never overwriting what exists
 #   delete           only those names (RBAC says the same)
 #
 # It matches nothing but requests from the four test ServiceAccounts.
@@ -59,7 +59,8 @@ spec:
       expression: >-
         {'velero-restore-test-gotify': 'gotify',
          'velero-restore-test-immich-library': 'immich',
-         'velero-restore-test-nextcloud-data': 'nextcloud'}
+         'velero-restore-test-nextcloud-data': 'nextcloud',
+         'velero-restore-test-authentik-db': 'authentik'}
   validations:
     # RBAC grants no update; this keeps it that way if a Role ever widens.
     - expression: request.operation != 'UPDATE'

@@ -9,6 +9,8 @@ resources:
   - helmrelease.yaml
   - ingress.yaml
   - networkpolicy.yaml
+  - db-dump.yaml
+  - healthchecks-secret.yaml
 components:
   - ../../infrastructure-config/networkpolicies/default-deny-ingress
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace

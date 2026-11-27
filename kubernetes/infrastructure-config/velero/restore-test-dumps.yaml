@@ -1,0 +1,396 @@
+---
+# Weekly restore test of the authentik database dump, from B2. See
+# docs/BACKUPS.md, "Database dumps".
+#
+# authentik/db-dump.yaml writes a pg_dump into the database's own volume every
+# night, and Velero's daily-critical-backup carries that volume to B2. This
+# restores the volume from the newest backup into velero-restore-test, the
+# same way as the monthly tests in restore-test-monthly.yaml: Velero only fills
+# volumes of pods it restores itself, so the database pod comes back too, and a
+# resource modifier swaps its container for a check before the pod is created.
+#
+# The check starts an empty Postgres 17 in scratch space, restores the newest
+# dump into it, and counts tables, users, applications and flows. It prints
+# counts only. The restored pod never runs authentik's database, needs none of
+# its Secrets or ConfigMaps, and cannot reach anything (default-deny).
+#
+# The volume is about 0.6 GB: the live data directory and three dumps.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: restore-test-dumps-manifests
+  namespace: velero-restore-test
+  annotations:
+    # scripts/schema-check.py validates the Restore below like any other.
+    rechenzentrum.dev/embedded-manifests: "true"
+data:
+  authentik-db.yaml: |
+    apiVersion: velero.io/v1
+    kind: Restore
+    metadata:
+      name: velero-restore-test-authentik-db
+      namespace: velero
+    spec:
+      scheduleName: daily-critical-backup
+      includedNamespaces:
+      - authentik
+      namespaceMapping:
+        authentik: velero-restore-test
+      includedResources:
+      - pods
+      - persistentvolumeclaims
+      - persistentvolumes
+      orLabelSelectors:
+      - matchLabels:
+          app.kubernetes.io/instance: authentik
+          app.kubernetes.io/name: postgresql
+      resourceModifier:
+        kind: ConfigMap
+        name: velero-restore-test-authentik-db-modifier
+---
+# authentik-postgresql-0 becomes the check. Its ConfigMap and Secret volumes go,
+# because neither exists in velero-restore-test and a missing one keeps the pod
+# from starting. The chart's emptyDir is the scratch space. The pod keeps the
+# chart's fsGroup 1001, which is the dump's group, so the check can read it as
+# the image's postgres user (999). The 1h deadline ends before the Job's 2h.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: velero-restore-test-authentik-db-modifier
+  namespace: velero
+data:
+  modifier.yaml: |
+    version: v1
+    resourceModifierRules:
+    - conditions:
+        groupResource: pods
+        resourceNameRegex: ^authentik-postgresql-0$
+      strategicPatches:
+      - patchData: |
+          spec:
+            priorityClassName: null
+            restartPolicy: Never
+            activeDeadlineSeconds: 3600
+            serviceAccountName: default
+            serviceAccount: default
+            automountServiceAccountToken: false
+            volumes:
+            - name: postgresql-config
+              $patch: delete
+            - name: postgresql-extended-config
+              $patch: delete
+            - name: postgresql-password
+              $patch: delete
+            containers:
+            - name: postgresql
+              $patch: delete
+            - name: check
+              # The server's image, so the restore runs on the same major.
+              image: postgres:17.11-trixie@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+              command:
+              - sh
+              - -c
+              - |-
+                set -eu
+                fail=0
+                dump=$(ls -1t /restored/dumps/authentik-*.dump 2>/dev/null | head -n 1)
+                [ -n "$dump" ] || { echo "FAIL: no dump in the restored volume"; exit 1; }
+                echo "newest dump: ${dump##*/}, $(du -k "$dump" | cut -f1) KiB"
+                # The dump is written at 01:00 and backed up at 02:20, so the
+                # newest backup's dump is from the same night.
+                [ -n "$(find "$dump" -mmin -2160)" ] || { echo "FAIL: newest dump is older than 36 hours"; fail=1; }
+                export PGDATA=/scratch/pgdata PGHOST=/scratch PGUSER=postgres
+                initdb --auth=trust >/dev/null
+                pg_ctl --wait --log=/scratch/postgres.log \
+                  -o "-c listen_addresses='' -c unix_socket_directories=/scratch" start >/dev/null
+                createuser authentik
+                createdb --owner=authentik authentik
+                pg_restore --dbname=authentik --exit-on-error --single-transaction "$dump"
+                q() { psql --dbname=authentik -At -c "$1"; }
+                tables=$(q "select count(*) from information_schema.tables where table_schema = 'public'")
+                users=$(q "select count(*) from authentik_core_user")
+                apps=$(q "select count(*) from authentik_core_application")
+                flows=$(q "select count(*) from authentik_flows_flow")
+                echo "restored: $tables tables, $users users, $apps applications, $flows flows"
+                [ "$tables" -ge "$MIN_TABLES" ] || { echo "FAIL: fewer than $MIN_TABLES tables"; fail=1; }
+                [ "$apps" -ge "$MIN_APPS" ] || { echo "FAIL: fewer than $MIN_APPS applications"; fail=1; }
+                [ "$users" -ge 1 ] || { echo "FAIL: no users"; fail=1; }
+                [ "$flows" -ge 1 ] || { echo "FAIL: no flows"; fail=1; }
+                pg_ctl --wait stop >/dev/null
+                [ "$fail" -eq 0 ]
+                echo "PASS: authentik dump restored"
+              env:
+              # 230 tables, 28 applications and 16 flows on 2026-11-27.
+              - name: MIN_TABLES
+                value: '200'
+              - name: MIN_APPS
+                value: '20'
+              volumeMounts:
+              - name: data
+                mountPath: /restored
+                readOnly: true
+              - name: empty-dir
+                mountPath: /scratch
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  memory: 1Gi
+              securityContext:
+                runAsUser: 999
+                runAsGroup: 999
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                  - ALL
+---
+# Wednesdays at 12:00, after the other weekly tests (10:00-11:30).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: restore-test-authentik-db
+  namespace: velero-restore-test
+spec:
+  schedule: "0 12 * * 3"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 7200
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: restore-test
+        spec:
+          serviceAccountName: restore-test
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          initContainers:
+            - name: remove-leftover-restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - restores.velero.io/velero-restore-test-authentik-db
+                - --namespace=velero
+                - --cascade=foreground
+                - --ignore-not-found
+                - --wait
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: remove-leftover-copy
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - pods,persistentvolumeclaims
+                - --selector=velero.io/restore-name=velero-restore-test-authentik-db
+                - --ignore-not-found
+                - --wait
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - create
+                - -f
+                - /manifests/authentik-db.yaml
+              volumeMounts:
+                - name: manifests
+                  mountPath: /manifests
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            # Waits for the restore to end, however it ends, so a
+            # PartiallyFailed restore fails the run at once.
+            - name: wait-restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - restores.velero.io/velero-restore-test-authentik-db
+                - --namespace=velero
+                - --for=jsonpath={.status.completionTimestamp}
+                - --timeout=30m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: check-restore
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - restores.velero.io/velero-restore-test-authentik-db
+                - --namespace=velero
+                - --for=jsonpath={.status.phase}=Completed
+                - --timeout=1m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: wait-volume-data
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - podvolumerestores.velero.io
+                - --namespace=velero
+                - --selector=velero.io/restore-name=velero-restore-test-authentik-db
+                - --for=jsonpath={.status.phase}=Completed
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+            - name: wait-check
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - wait
+                - pods
+                - --selector=velero.io/restore-name=velero-restore-test-authentik-db
+                - --for=jsonpath={.status.phase}=Succeeded
+                - --timeout=1h
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          containers:
+            - name: remove-copy
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - pods,persistentvolumeclaims
+                - --selector=velero.io/restore-name=velero-restore-test-authentik-db
+                - --wait
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: manifests
+              configMap:
+                name: restore-test-dumps-manifests
+---
+# The Job deletes its copy only when the check passes. A failed run leaves it
+# for the alert to point at, and this removes it the next day, so a copy of the
+# login database does not sit in a second place for a week.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: remove-restore-test-dump-copies
+  namespace: velero-restore-test
+spec:
+  schedule: "0 12 * * 4"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: restore-test
+        spec:
+          serviceAccountName: restore-test
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: remove-copies
+              image: rancher/kubectl:v1.33.13@sha256:e4a764a4e74c6434dcbf3ae4ceaea07d886424c7ea2af260574d96a15c1f2834
+              args:
+                - delete
+                - pods,persistentvolumeclaims
+                - --selector=velero.io/restore-name in (velero-restore-test-authentik-db)
+                - --ignore-not-found
+                - --wait
+                - --timeout=10m
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]

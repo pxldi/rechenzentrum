@@ -8,6 +8,8 @@ resources:
   - deployment.yaml
   - service.yaml
   - ingress.yaml
+  - db-dump.yaml
+  - healthchecks-secret.yaml
 components:
   # Egress. The frontend calls the backend and the backend calls the
   # database, both by Service name in this namespace, so the intra-namespace

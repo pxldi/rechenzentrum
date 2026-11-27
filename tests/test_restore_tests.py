@@ -116,10 +116,13 @@ class VeleroRestoreGetsANewVolume(unittest.TestCase):
 
 class MonthlyVolumeRestores(unittest.TestCase):
     VELERO = ROOT / "kubernetes/infrastructure-config/velero"
+    FILE = "restore-test-monthly.yaml"
+    MANIFESTS = "restore-test-monthly-manifests"
+    CLEANUP = "remove-restore-test-copies"
 
     def setUp(self):
-        self.docs = load(self.VELERO / "restore-test-monthly.yaml")
-        manifests = one(self.docs, "ConfigMap", "restore-test-monthly-manifests")["data"]
+        self.docs = load(self.VELERO / self.FILE)
+        manifests = one(self.docs, "ConfigMap", self.MANIFESTS)["data"]
         self.restores = {k: yaml.safe_load(v) for k, v in manifests.items()}
 
     def test_each_restore_gets_new_volumes_and_its_own_modifier(self):
@@ -196,12 +199,38 @@ class MonthlyVolumeRestores(unittest.TestCase):
                 self.assertIn("--for=jsonpath={.status.phase}=Completed", steps["check-restore"])
 
     def test_cleanup_covers_every_monthly_copy(self):
-        cron = one(self.docs, "CronJob", "remove-restore-test-copies")
+        cron = one(self.docs, "CronJob", self.CLEANUP)
         args = cron["spec"]["jobTemplate"]["spec"]["template"]["spec"]["containers"][0]["args"]
         selector = next(a for a in args if a.startswith("--selector="))
         for restore in self.restores.values():
             self.assertIn(restore["metadata"]["name"], selector)
         self.assertNotIn("gotify", selector)
+
+
+class WeeklyDumpRestores(MonthlyVolumeRestores):
+    """The authentik dump test has the monthly tests' shape on a weekly clock."""
+    FILE = "restore-test-dumps.yaml"
+    MANIFESTS = "restore-test-dumps-manifests"
+    CLEANUP = "remove-restore-test-dump-copies"
+
+    def test_check_runs_the_dumping_major(self):
+        # pg_restore refuses an archive from a newer pg_dump.
+        dump = one(load(ROOT / "kubernetes/infrastructure/authentik/db-dump.yaml"), "CronJob")
+        image = dump["spec"]["jobTemplate"]["spec"]["template"]["spec"]["containers"][0]["image"]
+        modifier = one(self.docs, "ConfigMap", "velero-restore-test-authentik-db-modifier")
+        rules = yaml.safe_load(modifier["data"]["modifier.yaml"])["resourceModifierRules"]
+        spec = yaml.safe_load(rules[0]["strategicPatches"][0]["patchData"])["spec"]
+        check = next(c for c in spec["containers"] if c["name"] == "check")
+        major = lambda ref: ref.split(":")[1].split(".")[0]
+        self.assertEqual(major(check["image"]), major(image))
+
+    def test_restore_is_in_the_daily_schedule(self):
+        # The check fails on a dump older than 36 hours.
+        schedule = one(load(self.VELERO / "schedule-daily-critical.yaml"), "Schedule")
+        for restore in self.restores.values():
+            self.assertEqual(restore["spec"]["scheduleName"], "daily-critical-backup")
+            for ns in restore["spec"]["includedNamespaces"]:
+                self.assertIn(ns, schedule["spec"]["template"]["includedNamespaces"])
 
 
 if __name__ == "__main__":

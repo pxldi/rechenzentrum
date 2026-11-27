@@ -7,7 +7,9 @@ Routes do not prove internet reachability; DNS and the router decide that too.
 
 The house lost its own line and router. The cluster now sits behind a router
 in repeater mode on a network with no port forwards, so nothing reaches
-Traefik's LoadBalancer from the internet. `cloudflare-ddns` is scaled to 0.
+Traefik's LoadBalancer from the internet. `cloudflare-ddns` was removed on
+2026-11-27; the zone holds no A or AAAA record at all, only the tunnel's
+proxied CNAMEs and the mail records.
 
 Public through the Cloudflare Tunnel (`infrastructure/networking/cloudflared`):
 `cloud.pxldi.de` (Nextcloud), `photos.pxldi.de` (Immich), `keep.pxldi.de`
@@ -177,14 +179,11 @@ is on Tailscale" is not an answer on its own.
   were switched off on 2026-09-18. This inventory lists IngressRoutes; check
   `kubectl get ingress -A` too, because the table cannot see a shadow.
 
-- **The apex depends on one AdGuard rewrite.** It is the only name still proxied
-  by Cloudflare in public DNS; every subdomain points straight at the house. So
-  an apex request that is not rewritten locally arrives wearing Cloudflare's
-  address, and `internal-only` refuses it, from the LAN too. That is what made
-  the homepage answer 403 to everyone from 2026-09-13 to 09-15: the AdGuard
-  rewrite covering `*.pxldi.de` does not match the bare apex. The apex rewrite
-  was added on 2026-09-15 and the allowlist restored. If the homepage starts
-  answering 403 again, check that rewrite before anything else.
+- **Names without a tunnel hostname have no public record.** Inside the house
+  they resolve only through AdGuard's `*.pxldi.de` rewrite, and CoreDNS asks
+  AdGuard or Quad9 at random, so a pod resolving one of them fails whenever
+  Quad9 answers. The apex has no record either since the homepage was
+  removed.
 
 ## Routes
 

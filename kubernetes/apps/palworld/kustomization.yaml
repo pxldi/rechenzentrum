@@ -6,7 +6,10 @@ resources:
   - secret.yaml
   - pvcs.yaml
   - deployment.yaml
-  - service.yaml
+  # No Service. The LoadBalancer bound 8211/udp on the node for a router port
+  # forward, and the house has had no port forwards since 2026-11-27, so it
+  # held a node port open for a server at 0 replicas. Players would need a
+  # route in again (a tunnel or the tailnet) before it comes back.
   - networkpolicy.yaml
 components:
   # Egress. Server list registration and update checks.

@@ -31,4 +31,3 @@ components:
   - ../../infrastructure-config/networkpolicies/allow-intra-namespace
   - ../../infrastructure-config/networkpolicies/allow-from-traefik
   - ../../infrastructure-config/networkpolicies/allow-from-monitoring
-  - ../../infrastructure-config/networkpolicies/allow-from-homepage

@@ -17,7 +17,6 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | cert-manager | Deployment/cert-manager-cainjector | RollingUpdate | none | no |
 | cert-manager | Deployment/cert-manager-webhook | RollingUpdate | none | yes |
 | claudebox | Deployment/claudebox | Recreate | claudebox-data-pvc | no |
-| cloudflare-ddns | Deployment/cloudflare-ddns | RollingUpdate | none | no |
 | cnpg-system | Deployment/barman-cloud-plugin-barman-cloud | Recreate | none | yes |
 | cnpg-system | Deployment/cnpg-cloudnative-pg | RollingUpdate | none | yes |
 | device-plugins | DaemonSet/generic-device-plugin | RollingUpdate | none | no |
@@ -41,7 +40,6 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | karakeep | StatefulSet/karakeep-meilisearch | RollingUpdate | none | yes |
 | kube-system | Deployment/coredns | RollingUpdate | none | yes |
 | kube-system | Deployment/metrics-server | RollingUpdate | none | yes |
-| kube-system | DaemonSet/svclb-palworld-68fa85b4 | RollingUpdate | none | no |
 | kube-system | DaemonSet/svclb-traefik-c7aec652 | RollingUpdate | none | no |
 | media | Deployment/aurral | Recreate | aurral-config-pvc, aurral-music-pvc, cantus-music-pvc, downloads-pvc | yes |
 | media | Deployment/cantus | Recreate | cantus-music-pvc, downloads-pvc, cantus-uploads-pvc | yes |

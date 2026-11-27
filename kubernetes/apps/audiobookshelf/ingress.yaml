@@ -1,0 +1,22 @@
+# House only (LAN and tailnet). No forward-auth: the phone apps send bearer
+# tokens to /api and run the OIDC flow themselves, and cannot follow a login
+# redirect. Audiobookshelf's own OIDC login against authentik gates it, and
+# only audiobookshelf-users completes the flow.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: audiobookshelf
+  namespace: audiobookshelf
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`listen.pxldi.de`)
+      priority: 10
+      middlewares:
+        - name: internal-only
+          namespace: traefik
+      services:
+        - name: audiobookshelf
+          port: 13378

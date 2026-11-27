@@ -94,6 +94,18 @@ still search through it.
   app sends bearer tokens to `/api`, which forward-auth would break. Password
   sign-in is off in the API (`DISABLE_INTERNAL_AUTH`), and only
   `anchor-users` completes the flow. It is for a user off the tailnet.
+- **Audiobookshelf** (`listen.pxldi.de`) is LAN/tailnet only, with no
+  forward-auth: the phone apps send bearer tokens to `/api` and run the OIDC
+  flow through the server, which a forward-auth redirect would break. Its own
+  OIDC login against authentik is the gate, and only `audiobookshelf-users`
+  completes the flow. Audiobookshelf stores its OIDC settings in its database,
+  so they are entered once in Settings > Authentication: issuer
+  `https://auth.pxldi.de/application/o/audiobookshelf/` (Auto-populate fills
+  the endpoints), the client id from `terraform/authentik/oidc-apps.tf`, the
+  secret authentik generated for the `audiobookshelf` provider, auto-register
+  on, and match existing users by username so the root account links to the
+  authentik user of the same name. Mobile redirect URI stays
+  `audiobookshelf://oauth`.
 - **Schall's API route** (`schall.pxldi.de` with a Bearer header) stays public so
   a client that cannot follow a login redirect works away from home. Schall
   validates the token and answers 401 to anything it did not mint. No proxy key
@@ -186,6 +198,7 @@ is on Tailscale" is not an answer on its own.
 | anchor | `keep.pxldi.de` | public (tunnel) | none |
 | opengym | `gym.pxldi.de` | public | none |
 | wealthfolio | `wealth.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
+| audiobookshelf | `listen.pxldi.de` | LAN/tailnet + Authentik (OIDC) | internal-only |
 | media | `music.pxldi.de` | public | none |
 | obsidian-sync | `obsidian.pxldi.de` | public | none |
 | paperless | `paperless.pxldi.de` | public | none |

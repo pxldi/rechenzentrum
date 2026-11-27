@@ -222,6 +222,15 @@ A full loss therefore costs the audio files and nothing else. The database says
 what to fetch again. Backing up 59 GB of re-downloadable audio to Backblaze was
 judged not worth its cost.
 
+## Audiobookshelf
+
+`weekly-full-backup` copies `audiobookshelf-config` (the SQLite database) and
+`audiobookshelf-metadata` (covers, caches and the app's own backups). Kopia
+reads the database file while the app may be writing it, so the copy that is
+known to be consistent is the app's own daily backup: Settings > Backups, which
+writes a zip to `/metadata/backups` on the backed-up claim. Turn it on after
+the first login. The library is excluded (see below).
+
 ## What is excluded, and why
 
 Back up what is hard to obtain or cannot be reproduced. Anything a download or a
@@ -241,6 +250,7 @@ data carries the reason alongside it.
 | `ollama-models` | 2.6 GB | Pulled from the registry on demand |
 | `soundcloud-music-pvc` | 0.5 GB | Downloaded audio; Navidrome reindexes from the files |
 | Schall audio | 59 GB | Re-downloadable, and the database records what exists |
+| `audiobookshelf-library` | empty on 2026-11-27 | Audiobooks are re-obtainable and podcasts re-download; the database and covers on the other two claims are backed up |
 | `slskd-config` | 6.2 GB on 2026-09-15 | Partial downloads, a search cache and transfer history; the configuration is a sops Secret, not on the volume |
 
 To exclude a new claim, add `backup.rechenzentrum.dev/reproducible: "true"` to its

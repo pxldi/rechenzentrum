@@ -227,6 +227,12 @@ endpoints:
     <<: *house
     conditions:
       - "[STATUS] == 200"
+  - name: Audiobookshelf
+    group: house
+    url: http://audiobookshelf.audiobookshelf.svc.cluster.local:13378/healthcheck
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
   - name: Forgejo
     group: house
     url: http://forgejo.forgejo.svc.cluster.local:3000/api/healthz

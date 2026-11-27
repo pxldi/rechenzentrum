@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - adventurelog.yaml
   - anchor.yaml
+  - audiobookshelf.yaml
   - chatops.yaml
   - claudebox.yaml
   - excalidraw.yaml

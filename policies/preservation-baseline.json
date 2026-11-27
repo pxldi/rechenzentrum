@@ -14,6 +14,9 @@
   "apps/v1/Deployment/anchor/anchor": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/audiobookshelf/audiobookshelf": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/branding/branding": {
     "kind": "Deployment"
   },
@@ -230,6 +233,9 @@
   "v1/Namespace//anchor": {
     "kind": "Namespace"
   },
+  "v1/Namespace//audiobookshelf": {
+    "kind": "Namespace"
+  },
   "v1/Namespace//authentik": {
     "kind": "Namespace"
   },
@@ -364,6 +370,18 @@
   "v1/PersistentVolumeClaim/anchor/anchor-data": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/audiobookshelf/audiobookshelf-config": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "080fc65af7b8c09a79d9dc57d30a5b1afdd62c66aa9c10a1e5cd2223d120a8ec"
+  },
+  "v1/PersistentVolumeClaim/audiobookshelf/audiobookshelf-library": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "934cc182bd99f0e1f42d476145b0e1da3ec0fa93acadfd79b3f7403236990211"
+  },
+  "v1/PersistentVolumeClaim/audiobookshelf/audiobookshelf-metadata": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "12aa304e456bb83d8a9f73712a653df884b52c7843c3056b6c0f1165762446dd"
   },
   "v1/PersistentVolumeClaim/claudebox/claudebox-data-pvc": {
     "kind": "PersistentVolumeClaim",

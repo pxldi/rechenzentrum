@@ -1,0 +1,46 @@
+# The SQLite database. Velero copies it weekly. A copy taken while the app
+# writes can be torn, so the app's own daily backup (Settings > Backups,
+# written to audiobookshelf-metadata) is the consistent one.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: audiobookshelf-config
+  namespace: audiobookshelf
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 2Gi
+---
+# Covers, author images, caches, logs and the app's backups. Velero copies it.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: audiobookshelf-metadata
+  namespace: audiobookshelf
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 10Gi
+---
+# Audiobook and podcast files on the media disk. Not backed up: the books are
+# re-obtainable and the podcasts re-download. See docs/BACKUPS.md.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: audiobookshelf-library
+  namespace: audiobookshelf
+  labels:
+    backup.rechenzentrum.dev/reproducible: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-hdd1
+  resources:
+    requests:
+      storage: 500Gi

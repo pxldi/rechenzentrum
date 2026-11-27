@@ -373,3 +373,76 @@ resource "authentik_policy_binding" "anchor_users" {
   group  = authentik_group.anchor_users.id
   order  = 0
 }
+
+# --- Audiobookshelf ---
+#
+# Audiobooks and podcasts at listen.<domain> (kubernetes/apps/audiobookshelf).
+# Audiobookshelf keeps its OIDC settings in its own database, so the client id
+# and secret are entered once in its Settings > Authentication, not passed
+# through SOPS. The secret is left for authentik to generate; read it from the
+# provider in the admin UI.
+#
+# The server runs the flow for the web and for the phone apps. The apps open
+# /auth/openid with PKCE and audiobookshelf://oauth as their redirect, and
+# Audiobookshelf sends authentik its own /auth/openid/mobile-redirect, which
+# then hands the code to the app. Neither the app scheme nor the app ever talks
+# to authentik directly.
+resource "authentik_provider_oauth2" "audiobookshelf" {
+  name        = "audiobookshelf"
+  client_id   = "2KML48Luyp8z1uEI4U9aXO4imXfmsEvoJwc03iPX"
+  client_type = "confidential"
+
+  authorization_flow  = data.authentik_flow.default-authorization-flow.id
+  invalidation_flow   = data.authentik_flow.default-invalidation-flow.id
+  authentication_flow = authentik_flow.authentication.uuid
+
+  # Audiobookshelf's "Auto-populate" reads the per-application discovery
+  # document, and it only verifies RS256.
+  issuer_mode                = "per_provider"
+  signing_key                = data.authentik_certificate_key_pair.jwt.id
+  include_claims_in_id_token = true
+
+  grant_types = ["authorization_code", "refresh_token"]
+
+  allowed_redirect_uris = [
+    {
+      matching_mode     = "strict"
+      redirect_uri_type = "authorization"
+      url               = "https://listen.${var.domain}/auth/openid/callback"
+    },
+    {
+      matching_mode     = "strict"
+      redirect_uri_type = "authorization"
+      url               = "https://listen.${var.domain}/auth/openid/mobile-redirect"
+    },
+  ]
+
+  property_mappings = [
+    for m in data.authentik_property_mapping_provider_scope.oidc : m.id
+  ]
+}
+
+resource "authentik_application" "audiobookshelf" {
+  name = "Audiobookshelf"
+  # The slug is the issuer: https://auth.<domain>/application/o/audiobookshelf/.
+  slug              = "audiobookshelf"
+  protocol_provider = authentik_provider_oauth2.audiobookshelf.id
+  meta_launch_url   = "https://listen.${var.domain}"
+  meta_description  = "Audiobooks & Podcasts"
+  meta_icon         = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/audiobookshelf.png"
+  open_in_new_tab   = true
+}
+
+# Audiobookshelf auto-registers anyone who completes the flow (as a plain
+# user; root stays the admin), so this binding decides who gets in.
+resource "authentik_group" "audiobookshelf_users" {
+  name         = "audiobookshelf-users"
+  is_superuser = false
+  users        = [data.authentik_user.pxldi.id]
+}
+
+resource "authentik_policy_binding" "audiobookshelf_users" {
+  target = authentik_application.audiobookshelf.uuid
+  group  = authentik_group.audiobookshelf_users.id
+  order  = 0
+}

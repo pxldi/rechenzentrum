@@ -12,6 +12,13 @@ applications and persistent data while completing the user's request.
 - Work on a branch, use Conventional Commits, open a descriptive PR, and wait for
   required CI. **Agents may squash-merge their own PRs after required checks pass.**
   A separate human review is not required unless the user requests one.
+- **Exception: a PR that changes anything under `nix/` waits for the owner's
+  review and merge.** `nix/modules/autoupgrade.nix` runs `nixos-rebuild switch`
+  from main as root every morning at 04:45, so a merged `nix/` change reaches
+  the host the next day with nobody watching. Open the PR, say what it changes
+  on the host, and stop. This is an instruction, not a GitHub rule: agents push
+  as the owner's account, and GitHub does not let an author approve their own
+  PR, so a code-owner requirement would block every `nix/` PR instead.
 - Keep branch protection and required checks. Do not bypass failed checks,
   force-push main, or rewrite existing history to get a change merged.
 - Carry authorized migrations through deployment verification. Inspect live

@@ -100,6 +100,11 @@ spec:
             secretKeys:
               userPasswordKey: POSTGRES_PASSWORD
       primary:
+        # The chart's policy allows 5432 from every pod in the cluster, and
+        # policies add up, so the namespace default-deny could not close it.
+        # Without it, allow-intra-namespace is the only way in.
+        networkPolicy:
+          enabled: false
         persistence:
           enabled: true
           storageClass: local-ssd

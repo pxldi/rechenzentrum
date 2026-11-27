@@ -88,6 +88,11 @@ spec:
         # The comment below is the same argument one class up: this was the
         # first pod out under pressure, and authentik is useless without it.
         priorityClassName: rechenzentrum-critical
+        # The chart's policy allows 5432 from every pod in the cluster, and
+        # policies add up, so the namespace default-deny could not close it.
+        # Without it, allow-intra-namespace is the only way in.
+        networkPolicy:
+          enabled: false
         resources:
           requests:
             memory: "768Mi"

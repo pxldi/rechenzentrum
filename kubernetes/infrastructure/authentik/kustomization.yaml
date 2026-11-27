@@ -8,3 +8,8 @@ resources:
   - secret.yaml
   - helmrelease.yaml
   - ingress.yaml
+  - networkpolicy.yaml
+components:
+  - ../../infrastructure-config/networkpolicies/default-deny-ingress
+  - ../../infrastructure-config/networkpolicies/allow-intra-namespace
+  - ../../infrastructure-config/networkpolicies/allow-from-traefik

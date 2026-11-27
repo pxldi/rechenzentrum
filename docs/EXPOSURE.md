@@ -84,8 +84,8 @@ as it always did for every app without such a route. They were removed on
 Radarr, Sonarr and Seerr run at 0 replicas; HolyArrs took over the library,
 downloads and requests. Their routes below (`radarr`, `sonarr`, `request`)
 still exist with no pod behind them until the apps, routes and authentik apps are
-deleted. Prowlarr keeps running because the Sources HolyArrs imported from it
-still search through it.
+deleted. Prowlarr stays: Aurral searches Usenet through it for SABnzbd, and
+the Sources HolyArrs imported from it still search through it.
 
 ## Deliberate exceptions
 

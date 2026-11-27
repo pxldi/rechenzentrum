@@ -23,9 +23,6 @@
   "apps/v1/Deployment/chatops/tandoor-mcp": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/claudebox/claudebox": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/excalidraw/excalidraw": {
     "kind": "Deployment"
   },
@@ -252,9 +249,6 @@
   "v1/Namespace//chatops": {
     "kind": "Namespace"
   },
-  "v1/Namespace//claudebox": {
-    "kind": "Namespace"
-  },
   "v1/Namespace//cnpg-system": {
     "kind": "Namespace"
   },
@@ -390,10 +384,6 @@
   "v1/PersistentVolumeClaim/audiobookshelf/audiobookshelf-metadata": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "12aa304e456bb83d8a9f73712a653df884b52c7843c3056b6c0f1165762446dd"
-  },
-  "v1/PersistentVolumeClaim/claudebox/claudebox-data-pvc": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "e0f1c01c78cf03ca1fce2ae9ed978deaefd670efb009209ae8217da540fbabcd"
   },
   "v1/PersistentVolumeClaim/forgejo-runner/runner-data": {
     "kind": "PersistentVolumeClaim",

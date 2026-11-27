@@ -3,7 +3,6 @@ kind: Kustomization
 resources:
   - admission-policies
   - cert-manager
-  - claudebox-exec
   - namespaces
   - priorityclasses
   - traefik

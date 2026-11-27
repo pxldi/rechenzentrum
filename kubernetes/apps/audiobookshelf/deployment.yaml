@@ -1,0 +1,128 @@
+# Audiobookshelf: audiobooks and podcasts for the web and the phone apps.
+# The SQLite database is on audiobookshelf-config, covers, caches and the
+# app's own backups on audiobookshelf-metadata, and the files on
+# audiobookshelf-library (the media disk).
+#
+# Login is authentik OIDC, but Audiobookshelf reads its OIDC settings from its
+# database, not from the environment. They are entered once in Settings >
+# Authentication; docs/EXPOSURE.md has the values.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audiobookshelf
+  namespace: audiobookshelf
+  labels:
+    app: audiobookshelf
+spec:
+  replicas: 1
+  # One writer on the SQLite file. RWO only means one node here, so Recreate
+  # is what keeps a second pod off it.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: audiobookshelf
+  template:
+    metadata:
+      labels:
+        app: audiobookshelf
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      # A library folder has to exist before it can be added in the UI, and a
+      # podcast library is where episodes download to.
+      initContainers:
+        - name: library-dirs
+          image: ghcr.io/advplyr/audiobookshelf:2.38.0@sha256:60064c23f32fd9099fd39e82c5132c51701d1221135bbca04cd099b589e1edc3
+          imagePullPolicy: IfNotPresent
+          command: ["mkdir", "-p", "/library/audiobooks", "/library/podcasts"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: library
+              mountPath: /library
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+      containers:
+        - name: audiobookshelf
+          image: ghcr.io/advplyr/audiobookshelf:2.38.0@sha256:60064c23f32fd9099fd39e82c5132c51701d1221135bbca04cd099b589e1edc3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 13378
+          env:
+            - name: TZ
+              value: Europe/Berlin
+            # The image listens on 80, which a non-root process cannot bind.
+            - name: PORT
+              value: "13378"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: metadata
+              mountPath: /metadata
+            - name: library
+              mountPath: /library
+            - name: tmp
+              mountPath: /tmp
+          startupProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          # 117Mi idle on an empty library in a local run. A scan and the
+          # ffmpeg it starts for transcoding take more.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 192Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: audiobookshelf-config
+        - name: metadata
+          persistentVolumeClaim:
+            claimName: audiobookshelf-metadata
+        - name: library
+          persistentVolumeClaim:
+            claimName: audiobookshelf-library
+        - name: tmp
+          emptyDir:
+            sizeLimit: 2Gi

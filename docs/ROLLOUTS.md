@@ -41,11 +41,11 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | kube-system | Deployment/coredns | RollingUpdate | none | yes |
 | kube-system | Deployment/metrics-server | RollingUpdate | none | yes |
 | kube-system | DaemonSet/svclb-traefik-c7aec652 | RollingUpdate | none | no |
-| media | Deployment/aurral | Recreate | aurral-config-pvc, aurral-music-pvc, cantus-music-pvc, downloads-pvc | yes |
+| media | Deployment/aurral | Recreate | aurral-config-pvc, aurral-music-pvc, downloads-pvc | yes |
 | media | Deployment/cantus | Recreate | cantus-music-pvc, downloads-pvc, cantus-uploads-pvc | yes |
 | media | Deployment/holyarrs | Recreate | holyarrs-config-pvc, media-pvc, downloads-pvc | yes |
 | media | Deployment/jellyfin | Recreate | jellyfin-config-pvc, jellyfin-data-pvc, media-pvc | yes |
-| media | Deployment/navidrome | Recreate | soundcloud-music-pvc, cantus-music-pvc, navidrome-data-pvc | yes |
+| media | Deployment/navidrome | Recreate | soundcloud-music-pvc, aurral-music-pvc, navidrome-data-pvc | yes |
 | media | Deployment/prowlarr | Recreate | prowlarr-config-pvc | yes |
 | media | Deployment/radarr | Recreate | radarr-config-pvc, downloads-pvc, media-pvc | yes |
 | media | Deployment/sabnzbd | Recreate | sabnzbd-config-pvc, downloads-pvc | yes |

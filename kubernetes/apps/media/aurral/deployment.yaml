@@ -19,7 +19,7 @@ spec:
       labels:
         app: aurral
       annotations:
-        backup.velero.io/backup-volumes-excludes: "library,music,downloads,tmp"
+        backup.velero.io/backup-volumes-excludes: "library,downloads,tmp"
     spec:
       # The Service is named aurral, so Kubernetes would inject AURRAL_PORT and
       # similar variables, and Aurral reads AURRAL_* variables as settings.
@@ -50,13 +50,11 @@ spec:
               value: /tmp
             - name: AURRAL_DATA_DIR
               value: /config
-            # Aurral's own claim, which Navidrome mounts as /music-aurral.
-            # Schall treats all of /music as its library, so Aurral does not
-            # write there.
+            # Aurral's own claim, which Navidrome mounts as its main library.
             - name: LIBRARY_FOLDER
               value: /data/library
             - name: FILE_BROWSE_ROOTS
-              value: "/data/library,/music,/downloads"
+              value: "/data/library,/downloads"
             - name: AURRAL_PUBLIC_URL
               value: "https://aurral.pxldi.de"
             # The default is 2048, above the container limit below.
@@ -92,11 +90,6 @@ spec:
               mountPath: /config
             - name: library
               mountPath: /data/library
-            # Schall's library, read-only, so Aurral knows what is already
-            # here and does not fetch it again.
-            - name: music
-              mountPath: /music
-              readOnly: true
             # Same path as in slskd, so the paths slskd reports for completed
             # downloads resolve here unchanged.
             - name: downloads
@@ -117,9 +110,6 @@ spec:
         - name: library
           persistentVolumeClaim:
             claimName: aurral-music-pvc
-        - name: music
-          persistentVolumeClaim:
-            claimName: cantus-music-pvc
         - name: downloads
           persistentVolumeClaim:
             claimName: downloads-pvc

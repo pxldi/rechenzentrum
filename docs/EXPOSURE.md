@@ -66,6 +66,14 @@ anyway: the forward-auth middleware passes the callback to the outpost itself,
 as it always did for every app without such a route. They were removed on
 2026-09-26.
 
+## Scaled to 0 since 2026-11-27
+
+Radarr, Sonarr and Seerr run at 0 replicas; HolyArrs took over the library,
+downloads and requests. Their routes below (`radarr`, `sonarr`, `request`)
+still exist with no pod behind them until the apps, routes and authentik apps are
+deleted. Prowlarr keeps running because the Sources HolyArrs imported from it
+still search through it.
+
 ## Deliberate exceptions
 
 - **Snacky** (`snacky.pxldi.de`) stays Authentik-only, so a phone off the

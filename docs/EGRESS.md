@@ -34,7 +34,6 @@ default-deny egress are `home-assistant` and the infrastructure ones:
 | --- | --- | --- |
 | `chatops` | per pod: each claude.ai MCP server gets its app (`tandoor`, `nextcloud`, `opengym`, `snacky`, `obsidian-sync`) and Authentik | Five servers with five backends, see `kubernetes/apps/chatops/networkpolicy.yaml` |
 | `cloudflared` | Cloudflare's edge on 7844 and 443, the Traefik pod on 8090 | The tunnel connector; nothing else, see `infrastructure/networking/cloudflared/networkpolicy.yaml` |
-| `claudebox` | internet, API server, `obsidian-sync` | Clones repositories and drives this cluster; it carries a ServiceAccount token and RBAC. Its bridge sidecar mirrors the vault from CouchDB |
 | `crowdsec` | per pod: the agent gets the LAPI, the API server on 6443 and internet on 443; the LAPI gets internet on 443 | The agent streams Traefik's log through `pods/log`; both download hub content from the CrowdSec CDN at start. The Central API is off |
 | `excalidraw` | nothing | The pilot |
 | `fredy` | own namespace, internet | Scrapes property listings |

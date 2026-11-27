@@ -87,7 +87,7 @@ spec:
     # API server clients by design (2026-10-06: 99% of all Notice events):
     # velero-ui reads Velero resources, the CNPG barman-cloud sidecar reads
     # its ObjectStore, authentik's worker manages its outposts, and fredy's
-    # restart CronJob restarts fredy. claudebox's kubectl stays visible.
+    # restart CronJob restarts fredy.
     #
     # nextcloud: apache2 runs `sh -c -- command -v -- <binary>` to find
     # libreoffice; only that exact command line is excepted.

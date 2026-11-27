@@ -5,7 +5,6 @@ resources:
   - anchor.yaml
   - audiobookshelf.yaml
   - chatops.yaml
-  - claudebox.yaml
   - excalidraw.yaml
   - forgejo.yaml
   - forgejo-runner.yaml

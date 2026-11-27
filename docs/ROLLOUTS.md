@@ -16,7 +16,6 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | cert-manager | Deployment/cert-manager | RollingUpdate | none | no |
 | cert-manager | Deployment/cert-manager-cainjector | RollingUpdate | none | no |
 | cert-manager | Deployment/cert-manager-webhook | RollingUpdate | none | yes |
-| claudebox | Deployment/claudebox | Recreate | claudebox-data-pvc | no |
 | cnpg-system | Deployment/barman-cloud-plugin-barman-cloud | Recreate | none | yes |
 | cnpg-system | Deployment/cnpg-cloudnative-pg | RollingUpdate | none | yes |
 | device-plugins | DaemonSet/generic-device-plugin | RollingUpdate | none | no |

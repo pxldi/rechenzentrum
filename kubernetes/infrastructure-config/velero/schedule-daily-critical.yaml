@@ -17,6 +17,9 @@ spec:
       - nextcloud
       - immich
       - gotify
+      # Scanned letters and their originals, about 150 MiB in November 2026.
+      # Weekly alone left up to six days of new documents with no copy.
+      - paperless
 
     # Backup all resources in these namespaces
     includedResources:

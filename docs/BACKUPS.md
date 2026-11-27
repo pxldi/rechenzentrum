@@ -7,6 +7,16 @@
 | Daily critical namespaces | `daily-critical-backup`, `20 2 * * *` (UTC), 30-day retention |
 | Weekly selected cluster resources | `weekly-full-backup`, `0 3 * * 0`, 90-day retention |
 
+The daily schedule covers authentik, cert-manager, traefik, nextcloud, immich,
+gotify and paperless. Everything else that is not excluded is weekly only.
+
+Kopia maintenance runs once a day per repository (`defaultRepoMaintainFrequency:
+24h` in the Velero HelmRelease), and one finished maintenance pod per repository
+is kept. Velero copies the default into a BackupRepository only when it creates
+one, so changing it later also needs
+`kubectl -n velero patch backuprepositories.velero.io <name> --type merge -p '{"spec":{"maintenanceFrequency":"24h0m0s"}}'`
+on each existing repository.
+
 Scopes and volume exclusions are defined in `kubernetes/infrastructure-config/velero/`.
 Database backup settings live in `kubernetes/databases/`. Large media and scratch
 volumes may be excluded; check coverage before assuming a file is recoverable.

@@ -226,6 +226,12 @@ endpoints:
     <<: *house
     conditions:
       - "[STATUS] == 200"
+  - name: Scrutiny
+    group: house
+    url: http://scrutiny.scrutiny.svc.cluster.local:8080/api/health
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
   - name: Forgejo
     group: house
     url: http://forgejo.forgejo.svc.cluster.local:3000/api/healthz

@@ -1,0 +1,21 @@
+---
+# The collector's one destination: the Scrutiny API.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: collector-egress-to-scrutiny
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: scrutiny
+          podSelector:
+            matchLabels:
+              app: scrutiny
+      ports:
+        - port: 8080
+          protocol: TCP

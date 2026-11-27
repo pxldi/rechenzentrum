@@ -1,0 +1,39 @@
+---
+# The collector posts its results to the API on 8080.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-scrutiny-collector
+spec:
+  podSelector:
+    matchLabels:
+      app: scrutiny
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: scrutiny-collector
+      ports:
+        - port: 8080
+          protocol: TCP
+---
+# Notifications go to Gotify's Service, the one destination outside this
+# namespace. The gotify namespace admits it in allow-from-scrutiny.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: scrutiny-egress-to-gotify
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: gotify
+      ports:
+        - port: 80
+          protocol: TCP

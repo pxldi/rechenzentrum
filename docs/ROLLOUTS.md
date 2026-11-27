@@ -52,6 +52,7 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | anchor | Deployment/anchor | Recreate | anchor-data | yes |
 | romm | Deployment/romm | Recreate | romm-data, romm-library | yes |
 | audiobookshelf | Deployment/audiobookshelf | Recreate | audiobookshelf-config, audiobookshelf-metadata, audiobookshelf-library | yes |
+| scrutiny | Deployment/scrutiny | Recreate | scrutiny-config, scrutiny-influxdb | yes |
 | forgejo | Deployment/forgejo | Recreate | forgejo-data | yes |
 | forgejo-runner | Deployment/forgejo-runner | Recreate | runner-data | yes |
 | monitoring | Deployment/gatus | RollingUpdate | none | yes |

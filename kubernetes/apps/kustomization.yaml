@@ -29,3 +29,5 @@ resources:
   - anchor
   - audiobookshelf
   - romm
+  - scrutiny
+  - scrutiny-collector

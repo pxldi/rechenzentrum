@@ -1,0 +1,31 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: scrutiny
+resources:
+  - secret.yaml
+  - gotify-secret.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - networkpolicy.yaml
+components:
+  # Egress: InfluxDB is in the same pod, so the only way out is Gotify
+  # (networkpolicy.yaml). Scrutiny makes no internet calls.
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../infrastructure-config/networkpolicies/default-deny-ingress
+  - ../../infrastructure-config/networkpolicies/allow-from-traefik
+  - ../../infrastructure-config/networkpolicies/allow-from-monitoring
+
+# Resource metadata only: preserve existing Service/Deployment selectors and pod templates.
+labels:
+  - pairs:
+      app.kubernetes.io/name: scrutiny
+      app.kubernetes.io/instance: scrutiny
+      app.kubernetes.io/component: application
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

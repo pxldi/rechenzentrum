@@ -236,6 +236,7 @@ is on Tailscale" is not an answer on its own.
 | anchor | `keep.pxldi.de` | tunnel | none |
 | karakeep | `links.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
 | audiobookshelf | `listen.pxldi.de` | LAN/tailnet | internal-only |
+| scrutiny | `disks.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `music.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
 | obsidian-sync | `obsidian.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
 | chatops | `opengym-mcp.pxldi.de` `(PathPrefix(`/mcp`) \|\| PathPrefix(`/.well-known/`))` | Anthropic range and house | anthropic-and-house |

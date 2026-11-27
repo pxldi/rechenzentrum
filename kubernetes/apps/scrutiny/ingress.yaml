@@ -1,0 +1,21 @@
+---
+# Scrutiny has no login of its own, so authentik stands in front of it.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: scrutiny
+  namespace: scrutiny
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`disks.pxldi.de`)
+      kind: Rule
+      middlewares:
+        - name: internal-only
+          namespace: traefik
+        - name: authentik-forward-auth
+          namespace: traefik
+      services:
+        - name: scrutiny
+          port: 8080

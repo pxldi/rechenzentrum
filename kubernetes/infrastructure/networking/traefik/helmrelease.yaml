@@ -60,9 +60,13 @@ spec:
           emptyDir:
             sizeLimit: 16Mi
 
-    additionalArguments:
-      - "--api.dashboard=true"
-      - "--api.insecure=true"
+    # No additionalArguments: the chart already passes --api.dashboard=true.
+    # The dashboard is served only through the `dashboard` IngressRoute
+    # (infrastructure-config/traefik/dashboard-ingress.yaml), which names
+    # api@internal behind internal-only and forward-auth. --api.insecure=true
+    # used to serve the same API unauthenticated on the `traefik` entrypoint,
+    # where any pod could read every router and middleware, proxy keys
+    # included.
 
     ports:
       web:
@@ -115,26 +119,12 @@ spec:
           default: false
         protocol: TCP
 
-      # The `traefik` entrypoint carries the API and dashboard, and
-      # --api.insecure=true above means it is served with no authentication at
-      # all. Exposing it on a type: LoadBalancer Service published every router,
-      # service and middleware in the cluster to anyone on the LAN — verified:
-      # http://192.168.8.226:8080/api/overview and /dashboard/ both answered 200
-      # unauthenticated, listing 50 routers and 9 middlewares.
-      #
-      # It was also redundant. The dashboard already has a protected route: the
-      # `dashboard` IngressRoute serves api@internal on websecure behind the
-      # authentik-forward-auth middleware, at traefik.pxldi.de.
-      #
-      # Unexposing it removes 8080 from the LoadBalancer only. The entrypoint
-      # still listens on the pod, which matters more than it looks: Traefik's
-      # own readiness and liveness probes both GET /ping on 8080, so anything
-      # that stopped it listening — or a NetworkPolicy filtering it — would fail
-      # both probes and take every ingress in the cluster down with it. That is
-      # also why this is a Service change and not a NetworkPolicy.
-      #
-      # traefik-api.yaml re-publishes 8080 as a ClusterIP Service for
-      # homepage's widget, which is the only in-cluster consumer.
+      # The `traefik` entrypoint now carries only /ping, which Traefik's own
+      # readiness and liveness probes GET on 8080. It stays off the
+      # LoadBalancer Service and has no NetworkPolicy allowance: the kubelet's
+      # probes come from the node, which kube-router always admits. Anything
+      # that stopped it listening would fail both probes and take every route
+      # in the cluster down with it.
       traefik:
         expose:
           default: false

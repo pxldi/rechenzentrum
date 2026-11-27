@@ -1,7 +1,8 @@
 ---
 # The `tunnel` entrypoint as a ClusterIP Service, for cloudflared. It is not on
 # the LoadBalancer Service: the entrypoint trusts X-Forwarded-For, so it must
-# not be reachable from the LAN. Same selector pattern as traefik-api.yaml.
+# not be reachable from the LAN. The selector matches what the chart puts on
+# its pods.
 apiVersion: v1
 kind: Service
 metadata:

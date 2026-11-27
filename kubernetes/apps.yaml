@@ -30,6 +30,7 @@ spec:
     - name: database-tandoor
     - name: database-planka
     - name: database-forgejo
+    - name: database-anchor
   decryption:
     provider: sops
     secretRef:

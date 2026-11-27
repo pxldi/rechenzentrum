@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: anchor
+  namespace: anchor
+spec:
+  selector:
+    app: anchor
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

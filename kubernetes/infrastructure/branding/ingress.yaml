@@ -7,6 +7,9 @@ metadata:
 spec:
   entryPoints:
     - websecure
+    # The authentik login page loads its logo, wallpaper and fonts from here,
+    # so it is on the tunnel wherever auth.pxldi.de is.
+    - tunnel
   routes:
     - match: Host(`branding.pxldi.de`)
       kind: Rule

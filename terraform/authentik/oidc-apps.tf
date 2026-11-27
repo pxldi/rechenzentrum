@@ -295,3 +295,81 @@ resource "authentik_policy_binding" "mcp_connector_users" {
   group  = authentik_group.mcp_connector_users.id
   order  = 0
 }
+
+# --- Anchor ---
+#
+# Notes app at keep.<domain> (kubernetes/apps/anchor). Its password sign-in is
+# off, so this provider is its only login. Two clients run the flow: Anchor's
+# server for the web (callback under /api/auth/oidc) and the Android app
+# itself through AppAuth (anchor://oidc/callback), which then hands its access
+# token to Anchor. The app cannot hold a secret, so the client is public and
+# both sides use PKCE. The id below is not a credential; the login and the
+# group binding are.
+resource "authentik_provider_oauth2" "anchor" {
+  name        = "anchor"
+  client_id   = "4Yv7fkWuNmN0XigjKjKVWnef5W8gzrG2oPkbaNnM"
+  client_type = "public"
+
+  authorization_flow  = data.authentik_flow.default-authorization-flow.id
+  invalidation_flow   = data.authentik_flow.default-invalidation-flow.id
+  authentication_flow = authentik_flow.authentication.uuid
+
+  # OIDC_ISSUER_URL in the app is the per-application issuer, and both
+  # openid-client and AppAuth compare it with the discovery document. RS256
+  # because a public client has no secret to verify HS256 with.
+  issuer_mode                = "per_provider"
+  signing_key                = data.authentik_certificate_key_pair.jwt.id
+  include_claims_in_id_token = true
+
+  grant_types = ["authorization_code", "refresh_token"]
+
+  allowed_redirect_uris = [
+    {
+      matching_mode     = "strict"
+      redirect_uri_type = "authorization"
+      url               = "https://keep.${var.domain}/api/auth/oidc/callback"
+    },
+    {
+      matching_mode     = "strict"
+      redirect_uri_type = "authorization"
+      url               = "anchor://oidc/callback"
+    },
+  ]
+
+  property_mappings = [
+    for m in data.authentik_property_mapping_provider_scope.oidc : m.id
+  ]
+}
+
+resource "authentik_application" "anchor" {
+  name = "Anchor"
+  # The slug is the issuer: https://auth.<domain>/application/o/anchor/.
+  slug              = "anchor"
+  protocol_provider = authentik_provider_oauth2.anchor.id
+  meta_launch_url   = "https://keep.${var.domain}"
+  meta_description  = "Notes"
+  meta_icon         = "https://cdn.jsdelivr.net/gh/ZhFahim/anchor@v0.18.1/web/public/icons/anchor_icon.png"
+  open_in_new_tab   = true
+}
+
+data "authentik_user" "hannjo" {
+  username = "hannjo"
+}
+
+# Anchor creates an active account for anyone who completes the flow, and the
+# first one becomes its admin. So this binding decides who gets in, and pxldi
+# has to log in first.
+resource "authentik_group" "anchor_users" {
+  name         = "anchor-users"
+  is_superuser = false
+  users = [
+    data.authentik_user.pxldi.id,
+    data.authentik_user.hannjo.id,
+  ]
+}
+
+resource "authentik_policy_binding" "anchor_users" {
+  target = authentik_application.anchor.uuid
+  group  = authentik_group.anchor_users.id
+  order  = 0
+}

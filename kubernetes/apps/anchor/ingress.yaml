@@ -1,0 +1,26 @@
+# Public through the Cloudflare Tunnel, for a user off the tailnet, and on
+# websecure for the house. No forward-auth: the Android app sends bearer tokens
+# to /api and cannot follow a login redirect. No internal-only either: on the
+# tunnel entrypoint the remote address is a cloudflared pod.
+#
+# The host is still gated by authentik. Anchor speaks OIDC itself, its password
+# sign-in is off (DISABLE_INTERNAL_AUTH), and only members of anchor-users
+# complete the flow. The tunnel's public hostname for keep.pxldi.de is in the
+# Cloudflare dashboard (infrastructure/networking/cloudflared).
+# Priority 10 matches the rest of the repo's IngressRoutes.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: anchor
+  namespace: anchor
+spec:
+  entryPoints:
+    - websecure
+    - tunnel
+  routes:
+    - kind: Rule
+      match: Host(`keep.pxldi.de`)
+      priority: 10
+      services:
+        - name: anchor
+          port: 3000

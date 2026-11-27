@@ -35,3 +35,45 @@ spec:
       services:
         - name: authentik-server
           port: 80
+---
+# The same flood guard for requests through the Cloudflare Tunnel. There the
+# remote address is always a cloudflared pod, so the middleware above would put
+# the whole internet in one bucket. Cloudflare's edge sets Cf-Connecting-Ip to
+# the visitor's address and overwrites any value a client sends.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: auth-rate-limit-tunnel
+  namespace: authentik
+spec:
+  rateLimit:
+    average: 50
+    period: 1s
+    burst: 100
+    sourceCriterion:
+      requestHeaderName: Cf-Connecting-Ip
+---
+# Public through the tunnel, so a user off the tailnet can log in to the apps
+# that are public (keep.pxldi.de). Forward-auth apps stay on websecure only and
+# are not reachable this way.
+#
+# Known gap: authentik takes the client address for its reputation policy from
+# the leftmost X-Forwarded-For entry. Cloudflare appends to an XFF the client
+# sent, so through the tunnel that entry is the client's own claim and the
+# reputation score can be dodged. The second factor still applies.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: authentik-tunnel
+  namespace: authentik
+spec:
+  entryPoints:
+    - tunnel
+  routes:
+    - match: Host(`auth.pxldi.de`)
+      kind: Rule
+      middlewares:
+        - name: auth-rate-limit-tunnel
+      services:
+        - name: authentik-server
+          port: 80

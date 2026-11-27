@@ -1,0 +1,208 @@
+# RomM: a ROM library with metadata, covers and in-browser emulators.
+# Games live on romm-library (the media disk). Covers and screenshots fetched
+# from IGDB and ScreenScraper, uploaded saves and states, and config.yml live
+# on romm-data. The catalogue is in Postgres (kubernetes/databases/romm).
+#
+# One container runs gunicorn, nginx, the RQ workers and the image's own
+# valkey, which holds only the task queue.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: romm
+  namespace: romm
+  labels:
+    app: romm
+spec:
+  replicas: 1
+  # Every start runs the Alembic migrations, and romm-data is RWO on the one
+  # node, so two pods must never run at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: romm
+  template:
+    metadata:
+      labels:
+        app: romm
+    spec:
+      automountServiceAccountToken: false
+      # A Service named romm would inject ROMM_PORT=tcp://..., which RomM reads
+      # as its listen port.
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      # The subPath directories on romm-data must exist and belong to uid 1000
+      # before they are mounted. Left to the kubelet, it creates them as root.
+      initContainers:
+        - name: data-dirs
+          image: ghcr.io/rommapp/romm:5.4.1@sha256:8677fb7b81b1d3db20b849e989a1dadc2a11159e51eb34a2acdcb01102274edf
+          imagePullPolicy: IfNotPresent
+          command: ["mkdir", "-p", "/data/resources", "/data/assets", "/data/config"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+      containers:
+        - name: romm
+          image: ghcr.io/rommapp/romm:5.4.1@sha256:8677fb7b81b1d3db20b849e989a1dadc2a11159e51eb34a2acdcb01102274edf
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          # ROMM_AUTH_SECRET_KEY, OIDC_CLIENT_SECRET, and the IGDB and
+          # ScreenScraper credentials. Empty metadata keys switch that source
+          # off; a key added later needs a pod restart.
+          envFrom:
+            - secretRef:
+                name: romm-app
+          env:
+            - name: TZ
+              value: Europe/Berlin
+            - name: ROMM_DB_DRIVER
+              value: postgresql
+            - name: DB_HOST
+              value: romm-postgresql-rw
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: romm
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: romm-credentials
+                  key: username
+            - name: DB_PASSWD
+              valueFrom:
+                secretKeyRef:
+                  name: romm-credentials
+                  key: password
+            # Four workers held 110Mi each at idle. Two serve a house.
+            - name: WEB_SERVER_CONCURRENCY
+              value: "2"
+            - name: ROMM_SESSION_SECURE_COOKIE
+              value: "true"
+            # authentik is the only login. The setup wizard would let the
+            # first visitor create an admin with a password, so it is off; the
+            # first member of romm-admins to log in becomes the admin instead.
+            # A user in neither group gets a 403 from RomM, and authentik's
+            # binding keeps everyone else out before that.
+            - name: DISABLE_SETUP_WIZARD
+              value: "true"
+            - name: DISABLE_USERPASS_LOGIN
+              value: "true"
+            - name: OIDC_ENABLED
+              value: "true"
+            - name: OIDC_AUTOLOGIN
+              value: "true"
+            - name: OIDC_PROVIDER
+              value: authentik
+            - name: OIDC_CLIENT_ID
+              value: fJsh8W2Go9STabIZoNOIhTwmGELaIYxlZ7phtvqD
+            - name: OIDC_REDIRECT_URI
+              value: https://games.pxldi.de/api/oauth/openid
+            - name: OIDC_SERVER_APPLICATION_URL
+              value: https://auth.pxldi.de/application/o/romm/
+            - name: OIDC_SERVER_METADATA_URL
+              value: https://auth.pxldi.de/application/o/romm/.well-known/openid-configuration
+            - name: OIDC_CLAIM_ROLES
+              value: groups
+            - name: OIDC_ROLE_ADMIN
+              value: romm-admins
+            - name: OIDC_ROLE_VIEWER
+              value: romm-users
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            # /romm and /redis-data are image VOLUMEs. Covered here, so the
+            # runtime does not create anonymous volumes for them.
+            - name: romm-root
+              mountPath: /romm
+            - name: library
+              mountPath: /romm/library
+            - name: data
+              mountPath: /romm/resources
+              subPath: resources
+            - name: data
+              mountPath: /romm/assets
+              subPath: assets
+            - name: data
+              mountPath: /romm/config
+              subPath: config
+            # The internal valkey's snapshot. Only queued tasks are lost
+            # without it.
+            - name: redis
+              mountPath: /redis-data
+            # The entrypoint renders nginx's upstream config here.
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d
+            - name: tmp
+              mountPath: /tmp
+          # Every start migrates the database before gunicorn listens.
+          startupProbe:
+            httpGet:
+              path: /api/heartbeat
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /api/heartbeat
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/heartbeat
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          # About 250Mi idle with two web workers in a local run (365Mi with
+          # four). A library scan hashes files and takes more.
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              memory: 2Gi
+      volumes:
+        - name: library
+          persistentVolumeClaim:
+            claimName: romm-library
+        - name: data
+          persistentVolumeClaim:
+            claimName: romm-data
+        - name: romm-root
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: redis
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: nginx-conf
+          emptyDir:
+            sizeLimit: 1Mi
+        # Uploads and the zip cache for multi-file downloads.
+        - name: tmp
+          emptyDir:
+            sizeLimit: 10Gi

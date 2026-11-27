@@ -233,6 +233,12 @@ endpoints:
     <<: *house
     conditions:
       - "[STATUS] == 200"
+  - name: RomM
+    group: house
+    url: http://romm.romm.svc.cluster.local:8080/api/heartbeat
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
   - name: Forgejo
     group: house
     url: http://forgejo.forgejo.svc.cluster.local:3000/api/healthz

@@ -121,6 +121,12 @@ still search through it.
   on, and match existing users by username so the root account links to the
   authentik user of the same name. Mobile redirect URI stays
   `audiobookshelf://oauth`.
+- **RomM** (`games.pxldi.de`) is LAN/tailnet only, with no forward-auth, the
+  same shape: handheld clients send API tokens. Its password login and setup
+  wizard are off (`DISABLE_USERPASS_LOGIN`, `DISABLE_SETUP_WIZARD`), so its
+  OIDC login against authentik is the only way in. `romm-admins` log in as
+  admins and `romm-users` as users; anyone else is refused by authentik's
+  binding and again by RomM.
 - **Schall's API route** (`schall.pxldi.de` with a Bearer header) stays public so
   a client that cannot follow a login redirect works away from home. Schall
   validates the token and answers 401 to anything it did not mint. No proxy key
@@ -206,6 +212,7 @@ is on Tailscale" is not an answer on its own.
 | jdownloader | `download.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | excalidraw | `draw.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | forgejo | `git.pxldi.de` | LAN/tailnet | internal-only |
+| romm | `games.pxldi.de` | LAN/tailnet | internal-only |
 | gotify | `gotify.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |
 | observability | `grafana.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | opengym | `gym.pxldi.de` | LAN/tailnet/pods | internal-or-cluster |

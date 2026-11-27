@@ -1,0 +1,32 @@
+# Covers and screenshots from the metadata sources, uploaded saves and
+# states, and config.yml. Velero copies it. Saves are the one thing here a
+# player cannot get back.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: romm-data
+  namespace: romm
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 20Gi
+---
+# The games, on the media disk. Not backed up: ROMs are re-obtainable, and
+# the database records what the library held. See docs/BACKUPS.md.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: romm-library
+  namespace: romm
+  labels:
+    backup.rechenzentrum.dev/reproducible: "true"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-hdd1
+  resources:
+    requests:
+      storage: 500Gi

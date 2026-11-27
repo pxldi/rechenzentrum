@@ -87,9 +87,11 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.B2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_SECRET_ACCESS_KEY }}
           AWS_ENDPOINT_URL_S3: ${{ secrets.B2_ENDPOINT_URL }}
-          # Same value as OAUTH_CLIENT_SECRET in karakeep's SOPS secret.
-          # Both sides have to be changed together or OIDC login breaks.
+          # Same values as OAUTH_CLIENT_SECRET in karakeep's SOPS secret and
+          # OIDC_CLIENT_SECRET in romm-app. Both sides of each have to be
+          # changed together or that app's OIDC login breaks.
           TF_VAR_karakeep_oidc_client_secret: ${{ secrets.KARAKEEP_OIDC_CLIENT_SECRET }}
+          TF_VAR_romm_oidc_client_secret: ${{ secrets.ROMM_OIDC_CLIENT_SECRET }}
 
   apply:
     name: Apply
@@ -123,6 +125,8 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.B2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_SECRET_ACCESS_KEY }}
           AWS_ENDPOINT_URL_S3: ${{ secrets.B2_ENDPOINT_URL }}
-          # Same value as OAUTH_CLIENT_SECRET in karakeep's SOPS secret.
-          # Both sides have to be changed together or OIDC login breaks.
+          # Same values as OAUTH_CLIENT_SECRET in karakeep's SOPS secret and
+          # OIDC_CLIENT_SECRET in romm-app. Both sides of each have to be
+          # changed together or that app's OIDC login breaks.
           TF_VAR_karakeep_oidc_client_secret: ${{ secrets.KARAKEEP_OIDC_CLIENT_SECRET }}
+          TF_VAR_romm_oidc_client_secret: ${{ secrets.ROMM_OIDC_CLIENT_SECRET }}

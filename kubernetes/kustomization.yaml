@@ -11,4 +11,5 @@ resources:
   - database-planka.yaml
   - database-forgejo.yaml
   - database-anchor.yaml
+  - database-romm.yaml
   - namespaces.yaml

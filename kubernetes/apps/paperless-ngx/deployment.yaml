@@ -86,10 +86,16 @@ spec:
               mountPath: /usr/src/paperless/consume
             - name: export
               mountPath: /usr/src/paperless/export
+          # Since 3.5.1 Paperless answers 400 DisallowedHost to any Host that does
+          # not match PAPERLESS_URL, and a kubelet probe sends the pod IP. Every
+          # probe failed and the pod restarted 2110 times in 8 days.
           startupProbe:
             httpGet:
               path: /api/
               port: 8000
+              httpHeaders:
+                - name: Host
+                  value: paperless.pxldi.de
             periodSeconds: 10
             failureThreshold: 30
             timeoutSeconds: 5
@@ -97,12 +103,18 @@ spec:
             httpGet:
               path: /api/
               port: 8000
+              httpHeaders:
+                - name: Host
+                  value: paperless.pxldi.de
             periodSeconds: 30
             timeoutSeconds: 10
           readinessProbe:
             httpGet:
               path: /api/
               port: 8000
+              httpHeaders:
+                - name: Host
+                  value: paperless.pxldi.de
             periodSeconds: 10
             timeoutSeconds: 10
           resources:

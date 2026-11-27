@@ -4,7 +4,10 @@ metadata:
   name: cloudflare-ddns
   namespace: cloudflare-ddns
 spec:
-  replicas: 1
+  # Off since 2026-11-27. The house has no line of its own; the WAN address
+  # this would publish is a shared flat's, with no port forwards. Public
+  # hostnames go through the Cloudflare Tunnel (../cloudflared) instead.
+  replicas: 0
   selector:
     matchLabels:
       app: cloudflare-ddns

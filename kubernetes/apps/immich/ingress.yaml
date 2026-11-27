@@ -7,6 +7,8 @@ metadata:
 spec:
   entryPoints:
     - websecure
+    # Public through the Cloudflare Tunnel; family members use it off the tailnet.
+    - tunnel
   routes:
     - kind: Rule
       match: Host(`photos.pxldi.de`)

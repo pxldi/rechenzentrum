@@ -45,6 +45,16 @@ spec:
         - pxldi.de
         - nextcloud.nextcloud.svc.cluster.local
       datadir: /var/www/html/data
+      # The image starts as root: the entrypoint copies and chowns the code and
+      # runs occ through su as www-data, and Apache binds 80 and then runs its
+      # workers as www-data, signalling them from the root parent. Those are the
+      # capabilities added back; the other default ones (MKNOD, NET_RAW,
+      # SYS_CHROOT, SETFCAP, SETPCAP, FSETID) are dropped.
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+          add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID, NET_BIND_SERVICE, KILL, AUDIT_WRITE]
       configs:
         custom.config.php: |-
           <?php
@@ -178,6 +188,12 @@ spec:
       enabled: true
       type: sidecar
       sidecar:
+        # crond runs as root and starts each job as www-data.
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+            add: [SETUID, SETGID, DAC_OVERRIDE, AUDIT_WRITE]
         resources:
           requests:
             memory: "128Mi"

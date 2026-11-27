@@ -178,12 +178,14 @@ spec:
               port: http
             periodSeconds: 30
             timeoutSeconds: 5
-          # About 250Mi idle with two web workers in a local run (365Mi with
-          # four). A library scan hashes files and takes more.
+          # 681Mi idle on the node with an empty library: two web workers at
+          # about 190Mi each after the first login, and six RQ processes and
+          # the cron scheduler at about 60Mi each. A library scan hashes files
+          # and takes more.
           resources:
             requests:
               cpu: 100m
-              memory: 384Mi
+              memory: 768Mi
             limits:
               memory: 2Gi
       volumes:

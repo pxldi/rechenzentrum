@@ -30,7 +30,7 @@ spec:
         # dance that lived here (and the branding-app secret with it) only
         # existed because the private pxldi-labs repo rejected the old PAT.
         - name: git-sync
-          image: alpine/git:2.45.2
+          image: alpine/git:2.45.2@sha256:16ad8e788e1d3b0c30f18da8dde5c0ace3b187445a62d8af893b003ca1e70592
           restartPolicy: Always
           command:
             - sh
@@ -87,6 +87,9 @@ spec:
           env:
             - name: SYNC_INTERVAL
               value: "300"
+            # git wants a writable home for its config lookups; nobody has none.
+            - name: HOME
+              value: /tmp
           # nginx does not start until this succeeds, so the site is never up
           # with an empty volume behind it.
           startupProbe:
@@ -105,7 +108,13 @@ spec:
                 - test "$(( $(date +%s) - $(cat /assets/.synced) ))" -lt 1800
             periodSeconds: 60
             failureThreshold: 3
+          # nobody, not root: it runs a clone of a public repository every five
+          # minutes and needs only /tmp and the emptyDir, which is world-writable.
+          # nginx reads what it writes, because the files are mode 644.
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
@@ -120,7 +129,7 @@ spec:
               mountPath: /assets
       containers:
         - name: nginx
-          image: nginx:1.27.4-alpine
+          image: nginx:1.27.4-alpine@sha256:4ff102c5d78d254a6f0da062b3cf39eaf07f01eec0927fd21e219d0af8bc0591
           ports:
             - containerPort: 80
               name: http

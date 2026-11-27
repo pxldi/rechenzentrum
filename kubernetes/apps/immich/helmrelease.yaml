@@ -118,6 +118,13 @@ spec:
         main:
           containers:
             main:
+              # Root inside the image, and every file in the library and the
+              # model cache is owned by root (checked 2026-11-27), so it needs no
+              # capability to write them.
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
               # 7d working set: 1.1Gi average, 2.1Gi peak. Request tracks the
               # average so eviction ranking is honest; no memory limit, because
               # a photo import is exactly the bounded-by-the-node workload that
@@ -143,6 +150,10 @@ spec:
               backup.velero.io/backup-volumes-excludes: "cache"
           containers:
             main:
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
               # The one place a memory limit is worth keeping: model loading is
               # driven by whatever a user uploads, and an unbounded ML container
               # can take the node with it.

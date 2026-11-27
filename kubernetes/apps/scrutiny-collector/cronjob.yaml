@@ -34,7 +34,14 @@ spec:
           containers:
             - name: collector
               image: ghcr.io/analogj/scrutiny:v0.10.0-collector@sha256:372493d3edf473571b806efb5922e8868537af644b3817536695cae05abd4f2c
-              command: ["/opt/scrutiny/bin/scrutiny-collector-metrics", "run"]
+              # The wait is for k3s's NetworkPolicy controller: it adds a new
+              # pod's address to the allow rules a few seconds after the pod
+              # starts. The collector posts within a millisecond, so without
+              # the wait every run was refused on its way to the API.
+              command:
+                - sh
+                - -c
+                - sleep 20 && exec /opt/scrutiny/bin/scrutiny-collector-metrics run
               env:
                 - name: COLLECTOR_API_ENDPOINT
                   value: http://scrutiny.scrutiny.svc.cluster.local:8080

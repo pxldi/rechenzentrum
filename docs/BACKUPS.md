@@ -2,7 +2,7 @@
 
 | Data | Backup path |
 | --- | --- |
-| Six CNPG databases | Barman Cloud plugin -> B2; base backups and WAL |
+| Six CNPG databases | Barman Cloud plugin -> B2; base backup every Sunday, WAL continuously, 30-day recovery window |
 | Selected application files | Velero/Kopia -> B2 |
 | Daily critical namespaces | `daily-critical-backup`, `20 2 * * *` (UTC), 30-day retention |
 | Weekly selected cluster resources | `weekly-full-backup`, `0 3 * * 0`, 90-day retention |

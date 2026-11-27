@@ -82,17 +82,6 @@
       "description": "The flux manager reads the images in a HelmRelease's values. Without this, the kubernetes manager also reads the image: lines in the infrastructure HelmReleases, and the two would open competing PRs for the same line."
     },
     {
-      "matchManagers": [
-        "kubernetes"
-      ],
-      "matchFileNames": [
-        "kubernetes/infrastructure/branding/**",
-        "kubernetes/infrastructure/networking/cloudflare-ddns/**"
-      ],
-      "enabled": false,
-      "description": "Temporary. Both directories are being removed or reworked in separate changes, and the kubernetes manager only reads kubernetes/infrastructure since the digest pinning change. Drop this rule once that work has merged, so their images get pinned too."
-    },
-    {
       "matchPackageNames": [
         "velero/velero-plugin-for-aws"
       ],
@@ -120,12 +109,6 @@
       "schedule": [
         "at any time"
       ]
-    },
-    {
-      "matchPackageNames": [
-        "boulderbadgedad/soulsync"
-      ],
-      "versioning": "loose"
     },
     {
       "matchPackageNames": [

@@ -26,9 +26,6 @@
   "apps/v1/Deployment/claudebox/claudebox": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/cloudflare-ddns/cloudflare-ddns": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/excalidraw/excalidraw": {
     "kind": "Deployment"
   },
@@ -249,9 +246,6 @@
     "kind": "Namespace"
   },
   "v1/Namespace//claudebox": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//cloudflare-ddns": {
     "kind": "Namespace"
   },
   "v1/Namespace//cnpg-system": {

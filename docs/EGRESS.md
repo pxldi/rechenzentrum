@@ -23,11 +23,17 @@ if you only ever test a name that does not exist.
 
 ## Locked
 
-Every application namespace except the two at the end of this section.
+Every application namespace except `home-assistant`, explained at the end of
+this section. Measured 2026-11-27, the namespaces with running pods and no
+default-deny egress are `home-assistant` and the infrastructure ones:
+`authentik`, `branding`, `cert-manager`, `cnpg-system`, `device-plugins`,
+`flux-system`, `kube-system`, `observability`, `openebs`, `traefik` and
+`velero`.
 
 | Namespace | Beyond DNS | Why |
 | --- | --- | --- |
 | `chatops` | per pod: each claude.ai MCP server gets its app (`tandoor`, `nextcloud`, `opengym`, `snacky`, `obsidian-sync`) and Authentik | Five servers with five backends, see `kubernetes/apps/chatops/networkpolicy.yaml` |
+| `cloudflared` | Cloudflare's edge on 7844 and 443, the Traefik pod on 8090 | The tunnel connector; nothing else, see `infrastructure/networking/cloudflared/networkpolicy.yaml` |
 | `claudebox` | internet, API server, `obsidian-sync` | Clones repositories and drives this cluster; it carries a ServiceAccount token and RBAC. Its bridge sidecar mirrors the vault from CouchDB |
 | `crowdsec` | per pod: the agent gets the LAPI, the API server on 6443 and internet on 443; the LAPI gets internet on 443 | The agent streams Traefik's log through `pods/log`; both download hub content from the CrowdSec CDN at start. The Central API is off |
 | `excalidraw` | nothing | The pilot |
@@ -137,7 +143,10 @@ application sharing the namespace does not get the API server too. An empty
 selector shipped first and did exactly that, caught by probing the app pod after
 the policies landed rather than only the database. Nothing but a database should
 reach the API server here, which is the same reasoning behind
-`automountServiceAccountToken: false` on every default ServiceAccount.
+`automountServiceAccountToken: false` on the default ServiceAccount of every
+namespace where that account has no RoleBinding
+(`kubernetes/apps/service-account-hardening`). A pod started before the
+setting keeps its token until it restarts.
 
 ## When a chart already did it
 

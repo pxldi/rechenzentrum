@@ -189,13 +189,6 @@ endpoints:
     conditions:
       - "[CONNECTED] == true"
       - "[STATUS] < 400"
-  - name: Schall
-    group: house
-    url: http://schall.media.svc.cluster.local:8080/
-    <<: *house
-    conditions:
-      - "[CONNECTED] == true"
-      - "[STATUS] < 500"
   - name: slskd
     group: house
     url: http://slskd.slskd.svc.cluster.local:5030/health

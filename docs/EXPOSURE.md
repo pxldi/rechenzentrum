@@ -100,7 +100,8 @@ as it always did for every app without such a route. They were removed on
 ## Scaled to 0 since 2026-11-27
 
 Radarr, Sonarr and Seerr run at 0 replicas; HolyArrs took over the library,
-downloads and requests. Their routes below (`radarr`, `sonarr`, `request`)
+downloads and requests. Schall is at 0 too; Aurral replaced it and
+`schall.pxldi.de` has no pod behind it. Their routes below (`radarr`, `sonarr`, `request`)
 still exist with no pod behind them until the apps, routes and authentik apps are
 deleted. Prowlarr stays: Aurral searches Usenet through it for SABnzbd, and
 the Sources HolyArrs imported from it still search through it.

@@ -29,21 +29,23 @@ spec:
           existingSecret: velero-ui-jwt
           key: pass_phrase
 
-    # The chart's default is `clusterAdministratorName: cluster-admin`, which
-    # bound this web app to write access on every object in the cluster. Repoint
-    # the binding at a read-only ClusterRole (rbac.yaml); the namespaced Roles the
-    # chart still creates in `velero` keep every backup and restore action working.
+    # The chart's RBAC is off. Its Role in `velero` granted every verb on
+    # velero.io and read on the namespace's Secrets (the B2 credentials), and
+    # velero-server carries out whatever a Backup, Restore or
+    # DeleteBackupRequest says with cluster-admin. With the app's own login off,
+    # one forward-auth session was enough to restore any namespace anywhere.
+    # rbac.yaml grants read-only access instead; backups and restores are made
+    # with the velero CLI.
     rbac:
-      create: true
-      clusterAdministrator: true
-      clusterAdministratorName: velero-ui-cluster-reader
+      create: false
 
     ingress:
       enabled: false
 
     # The app's own login ran on the chart's default credentials, which 0.12
     # refuses to start with. The route already requires the LAN or tailnet
-    # and an Authentik login (ingress.yaml), so the second login goes.
+    # and an Authentik login (ingress.yaml), so the second login goes. That is
+    # acceptable only because the UI can no longer write anything.
     env:
       - name: BASIC_AUTH_ENABLED
         value: "false"

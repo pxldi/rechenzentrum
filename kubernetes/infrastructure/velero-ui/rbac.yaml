@@ -1,24 +1,13 @@
 ---
-# velero-ui shipped bound to cluster-admin, because the chart defaults to
-# `rbac.clusterAdministrator: true` with `clusterAdministratorName: cluster-admin`.
-# That is a web application, reachable over HTTP, holding write access to every
-# object in the cluster including every Secret. It sits behind forward-auth, so
-# it takes one auth bypass — or one XSS in the UI — to go from "read my backups"
-# to "read every credential in the cluster and schedule a pod on the node".
+# velero-ui is read-only. The chart's RBAC (rbac.create: false in the
+# HelmRelease) used to bind it to cluster-admin and later to a Role with every
+# verb on velero.io in `velero`. Velero executes a Backup, Restore or
+# DeleteBackupRequest with its own cluster-admin, so write on velero.io was
+# write on the whole cluster by proxy, from a web app whose own login is off.
 #
-# The chart already creates two namespaced Roles in `velero` that cover
-# everything the UI actually does:
-#   velero-ui-velero-permissions -> velero.io/* (all verbs) + read pods,
-#                                   secrets and configmaps in `velero`
-#   velero-ui-permissions        -> read pods
-# So creating, deleting and restoring backups keeps working untouched. The only
-# thing cluster-admin added on top was cluster-scoped reach, and the UI needs
-# exactly one kind of it: reading, so its namespace/PVC/storage-class pickers and
-# its restore views can enumerate the cluster.
-#
-# This ClusterRole is that, and nothing else — no writes, no deletes, no exec, no
-# cluster-wide secret access. The chart's ClusterRoleBinding is repointed at it
-# via `rbac.clusterAdministratorName` in the HelmRelease.
+# What it gets now: read on its own CRs and on the objects its pickers and
+# restore views enumerate, plus pod logs in `velero` for backup logs. No
+# Secrets anywhere: the namespace's Secrets hold the B2 credentials.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -48,9 +37,43 @@ rules:
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
     verbs: ["get", "list", "watch"]
-  # Velero's own CRs are namespaced in `velero` and writable there through the
-  # chart's Role. This is the cluster-wide *read* the UI uses to notice CRs that
-  # live outside that namespace, e.g. a BackupStorageLocation added elsewhere.
   - apiGroups: ["velero.io"]
     resources: ["*"]
     verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: velero-ui-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: velero-ui-cluster-reader
+subjects:
+  - kind: ServiceAccount
+    name: velero-ui
+    namespace: velero
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: velero-ui-pod-logs
+  namespace: velero
+rules:
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: velero-ui-pod-logs
+  namespace: velero
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: velero-ui-pod-logs
+subjects:
+  - kind: ServiceAccount
+    name: velero-ui
+    namespace: velero

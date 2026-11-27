@@ -3,6 +3,25 @@
 Generated from the live cluster on 2026-09-13, after the internal-only rollout.
 Routes do not prove internet reachability; DNS and the router decide that too.
 
+## Since 2026-11-27: Cloudflare Tunnel only
+
+The house lost its own line and router. The cluster now sits behind a router
+in repeater mode on a network with no port forwards, so nothing reaches
+Traefik's LoadBalancer from the internet. `cloudflare-ddns` is scaled to 0.
+
+Only `cloud.pxldi.de` (Nextcloud) and `photos.pxldi.de` (Immich) are public,
+through the Cloudflare Tunnel (`infrastructure/networking/cloudflared`). They
+are the only routes bound to Traefik's `tunnel` entrypoint. Every other route
+marked "public" or "Authentik" below is reachable from the LAN and the tailnet
+only, until it is bound to `tunnel` and given a hostname in the tunnel's
+dashboard config. The claude.ai connectors (`*-mcp.pxldi.de`) are down for
+the same reason. Their `anthropic-and-house` allowlist checks the remote
+address, which on the `tunnel` entrypoint is a pod, so binding them needs an
+`ipStrategy` too.
+
+Cloudflare's free plan caps a request body at 100 MB. Immich uploads of
+larger files fail through the tunnel and work on the LAN and the tailnet.
+
 Three states:
 
 - **LAN/tailnet + Authentik** — the `internal-only` middleware refuses any source

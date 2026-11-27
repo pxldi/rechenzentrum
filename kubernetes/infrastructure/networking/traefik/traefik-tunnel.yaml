@@ -1,0 +1,21 @@
+---
+# The `tunnel` entrypoint as a ClusterIP Service, for cloudflared. It is not on
+# the LoadBalancer Service: the entrypoint trusts X-Forwarded-For, so it must
+# not be reachable from the LAN. Same selector pattern as traefik-api.yaml.
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-tunnel
+  namespace: traefik
+  labels:
+    app.kubernetes.io/name: traefik-tunnel
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: traefik-traefik
+    app.kubernetes.io/name: traefik
+  ports:
+    - name: tunnel
+      port: 8090
+      targetPort: 8090
+      protocol: TCP

@@ -86,6 +86,29 @@ spec:
           middlewares:
             - traefik-crowdsec-bouncer@kubernetescrd
 
+      # Traffic from the Cloudflare Tunnel (infrastructure/networking/cloudflared).
+      # Plain HTTP inside the cluster; TLS ends at Cloudflare's edge. Only the
+      # routes meant to be public list this entrypoint, so internal-only routes
+      # cannot be reached through the tunnel at all.
+      #
+      # Every request here arrives from a cloudflared pod, so the client
+      # address is taken from X-Forwarded-For, trusted from the pod range.
+      # A compromised pod could forge that header, but only on the routes bound
+      # to this entrypoint, which are public anyway. It would gain nothing an
+      # internet client does not have, beyond misleading CrowdSec and the apps'
+      # brute-force counters about who it is.
+      tunnel:
+        port: 8090
+        expose:
+          default: false
+        protocol: TCP
+        forwardedHeaders:
+          trustedIPs:
+            - 10.42.0.0/16
+        http:
+          middlewares:
+            - traefik-crowdsec-bouncer@kubernetescrd
+
       metrics:
         port: 9100
         expose:

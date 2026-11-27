@@ -35,6 +35,11 @@ spec:
       updateMaxFailure: -1
       streamStartupBlock: false
       metricsUpdateIntervalSeconds: 0
+      # Requests from the Cloudflare Tunnel come from a cloudflared pod; the
+      # real client is in X-Forwarded-For. Without this every internet request
+      # would look like a pod and pass as trusted.
+      forwardedHeadersTrustedIPs:
+        - 10.42.0.0/16
       clientTrustedIPs:
         - 10.0.0.0/8
         - 172.16.0.0/12

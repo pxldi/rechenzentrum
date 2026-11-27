@@ -11,3 +11,4 @@ resources:
   - crowdsec-bouncer-secret.yaml
   - crowdsec-log-reader.yaml
   - traefik-api.yaml
+  - traefik-tunnel.yaml

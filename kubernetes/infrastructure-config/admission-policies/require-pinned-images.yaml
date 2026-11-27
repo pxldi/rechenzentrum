@@ -3,7 +3,14 @@
 # same manifest resolves to a different build tomorrow, a rollback rolls back to
 # nothing in particular, and Renovate cannot see a version to bump. Nothing in
 # this cluster does it today — all 92 workloads carry an explicit tag or digest —
-# so this is a ratchet, not a cleanup.
+# so this is a ratchet, not a cleanup. CronJobs and Jobs were added on
+# 2026-11-27, after every container in the 24 CronJobs and 66 Jobs then in the
+# cluster passed the same rule. Helm hook Jobs that were not present at the time
+# were not checked.
+#
+# This checks for a tag or a digest. It does not require a digest: the
+# manifests in this repository carry one, but pods rendered from chart defaults
+# mostly do not, and requiring it would block those charts.
 #
 # A ValidatingAdmissionPolicy rather than a webhook on purpose. The CEL runs
 # in-process in the apiserver, so there is no deployment to be down, no
@@ -28,12 +35,24 @@ spec:
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE"]
         resources: ["deployments", "statefulsets", "daemonsets"]
+      # CronJobs and Jobs run the backups, the restore tests and Renovate, and
+      # the operators here (Velero, CNPG, Trivy) create Jobs of their own.
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["cronjobs", "jobs"]
   variables:
+    # A CronJob nests its pod template one level deeper than the other kinds.
+    - name: podSpec
+      expression: >-
+        object.kind == 'CronJob'
+          ? object.spec.jobTemplate.spec.template.spec
+          : object.spec.template.spec
     - name: containers
       expression: >-
-        object.spec.template.spec.containers +
-        (has(object.spec.template.spec.initContainers)
-          ? object.spec.template.spec.initContainers : [])
+        variables.podSpec.containers +
+        (has(variables.podSpec.initContainers)
+          ? variables.podSpec.initContainers : [])
   validations:
     # Pinned means either a digest, or a tag that is not "latest". The tag test
     # is lastIndexOf(':') > lastIndexOf('/') rather than a plain contains(':'),

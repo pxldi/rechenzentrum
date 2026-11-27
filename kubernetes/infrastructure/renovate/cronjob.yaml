@@ -80,7 +80,7 @@ spec:
             # Reusing the renovate image also means the layer is already
             # present, one less thing to pull, and one less supply chain.
             - name: mint-token
-              image: renovate/renovate:39
+              image: renovate/renovate:39.264.0@sha256:f2209c61a9c3c8c74ac58eecb5f15ec43651f1ba694aa33493ff2062b90ff4d3
               command:
                 - sh
                 - -c
@@ -152,7 +152,7 @@ spec:
                   mountPath: /token
           containers:
             - name: renovate
-              image: renovate/renovate:39
+              image: renovate/renovate:39.264.0@sha256:f2209c61a9c3c8c74ac58eecb5f15ec43651f1ba694aa33493ff2062b90ff4d3
               # RENOVATE_TOKEN must be an env var, and the token only exists at
               # runtime — so read it off the tmpfs and exec renovate.
               command:

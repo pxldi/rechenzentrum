@@ -24,7 +24,7 @@ spec:
       priorityClassName: rechenzentrum-critical
       containers:
         - name: bridge
-          image: druggeri/alertmanager_gotify_bridge:2.3.2
+          image: druggeri/alertmanager_gotify_bridge:2.3.2@sha256:242441023c6a7956fc7bcdd30350a8fed38f791e703d670aa286fc0465f88b41
           ports:
             - name: http
               containerPort: 8080
@@ -80,7 +80,7 @@ spec:
     spec:
       containers:
         - name: bridge
-          image: druggeri/alertmanager_gotify_bridge:2.3.2
+          image: druggeri/alertmanager_gotify_bridge:2.3.2@sha256:242441023c6a7956fc7bcdd30350a8fed38f791e703d670aa286fc0465f88b41
           ports:
             - name: http
               containerPort: 8080
@@ -155,7 +155,7 @@ spec:
     spec:
       containers:
         - name: bridge
-          image: druggeri/alertmanager_gotify_bridge:2.3.2
+          image: druggeri/alertmanager_gotify_bridge:2.3.2@sha256:242441023c6a7956fc7bcdd30350a8fed38f791e703d670aa286fc0465f88b41
           ports:
             - name: http
               containerPort: 8080

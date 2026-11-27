@@ -24,7 +24,7 @@ spec:
       priorityClassName: rechenzentrum-bulk
       containers:
         - name: jdownloader
-          image: jlesage/jdownloader-2:v26.11.2
+          image: jlesage/jdownloader-2:v26.11.2@sha256:deb1f5519e5434d2d22d87f5c91044986b302d2cfb86846d7e72b2ad4def4ea3
           imagePullPolicy: IfNotPresent
           # Parked at 0 replicas, so there is no 7d history to size from.
           # These are a floor, not a measurement — revisit if it is unparked.

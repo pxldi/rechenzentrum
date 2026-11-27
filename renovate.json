@@ -10,7 +10,9 @@
   },
   "kubernetes": {
     "fileMatch": [
-      "kubernetes/apps/.+\\.ya?ml$"
+      "kubernetes/apps/.+\\.ya?ml$",
+      "kubernetes/infrastructure/.+\\.ya?ml$",
+      "kubernetes/infrastructure-config/.+\\.ya?ml$"
     ]
   },
   "customManagers": [
@@ -47,6 +49,49 @@
     }
   ],
   "packageRules": [
+    {
+      "matchManagers": [
+        "kubernetes",
+        "flux"
+      ],
+      "matchDatasources": [
+        "docker"
+      ],
+      "pinDigests": true,
+      "description": "Every container image under kubernetes/ is pinned as tag@digest: a registry can push new contents under an old tag, and the digest is what the node runs. This pins an image added without a digest and moves the digest along with every tag bump."
+    },
+    {
+      "matchManagers": [
+        "flux"
+      ],
+      "matchPackageNames": [
+        "oci.trueforge.org/**",
+        "ghcr.io/seerr-team/seerr/seerr-chart"
+      ],
+      "pinDigests": false,
+      "description": "Helm charts served from an OCI registry share the docker datasource with images, but a HelmRelease's chart version field takes a version and cannot carry a digest."
+    },
+    {
+      "matchManagers": [
+        "kubernetes"
+      ],
+      "matchFileNames": [
+        "kubernetes/**/helmrelease.yaml"
+      ],
+      "enabled": false,
+      "description": "The flux manager reads the images in a HelmRelease's values. Without this, the kubernetes manager also reads the image: lines in the infrastructure HelmReleases, and the two would open competing PRs for the same line."
+    },
+    {
+      "matchManagers": [
+        "kubernetes"
+      ],
+      "matchFileNames": [
+        "kubernetes/infrastructure/branding/**",
+        "kubernetes/infrastructure/networking/cloudflare-ddns/**"
+      ],
+      "enabled": false,
+      "description": "Temporary. Both directories are being removed or reworked in separate changes, and the kubernetes manager only reads kubernetes/infrastructure since the digest pinning change. Drop this rule once that work has merged, so their images get pinned too."
+    },
     {
       "matchPackageNames": [
         "velero/velero-plugin-for-aws"

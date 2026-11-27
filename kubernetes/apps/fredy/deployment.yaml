@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: fredy
-          image: ghcr.io/pxldi/fredy:pxldi-27.1.2-1
+          image: ghcr.io/pxldi/fredy:pxldi-27.1.2-1@sha256:06b646d0d8c105ceb5a99edf91fd7ef053c8fafcedbfbb4dfa2e0295703a65f9
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 9998

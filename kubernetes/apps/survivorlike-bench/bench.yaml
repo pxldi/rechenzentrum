@@ -51,7 +51,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: bench
-              image: ghcr.io/pxldi/survivorlike-bench:sha-a996d8143c4ad0ad29ad263fe44d47271f4cf661
+              image: ghcr.io/pxldi/survivorlike-bench:sha-a996d8143c4ad0ad29ad263fe44d47271f4cf661@sha256:78a782eb6b2f96a701622dc9d0a2c833d4ff95ae10bb5b294dd83acd61515238
               env:
                 - name: MAX_JOBS
                   value: "4"

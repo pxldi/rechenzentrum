@@ -21,7 +21,7 @@ spec:
     spec:
       initContainers:
         - name: fix-permissions
-          image: busybox:1.38
+          image: busybox:1.38.0@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
           command:
             - sh
             - -c
@@ -39,7 +39,7 @@ spec:
             - name: data
               mountPath: /opt/couchdb/data
         - name: copy-config
-          image: busybox:1.38
+          image: busybox:1.38.0@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
           command:
             - sh
             - -c
@@ -52,7 +52,7 @@ spec:
               mountPath: /local.d
       containers:
         - name: couchdb
-          image: couchdb:3.5.3
+          image: couchdb:3.5.3@sha256:3611ce43bd32fe2368997fd41ec6e7270ec8d84aa5fc13c9828e5b15fd6bafe8
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5984

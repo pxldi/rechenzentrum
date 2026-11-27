@@ -34,7 +34,7 @@ spec:
           main:
             image:
               repository: ghcr.io/grimmory-tools/grimmory
-              tag: "v3.5.1"
+              tag: "v3.5.1@sha256:678d8e8af92f3587d4cfae28ffbe44854105ea56fed6b9590fc56b454f512585"
               pullPolicy: IfNotPresent
 
             env:

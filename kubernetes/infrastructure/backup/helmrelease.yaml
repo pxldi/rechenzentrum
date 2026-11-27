@@ -113,7 +113,7 @@ spec:
       - name: velero-plugin-for-aws
         # PINNED: v1.14.1 sends empty x-amz-tagging on PutObject, B2 rejects with 400.
         # Unpin when fix is released: https://github.com/vmware-tanzu/velero-plugin-for-aws/pull/299
-        image: velero/velero-plugin-for-aws:v1.14.0
+        image: velero/velero-plugin-for-aws:v1.14.0@sha256:7e82f717f44e89671212e0dfce7e061321c386ea84a33bca64a671670ca6c278
         #image: velero/velero-plugin-for-aws:v1.14.1
         volumeMounts:
           - mountPath: /target

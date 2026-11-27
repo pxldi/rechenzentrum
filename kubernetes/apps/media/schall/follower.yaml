@@ -1,7 +1,5 @@
 ---
-# Rolls Schall onto each new build of its `main` tag, the same way
-# kubernetes/apps/survivorlike/follower.yaml does for the asset viewer. Schall's
-# CI pushes `main` on every merge, and until 2026-10-28 every merge was followed
+# Rolls Schall onto each new build of its `main` tag. Schall's CI pushes `main` on every merge, and until 2026-10-28 every merge was followed
 # by a manual `kubectl rollout restart`.
 #
 # Every five minutes the Job asks ghcr.io for the digest behind `main` and

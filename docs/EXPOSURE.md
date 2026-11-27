@@ -9,17 +9,18 @@ The house lost its own line and router. The cluster now sits behind a router
 in repeater mode on a network with no port forwards, so nothing reaches
 Traefik's LoadBalancer from the internet. `cloudflare-ddns` is scaled to 0.
 
-Only `cloud.pxldi.de` (Nextcloud), `photos.pxldi.de` (Immich) and
-`keep.pxldi.de` (Anchor) are public, through the Cloudflare Tunnel
-(`infrastructure/networking/cloudflared`), with `auth.pxldi.de` and
-`branding.pxldi.de` beside them so Anchor's authentik login works from
-outside. These are the only routes bound to Traefik's `tunnel` entrypoint. Every other route
+Public through the Cloudflare Tunnel (`infrastructure/networking/cloudflared`):
+`cloud.pxldi.de` (Nextcloud), `photos.pxldi.de` (Immich), `keep.pxldi.de`
+(Anchor), `todo.pxldi.de` (Planka, behind forward-auth), the five claude.ai
+connectors (`*-mcp.pxldi.de`), and `auth.pxldi.de` and `branding.pxldi.de` so
+authentik logins work from outside. These are the only routes bound to
+Traefik's `tunnel` entrypoint. Every other route
 marked "public" or "Authentik" below is reachable from the LAN and the tailnet
 only, until it is bound to `tunnel` and given a hostname in the tunnel's
-dashboard config. The claude.ai connectors (`*-mcp.pxldi.de`) are down for
-the same reason. Their `anthropic-and-house` allowlist checks the remote
-address, which on the `tunnel` entrypoint is a pod, so binding them needs an
-`ipStrategy` too.
+dashboard config. Each claude.ai connector has a second IngressRoute on
+`tunnel` with the `anthropic-tunnel` allowlist, which reads the client from
+`X-Forwarded-For` (`ipStrategy.depth: 1`). That is safe only because of the
+Transform Rule below.
 
 On the tunnel, authentik's flood guard is keyed on `Cf-Connecting-Ip`
 (`auth-rate-limit-tunnel`), because the remote address is a cloudflared pod.
@@ -57,13 +58,8 @@ as it always did for every app without such a route. They were removed on
 
 - **Snacky** (`snacky.pxldi.de`) stays Authentik-only, so a phone off the
   tailnet can reach it. The MCP port has no route.
-- **The survivorlike asset viewer** (`assets.pxldi.de`) is Authentik-only, for
-  a user outside the house and the tailnet. Unlike every other forward-auth
-  app it binds its own group, `survivorlike-viewers`, so an account in that
-  group reaches this app and nothing else, and `rechenzentrum-users` does not
-  open it (`terraform/authentik/forward-auth-apps.tf`).
-- **Planka** (`todo.pxldi.de`) is Authentik-only for the same two people and
-  binds the same `survivorlike-viewers` group. Planka keeps its own accounts
+- **Planka** (`todo.pxldi.de`) is Authentik-only, through the tunnel, for the
+  two people on the game projects, and binds the `survivorlike-viewers` group. Planka keeps its own accounts
   behind the gate, because its free edition has no OIDC since 2.2.0.
 - **Forgejo** (`git.pxldi.de`) is LAN/tailnet only, with no forward-auth. Git
   clients and Actions runners cannot follow a login redirect, so Forgejo keeps
@@ -182,7 +178,6 @@ is on Tailscale" is not an answer on its own.
 | slskd | `slskd.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | snacky | `snacky.pxldi.de` | Authentik | authentik-forward-auth |
 | media | `sonarr.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
-| survivorlike | `assets.pxldi.de` | Authentik | authentik-forward-auth |
 | forgejo | `git.pxldi.de` | LAN/tailnet | internal-only |
 | planka | `todo.pxldi.de` | Authentik | authentik-forward-auth |
 | traefik | `traefik.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |

@@ -1,5 +1,6 @@
 # Authentik forward-auth without the house allowlist, so a player outside the
-# house and the tailnet reaches it. Planka keeps its own accounts behind this:
+# house and the tailnet reaches it, through the Cloudflare Tunnel since the
+# house has no port forwards. Planka keeps its own accounts behind this:
 # its free edition has no OIDC since 2.2.0. The forward-auth app binds
 # survivorlike-viewers (terraform/authentik/forward-auth-apps.tf).
 # Priority 10 matches the rest of the repo's IngressRoutes.
@@ -11,6 +12,7 @@ metadata:
 spec:
   entryPoints:
     - websecure
+    - tunnel
   routes:
     - kind: Rule
       match: Host(`todo.pxldi.de`)

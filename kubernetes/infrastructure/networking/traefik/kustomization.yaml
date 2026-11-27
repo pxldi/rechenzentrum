@@ -3,7 +3,6 @@ kind: Kustomization
 namespace: traefik
 resources:
   - namespace.yaml
-  - secret.yaml
   - helmrelease.yaml
   - certificate.yaml
   - prometheusrule.yaml

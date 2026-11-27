@@ -104,6 +104,17 @@ class RecoveryClusterMatchesProduction(unittest.TestCase):
                 self.assertEqual(test["spec"]["storage"], prod["spec"]["storage"])
 
 
+class AdmissionPolicyHoldsEveryRunner(unittest.TestCase):
+    def test_every_database_runner_is_matched(self):
+        # The policy's matchConditions name each account it holds; one left out
+        # is held only by RBAC, which cannot stop a Cluster with an archiver.
+        policy = (ROOT / "kubernetes/infrastructure-config/admission-policies/restore-tests.yaml").read_text()
+        for directory in CASES:
+            namespace = yaml.safe_load((DATABASES / directory / "kustomization.yaml").read_text())["namespace"]
+            with self.subTest(directory):
+                self.assertIn(f"'system:serviceaccount:{namespace}:restore-test-runner'", policy)
+
+
 class VeleroRestoreGetsANewVolume(unittest.TestCase):
     def test_includes_persistentvolumes(self):
         # Without the PV Velero keeps the claim on the live gotify volume, the

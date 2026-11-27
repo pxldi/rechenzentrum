@@ -1,0 +1,123 @@
+---
+# Nightly logical dump of the Grimmory database (MariaDB).
+# It goes to the dumps/ directory of its own volume.
+#
+# Velero copies that volume file by file while MariaDB runs, so the data
+# directory it carries off is only crash-consistent, and a restore from it is
+# InnoDB recovering from a crash. mariadb-dump reads one snapshot of the
+# database and gives SQL that restores on any MariaDB of the same or newer
+# version.
+# The raw copy stays in the backup next to it.
+#
+# The dump goes onto a volume the database pod mounts:
+# Velero's file-system backup only copies volumes of pods that are running at
+# 02:20, and this Job's pod is not. RWO binds a volume to a node, not a pod, so
+# the Job mounts it beside the running database.
+#
+# Same shape as karakeep/backup.yaml.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: grimmory-db-dump
+  namespace: grimmory
+spec:
+  # Before Velero's daily run at 02:20 UTC in summer and winter, and clear of
+  # the 03:00 WAN drop. The five dumps are ten minutes apart.
+  schedule: "40 1 * * *"
+  timeZone: Europe/Berlin
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 911
+            runAsGroup: 911
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: dump
+              # The server's own image: the same mariadb-dump as the server,
+              # and wget for the pings. command replaces its s6 entrypoint.
+              image: lscr.io/linuxserver/mariadb:11.8.9
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  # healthchecks.io: a start ping, then the exit status from the
+                  # EXIT trap, so a failed dump, a hung one and a night the job
+                  # never ran all reach a phone without this node. busybox wget,
+                  # which the alpine image already has. Failed pings are ignored
+                  # and an empty key skips them.
+                  hc() {
+                    [ -n "${HC_PING_KEY:-}" ] || return 0
+                    for _ in 1 2 3; do
+                      wget -q -T 10 -O /dev/null \
+                        "https://hc-ping.com/${HC_PING_KEY}/grimmory-db-dump$1" && return 0
+                      sleep 5
+                    done
+                    return 0
+                  }
+                  trap 'hc "/$?"' EXIT
+                  hc /start
+                  set -o pipefail
+                  umask 027
+                  mkdir -p /volume/dumps
+                  rm -f /volume/dumps/*.partial
+                  out="/volume/dumps/grimmory-$(date -u +%Y%m%dT%H%M%SZ).sql.gz"
+                  # One consistent InnoDB snapshot, without locking the tables
+                  # the app writes to.
+                  mariadb-dump --host=grimmory-mariadb --user=grimmory \
+                    --single-transaction --routines --triggers grimmory |
+                    gzip > "$out.partial"
+                  # mariadb-dump ends a complete dump with this line.
+                  gzip -dc "$out.partial" | tail -n 1 | grep -q 'Dump completed'
+                  mv "$out.partial" "$out"
+                  printf 'wrote %s (%s)\n' "$out" "$(du -h "$out" | cut -f1)"
+
+                  ls -1t /volume/dumps/grimmory-*.sql.gz | grep -v -F "$out" |
+                    tail -n +3 | while read -r stale; do rm -f "$stale"; done
+              env:
+                # mariadb-dump reads the password from here, so it stays off
+                # the command line.
+                - name: MYSQL_PWD
+                  valueFrom:
+                    secretKeyRef:
+                      name: grimmory-credentials
+                      key: DB_PASSWORD
+                - name: HC_PING_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: healthchecks
+                      key: ping-key
+                      optional: true
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: dumps
+                  mountPath: /volume
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  memory: 512Mi
+          volumes:
+            # The database's volume, at /config in its pod. The data is in
+            # databases/ beside dumps/. uid 911 is the image's user and owns
+            # the volume.
+            - name: dumps
+              persistentVolumeClaim:
+                claimName: grimmory-mariadb-pvc

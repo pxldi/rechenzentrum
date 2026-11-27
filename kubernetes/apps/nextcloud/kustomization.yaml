@@ -10,6 +10,8 @@ resources:
   - secret.yaml
   - networkpolicy-chatops.yaml
   - redis.yaml
+  - db-dump.yaml
+  - healthchecks-secret.yaml
 components:
   # Egress. Reaches its own Postgres and Redis here, fetches app updates and
   # previews from the internet, and resolves its own public name for federation

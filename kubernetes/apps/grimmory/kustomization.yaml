@@ -7,6 +7,8 @@ resources:
   - mariadb.yaml
   - helmrelease.yaml
   - ingress.yaml
+  - db-dump.yaml
+  - healthchecks-secret.yaml
 components:
   # Egress. The app reaches its MariaDB by Service name in this namespace, so
   # the intra-namespace twin is required; the ingress-only component next to it

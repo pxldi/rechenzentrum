@@ -4,6 +4,7 @@
 | --- | --- |
 | Six CNPG databases | Barman Cloud plugin -> B2; base backup every Sunday, WAL continuously, 30-day recovery window |
 | Selected application files | Velero/Kopia -> B2 |
+| Five databases outside CNPG (authentik, Nextcloud, Paperless, AdventureLog, Grimmory) | Nightly dump onto a volume Velero backs up daily or weekly, beside the raw data directory |
 | Daily critical namespaces | `daily-critical-backup`, `20 2 * * *` (UTC), 30-day retention |
 | Weekly selected cluster resources | `weekly-full-backup`, `0 3 * * 0`, 90-day retention |
 
@@ -30,9 +31,11 @@ day; see below.
 
 ## Weekly automated restore test
 
-Every Wednesday morning (Europe/Berlin) seven CronJobs named `restore-test`
-restore the newest backups and check what came back. Each run starts by removing
-whatever the previous one left, and ends by deleting its copy.
+Every Wednesday (Europe/Berlin) seven CronJobs named `restore-test` and one
+named `restore-test-authentik-db` restore the newest backups and check what
+came back. Each run starts by removing whatever the previous one left, and ends
+by deleting its copy. A failed authentik run keeps its copy until
+`remove-restore-test-dump-copies` deletes it on Thursday at 12:00.
 
 | CronJob | Time | Restores | Passes when |
 | --- | --- | --- | --- |
@@ -43,6 +46,7 @@ whatever the previous one left, and ends by deleting its copy.
 | `forgejo/restore-test` | 11:15 | `forgejo-postgresql`, likewise | likewise |
 | `anchor/restore-test` | 11:30 | `anchor-postgresql`, likewise | likewise |
 | `velero-restore-test/restore-test` | 10:45 | gotify's `data` volume from the newest `daily-critical-backup` | Restore `Completed`, PodVolumeRestore `Completed`, gotify Ready on the restored database |
+| `velero-restore-test/restore-test-authentik-db` | 12:00 | authentik's database volume from the newest `daily-critical-backup`, then its newest dump into an empty Postgres 17 | Restore and PodVolumeRestore `Completed`, a dump from the last 36 hours, `pg_restore` without errors, at least 200 tables, 20 applications, one user and one flow |
 
 The database tests create a Cluster named `restore-test` in the source
 namespace, because that is where the ObjectStore and its B2 credential already
@@ -82,6 +86,48 @@ kubectl create job -n <namespace> --from=cronjob/restore-test restore-test-manua
 This is the routine check. It does not replace the manual procedures below,
 which compare against a snapshot taken at a known time and test the app against
 the restored database.
+
+## Database dumps
+
+Five databases run outside CNPG, so barman does not archive them. Velero's
+file-system backup copies their data directories while they run, which is only
+crash-consistent. A CronJob next to each writes a logical dump every night
+before Velero's 02:20 UTC run:
+
+| CronJob | Time (Europe/Berlin) | Database | Dump lands in | Velero schedule |
+| --- | --- | --- | --- | --- |
+| `authentik/authentik-db-dump` | 01:00 | `authentik-postgresql` (Postgres 17) | `dumps/` on `data-authentik-postgresql-0` | daily |
+| `nextcloud/nextcloud-db-dump` | 01:10 | `nextcloud-postgresql` (Postgres 17) | `dumps/` on `data-nextcloud-postgresql-0` | daily |
+| `paperless/paperless-db-dump` | 01:20 | `paperless-postgres` (Postgres 18) | `dumps/` on `paperless-postgres-pvc` | daily |
+| `adventurelog/adventurelog-db-dump` | 01:30 | `adventurelog-db` (Postgres 15, PostGIS) | `dumps/` on `adventurelog-db-dumps` | weekly |
+| `grimmory/grimmory-db-dump` | 01:40 | `grimmory-mariadb` (MariaDB 11.8) | `dumps/` on `grimmory-mariadb-pvc` | weekly |
+
+Postgres dumps are `pg_dump --format=custom` and are kept only after
+`pg_restore --list` reads them. The Grimmory dump is gzipped SQL from
+`mariadb-dump --single-transaction` and is kept only when it ends with
+mariadb-dump's completion line. Each volume holds the newest three; Velero keeps
+the history (30 days daily, 90 days weekly). The dump sits on a volume the
+database pod mounts because Velero only backs up volumes of running pods, and
+the Job's pod is not running at 02:20. AdventureLog's data volume is the data
+directory itself, so its dumps have a volume of their own that the database pod
+mounts read-only.
+
+Each Job pings healthchecks.io (`<name>-db-dump` checks, created by
+`scripts/healthchecks-setup.sh`) at start and with its exit status, so a failed
+or missing night reaches the phone without this node. The raw data directory
+stays in the backup.
+
+To restore one, take the dump out of a Velero restore of its volume (or off the
+live volume), then:
+
+```sh
+pg_restore --dbname=<db> --exit-on-error --single-transaction <db>-<time>.dump
+gzip -dc grimmory-<time>.sql.gz | mariadb grimmory
+```
+
+Restore into an empty database owned by the app's role, on the same or a newer
+major; AdventureLog needs a PostGIS server. `restore-test-authentik-db` does
+exactly this every Wednesday for authentik, from B2.
 
 ## Monthly full volume restore test
 

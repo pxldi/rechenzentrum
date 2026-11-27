@@ -24,3 +24,18 @@ spec:
   resources:
     requests:
       storage: 10Gi
+---
+# Nightly pg_dump output (db-dump.yaml). The database pod mounts it read-only
+# so that Velero backs it up; nothing else writes here.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: adventurelog-db-dumps
+  namespace: adventurelog
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 1Gi

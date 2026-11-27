@@ -92,6 +92,8 @@ rules:
       # restore-test-monthly.yaml
       - velero-restore-test-immich-library
       - velero-restore-test-nextcloud-data
+      # restore-test-dumps.yaml
+      - velero-restore-test-authentik-db
     verbs: ["delete"]
   - apiGroups: ["velero.io"]
     resources: ["podvolumerestores"]

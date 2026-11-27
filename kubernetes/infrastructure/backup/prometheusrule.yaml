@@ -156,8 +156,9 @@ spec:
               ServiceMonitor stopped matching. Backups are unmonitored and
               possibly not running at all.
 ---
-# The weekly restore tests: three CNPG recoveries and one Velero restore, each
-# a CronJob named restore-test (docs/BACKUPS.md). A backup that has never been
+# The weekly restore tests: six CNPG recoveries and one Velero restore, each a
+# CronJob named restore-test, and the authentik dump restore,
+# restore-test-authentik-db (docs/BACKUPS.md). A backup that has never been
 # restored is a hope, and a restore test nobody hears from is the same hope.
 #
 # Each rule resolves on the next successful run, which a failed Job object does
@@ -179,39 +180,42 @@ spec:
         # means failed, not slow.
         - alert: RestoreTestFailed
           expr: |
-            (time() - kube_cronjob_status_last_schedule_time{cronjob="restore-test"} > 5 * 3600)
+            (time() - kube_cronjob_status_last_schedule_time{cronjob=~"restore-test|restore-test-authentik-db"} > 5 * 3600)
             and on (namespace, cronjob)
             (
-              kube_cronjob_status_last_schedule_time{cronjob="restore-test"}
+              kube_cronjob_status_last_schedule_time{cronjob=~"restore-test|restore-test-authentik-db"}
                 > on (namespace, cronjob)
-              kube_cronjob_status_last_successful_time{cronjob="restore-test"}
+              kube_cronjob_status_last_successful_time{cronjob=~"restore-test|restore-test-authentik-db"}
               or
-              kube_cronjob_status_last_schedule_time{cronjob="restore-test"}
+              kube_cronjob_status_last_schedule_time{cronjob=~"restore-test|restore-test-authentik-db"}
                 unless on (namespace, cronjob)
-              kube_cronjob_status_last_successful_time{cronjob="restore-test"}
+              kube_cronjob_status_last_successful_time{cronjob=~"restore-test|restore-test-authentik-db"}
             )
           for: 15m
           labels:
             severity: critical
           annotations:
-            summary: "The weekly restore test in {{ $labels.namespace }} failed"
+            summary: "The weekly {{ $labels.cronjob }} restore test in {{ $labels.namespace }} failed"
             description: >-
               The backup in {{ $labels.namespace }} did not restore cleanly this
               week. The failed Job's log names the step: remove-leftover,
               restore, wait-ready or verify for a database; wait-restore,
-              wait-volume-data or wait-app-ready for velero-restore-test. Its
-              leftover copy stays until the next run removes it.
+              wait-volume-data or wait-app-ready for velero-restore-test;
+              wait-restore, check-restore, wait-volume-data or wait-check for
+              restore-test-authentik-db, whose check container's log says what
+              was missing. Its leftover copy stays until the next run removes
+              it, or for the authentik copy until Thursday 12:00.
 
         # No success in over eight days: the test is not running at all
         # (suspended, deleted, never scheduled), or failed twice.
         - alert: RestoreTestStale
           expr: |
-            time() - kube_cronjob_status_last_successful_time{cronjob="restore-test"} > 8 * 86400
+            time() - kube_cronjob_status_last_successful_time{cronjob=~"restore-test|restore-test-authentik-db"} > 8 * 86400
           for: 30m
           labels:
             severity: critical
           annotations:
-            summary: "No successful restore test in {{ $labels.namespace }} for over 8 days"
+            summary: "No successful {{ $labels.cronjob }} restore test in {{ $labels.namespace }} for over 8 days"
             description: >-
               The last successful run was {{ $value | humanizeDuration }} ago.
               The tests run Wednesdays from 10:00 Europe/Berlin.
@@ -220,14 +224,14 @@ spec:
         # rule above therefore cannot see.
         - alert: RestoreTestNeverSucceeded
           expr: |
-            (time() - kube_cronjob_created{cronjob="restore-test"} > 8 * 86400)
+            (time() - kube_cronjob_created{cronjob=~"restore-test|restore-test-authentik-db"} > 8 * 86400)
             unless on (namespace, cronjob)
-            kube_cronjob_status_last_successful_time{cronjob="restore-test"}
+            kube_cronjob_status_last_successful_time{cronjob=~"restore-test|restore-test-authentik-db"}
           for: 30m
           labels:
             severity: critical
           annotations:
-            summary: "The restore test in {{ $labels.namespace }} has never succeeded"
+            summary: "The {{ $labels.cronjob }} restore test in {{ $labels.namespace }} has never succeeded"
             description: >-
               The CronJob has existed for over 8 days without one successful
               run. Check its Jobs in {{ $labels.namespace }}.
@@ -236,17 +240,18 @@ spec:
         # its series with it and every expression returns nothing.
         - alert: RestoreTestMissing
           expr: |
-            count(kube_cronjob_created{cronjob="restore-test"}) < 4
-            or absent(kube_cronjob_created{cronjob="restore-test"})
+            count(kube_cronjob_created{cronjob=~"restore-test|restore-test-authentik-db"}) < 8
+            or absent(kube_cronjob_created{cronjob=~"restore-test|restore-test-authentik-db"})
           for: 1h
           labels:
             severity: warning
           annotations:
             summary: "A weekly restore test CronJob is missing"
             description: >-
-              Expected restore-test CronJobs in tandoor, immich, media and
-              velero-restore-test. If one was removed on purpose, lower the
-              count in this rule.
+              Expected restore-test CronJobs in tandoor, media, immich, planka,
+              forgejo, anchor and velero-restore-test, and
+              restore-test-authentik-db in velero-restore-test. If one was
+              removed on purpose, lower the count in this rule.
 
     # The monthly full volume restores in velero-restore-test
     # (infrastructure-config/velero/restore-test-monthly.yaml): immich's photo

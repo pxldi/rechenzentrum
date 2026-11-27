@@ -15,7 +15,7 @@
 # Steps, each safe to re-run:
 #   1. create the checks below in the project (matched by name, so a re-run
 #      does not duplicate them)
-#   2. write the ping key into the five healthchecks-secret.yaml files with
+#   2. write the ping key into the ten healthchecks-secret.yaml files with
 #      `sops set`; commit and push those afterwards
 #   3. install the ping key on the node for nixos-upgrade, over ssh
 #      (HC_SSH_HOST, default "rechenzentrum"; HC_SSH_HOST=- skips it)
@@ -43,6 +43,11 @@ checks=(
   "karakeep-db-backup|30 3 * * *|3600|SQLite copy for Velero (karakeep namespace)."
   "wealthfolio-db-backup|45 3 * * *|3600|SQLite copy for Velero (wealthfolio namespace)."
   "snacky-db-backup|0 4 * * *|3600|SQLite copy for Velero (snacky namespace)."
+  "authentik-db-dump|0 1 * * *|3600|pg_dump for Velero (authentik namespace)."
+  "nextcloud-db-dump|10 1 * * *|3600|pg_dump for Velero (nextcloud namespace)."
+  "paperless-db-dump|20 1 * * *|3600|pg_dump for Velero (paperless namespace)."
+  "adventurelog-db-dump|30 1 * * *|3600|pg_dump for Velero (adventurelog namespace)."
+  "grimmory-db-dump|40 1 * * *|3600|mariadb-dump for Velero (grimmory namespace)."
   "nixos-upgrade|45 4 * * *|7200|NixOS system.autoUpgrade on the node."
 )
 
@@ -71,7 +76,12 @@ for f in \
   kubernetes/infrastructure/renovate/healthchecks-secret.yaml \
   kubernetes/apps/karakeep/healthchecks-secret.yaml \
   kubernetes/apps/wealthfolio/healthchecks-secret.yaml \
-  kubernetes/apps/snacky/healthchecks-secret.yaml; do
+  kubernetes/apps/snacky/healthchecks-secret.yaml \
+  kubernetes/infrastructure/authentik/healthchecks-secret.yaml \
+  kubernetes/apps/nextcloud/healthchecks-secret.yaml \
+  kubernetes/apps/paperless-ngx/healthchecks-secret.yaml \
+  kubernetes/apps/adventurelog/healthchecks-secret.yaml \
+  kubernetes/apps/grimmory/healthchecks-secret.yaml; do
   printf '"%s"' "$HC_PING_KEY" | sops set --value-stdin "$f" '["stringData"]["ping-key"]'
   echo "set      $f"
 done
@@ -90,4 +100,4 @@ else
 fi
 
 echo
-echo "Done. Commit and push the five healthchecks-secret.yaml files."
+echo "Done. Commit and push the ten healthchecks-secret.yaml files."

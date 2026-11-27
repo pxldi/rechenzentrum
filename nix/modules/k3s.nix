@@ -82,14 +82,15 @@ let
   # (github.com, ghcr.io, B2) where ad filtering does nothing and malware
   # filtering is worth having. Client devices still go through AdGuard directly.
   #
-  # This buys redundancy, not caching. Riding out an outage on cached answers
-  # would need `cache` and `serve_stale` tuned in the Corefile, which k3s owns
-  # via its addon manager and only permits *adding* plugins to -- so that is a
-  # larger change than it looks. See the PR for the note.
+  # Since 2026-11-27 Quad9 is reached through unbound on the node
+  # (cluster-dns.nix), over DNS-over-TLS, instead of as plain 9.9.9.9: the
+  # node's internet now crosses a Wi-Fi network run by someone else. unbound
+  # also caches and serves stale answers, which the Corefile cannot be made
+  # to do here, since k3s owns it and only permits *adding* plugins.
   kubeletResolvConf = pkgs.writeText "kubelet-resolv.conf" ''
     # No `search` line, on purpose. See nix/modules/k3s.nix.
     nameserver 192.168.8.1
-    nameserver 9.9.9.9
+    nameserver 10.42.0.1
     options edns0
   '';
 

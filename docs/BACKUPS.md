@@ -301,7 +301,6 @@ data carries the reason alongside it.
 | Every `emptyDir` | 88 volumes | Destroyed with the pod; a reboot already wipes them |
 | `jellyfin` transcode and cache | 42 GB | Scratch, regenerated on demand |
 | `media-pvc`, jellyfin `data` for media | 6.3 TB | Media library, not backup material |
-| `ollama-models` | 2.6 GB | Pulled from the registry on demand |
 | `soundcloud-music-pvc` | 0.5 GB | Downloaded audio; Navidrome reindexes from the files |
 | Schall audio | 59 GB | Re-downloadable, and the database records what exists |
 | `romm-library` | empty on 2026-11-27 | ROMs are re-obtainable, and `romm-postgresql` records what the library held; covers and saves on `romm-data` are backed up |

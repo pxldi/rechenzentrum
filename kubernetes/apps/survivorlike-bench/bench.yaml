@@ -137,7 +137,8 @@ metadata:
   labels:
     app: survivorlike-bench-results
 spec:
-  replicas: 1
+  # Parked on 2026-11-27 while no benchmarks run. The results claim stays.
+  replicas: 0
   strategy:
     type: Recreate
   selector:

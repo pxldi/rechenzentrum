@@ -35,12 +35,6 @@ locals {
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/sabnzbd.png"
       description = "Usenet Downloader"
     }
-    searxng = {
-      name        = "SearXNG"
-      host        = "search.${var.domain}"
-      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/searxng.png"
-      description = "Private Search Engine"
-    }
     slskd = {
       name        = "Slskd"
       host        = "slskd.${var.domain}"
@@ -58,12 +52,6 @@ locals {
       host        = "schall.${var.domain}"
       icon        = ""
       description = "Music Collection Manager"
-    }
-    jdownloader = {
-      name        = "JDownloader"
-      host        = "download.${var.domain}"
-      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/jdownloader.png"
-      description = "Downloader"
     }
     gatus = {
       name        = "Gatus"
@@ -94,12 +82,6 @@ locals {
       host        = "grafana.${var.domain}"
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/grafana.png"
       description = "Metrics & Dashboards"
-    }
-    excalidraw = {
-      name        = "Excalidraw"
-      host        = "draw.${var.domain}"
-      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/excalidraw.png"
-      description = "Whiteboard & Diagrams"
     }
     wealthfolio = {
       name        = "Wealthfolio"

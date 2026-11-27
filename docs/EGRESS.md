@@ -35,13 +35,11 @@ default-deny egress are `home-assistant` and the infrastructure ones:
 | `chatops` | per pod: each claude.ai MCP server gets its app (`tandoor`, `nextcloud`, `opengym`, `snacky`, `obsidian-sync`) and Authentik | Five servers with five backends, see `kubernetes/apps/chatops/networkpolicy.yaml` |
 | `cloudflared` | Cloudflare's edge on 7844 and 443, the Traefik pod on 8090 | The tunnel connector; nothing else, see `infrastructure/networking/cloudflared/networkpolicy.yaml` |
 | `crowdsec` | per pod: the agent gets the LAPI, the API server on 6443 and internet on 443; the LAPI gets internet on 443 | The agent streams Traefik's log through `pods/log`; both download hub content from the CrowdSec CDN at start. The Central API is off |
-| `excalidraw` | nothing | The pilot |
 | `fredy` | own namespace, internet | Scrapes property listings |
 | `gotify` | nothing | Clients connect inbound and hold the socket |
 | `grimmory` | own namespace, internet | MariaDB here; book metadata outside |
 | `immich` | own namespace, internet, API server | Server, ML and valkey talk here; geocoding data outside; CNPG |
-| `jdownloader` | internet | The point of it |
-| `karakeep` | own namespace, internet, Traefik, `ollama` | Meilisearch here, crawls pages, OIDC by public name, tags with a local model |
+| `karakeep` | own namespace, internet, Traefik | Meilisearch here, crawls pages, OIDC by public name |
 | `opengym` | internet | The init container clones the exercise media from GitHub; the API sends Web Push |
 | `wealthfolio` | internet | Market quotes and exchange rates; the backup job installs sqlite3 |
 | `media` | own namespace, internet, Traefik, API server, `slskd` | Nine workloads; indexers and metadata. The API server is for the cantus CNPG cluster and, by its own policy, the schall-follower Job |
@@ -53,11 +51,9 @@ default-deny egress are `home-assistant` and the infrastructure ones:
 | `audiobookshelf` | internet, Traefik | Book metadata, podcast feeds and covers; OIDC to authentik by its public name |
 | `forgejo` | own namespace, internet, API server | Postgres here; barman ships WAL to B2; webhooks and mirrors |
 | `forgejo-runner` | internet | Image pulls and package mirrors for Actions jobs; Forgejo by its public name through the router. Public DNS only |
-| `ollama` | internet | Pulls models on demand |
 | `palworld` | internet | Server list and updates |
 | `paperless` | own namespace, internet, Traefik | Postgres, Redis, Gotenberg and Tika here |
 | `planka` | own namespace, internet, API server | Postgres here; barman ships WAL to B2; favicons of attached links |
-| `searxng` | own namespace, internet | Querying upstream engines is the job |
 | `slskd` | own namespace, internet | gluetun's tunnel and Soulseek peers |
 | `snacky` | internet, `tandoor`, `opengym` | Open Food Facts outside; recipes and workouts by Service name. Its pod takes MCP from the claude.ai gate in `chatops` only |
 | `survivorlike-bench` | per pod: the bench Job gets internet on 443; the results reader gets nothing | Fetches the game from `ssh.github.com:443` with a deploy key, see `bench.yaml` |
@@ -101,7 +97,6 @@ against it before it is locked.
 | --- | --- | --- |
 | `monitoring` | 10 Services in 6 namespaces | Gatus checks on house-only apps |
 | `observability` | `gotify` | alert delivery |
-| `karakeep` | `ollama` | `ollama.ollama.svc.cluster.local` |
 | `media` (Schall) | `slskd` | an ExternalName alias onto `slskd.slskd.svc.cluster.local` |
 | `snacky` | `tandoor`, `opengym` | `tandoor.tandoor.svc.cluster.local`, `opengym.opengym.svc.cluster.local` |
 

@@ -23,6 +23,8 @@ spec:
   # Before Velero's daily run at 02:20 UTC in summer and winter, and clear of
   # the 03:00 WAN drop. The five dumps are ten minutes apart.
   schedule: "30 1 * * *"
+  # Suspended while the app is parked: there is no database to dump.
+  suspend: true
   timeZone: Europe/Berlin
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 2

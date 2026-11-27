@@ -6,7 +6,7 @@ selectors across this repository.
 
 * `safe-rollout`: only for applications that support concurrent instances and
   have readiness probes and room for one surge pod. PVC-backed Recreate apps
-  do not inherit it. Excalidraw is the first stateless consumer.
+  do not inherit it. Excalidraw was the first stateless consumer (removed 2026-11-27).
 * `deployment-hardening`: pod-level defaults merged with existing settings.
   Set container-level `allowPrivilegeEscalation`, capabilities and filesystem
   permissions per image. Do not apply to apps needing the Kubernetes API token

@@ -23,9 +23,6 @@
   "apps/v1/Deployment/chatops/tandoor-mcp": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/excalidraw/excalidraw": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/flux-system/helm-controller": {
     "kind": "Deployment"
   },
@@ -59,9 +56,6 @@
   "apps/v1/Deployment/home-assistant/otbr": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/jdownloader/jdownloader": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/karakeep/karakeep": {
     "kind": "Deployment"
   },
@@ -92,9 +86,6 @@
   "apps/v1/Deployment/observability/speedtest-exporter": {
     "kind": "Deployment"
   },
-  "apps/v1/Deployment/ollama/ollama": {
-    "kind": "Deployment"
-  },
   "apps/v1/Deployment/opengym/opengym": {
     "kind": "Deployment"
   },
@@ -114,9 +105,6 @@
     "kind": "Deployment"
   },
   "apps/v1/Deployment/romm/romm": {
-    "kind": "Deployment"
-  },
-  "apps/v1/Deployment/searxng/searxng": {
     "kind": "Deployment"
   },
   "apps/v1/Deployment/slskd/slskd": {
@@ -261,9 +249,6 @@
   "v1/Namespace//device-plugins": {
     "kind": "Namespace"
   },
-  "v1/Namespace//excalidraw": {
-    "kind": "Namespace"
-  },
   "v1/Namespace//flux-system": {
     "kind": "Namespace"
   },
@@ -288,16 +273,10 @@
   "v1/Namespace//immich": {
     "kind": "Namespace"
   },
-  "v1/Namespace//jdownloader": {
-    "kind": "Namespace"
-  },
   "v1/Namespace//karakeep": {
     "kind": "Namespace"
   },
   "v1/Namespace//media": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//minecraft": {
     "kind": "Namespace"
   },
   "v1/Namespace//monitoring": {
@@ -310,9 +289,6 @@
     "kind": "Namespace"
   },
   "v1/Namespace//obsidian-sync": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//ollama": {
     "kind": "Namespace"
   },
   "v1/Namespace//openebs": {
@@ -334,9 +310,6 @@
     "kind": "Namespace"
   },
   "v1/Namespace//romm": {
-    "kind": "Namespace"
-  },
-  "v1/Namespace//searxng": {
     "kind": "Namespace"
   },
   "v1/Namespace//snacky": {
@@ -433,14 +406,6 @@
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "30f36e4ca319e355b7d117af098d1f0f72b83a425e5db7f275cdb104c3076e2c"
   },
-  "v1/PersistentVolumeClaim/jdownloader/jdownloader-config": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "d71cb8aefcfd6429d432158bca8079ea0d80fbd246f9607bfceb9d5c0421ee88"
-  },
-  "v1/PersistentVolumeClaim/jdownloader/jdownloader-downloads": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "0424da9e7eb8219d812f1d30ac675bce4acbcbe549585bb3aded6917fef9263b"
-  },
   "v1/PersistentVolumeClaim/karakeep/karakeep-data": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "eebe9bb88a2cb4d66748e587222cad199b9e934ad6034974e56eadb9c1230139"
@@ -509,19 +474,11 @@
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "d05b54c471896af2d8e25a2eff1e49258f0f5b8474e77ef1b40f35e76d52f70f"
   },
-  "v1/PersistentVolumeClaim/minecraft/minecraft-data": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "e0f1c01c78cf03ca1fce2ae9ed978deaefd670efb009209ae8217da540fbabcd"
-  },
   "v1/PersistentVolumeClaim/nextcloud/nextcloud-data-pvc": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "d05b54c471896af2d8e25a2eff1e49258f0f5b8474e77ef1b40f35e76d52f70f"
   },
   "v1/PersistentVolumeClaim/obsidian-sync/obsidian-sync-data-pvc": {
-    "kind": "PersistentVolumeClaim",
-    "spec_sha256": "96093a8145a2ec319c79a32d855e7f209747dc092a63846f3d7dd93e988714c4"
-  },
-  "v1/PersistentVolumeClaim/ollama/ollama-models": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "96093a8145a2ec319c79a32d855e7f209747dc092a63846f3d7dd93e988714c4"
   },

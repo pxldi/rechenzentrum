@@ -1,0 +1,16 @@
+---
+# The collector reads SMART data from the raw disks, which only a privileged
+# container can open. It lives here alone so the exception in
+# workload-baseline.yaml covers nothing else; the web UI is in `scrutiny`.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: scrutiny-collector
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: v1.33
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+    kubernetes.io/metadata.name: scrutiny-collector

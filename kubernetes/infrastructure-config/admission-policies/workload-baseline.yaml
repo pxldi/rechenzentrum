@@ -29,12 +29,14 @@
 #                   forgejo-runner  dind: the Docker daemon the Actions jobs run on
 #                   home-assistant  otbr (Thread border router: radio, tun, nft)
 #                   openebs         localpv helper pods create and wipe volume dirs
+#                   scrutiny-collector  smartctl opens the raw disks for SMART
 #   hostPath        device-plugins  /dev, kubelet device-plugin socket
 #                   home-assistant  otbr: the ZBT-2 radio, /dev/net/tun, dbus
 #                   openebs         the volume directories themselves
 #                   observability   node-exporter: /, /proc, /sys
 #                   velero          node-agent: kubelet pod volumes for Kopia
 #                   falco           /proc, /etc, /usr, /boot, /sys/kernel, containerd socket
+#                   scrutiny-collector  /run/udev, read-only, for disk metadata
 #   host namespaces home-assistant  home-assistant, matter-server, otbr (mDNS, Thread)
 #                   observability   node-exporter (hostNetwork, hostPID)
 #   capabilities    home-assistant  otbr: NET_ADMIN, NET_RAW, SYS_ADMIN
@@ -63,9 +65,9 @@ spec:
         resources: [pods, pods/ephemeralcontainers]
   variables:
     - name: privilegedNamespaces
-      expression: "['device-plugins', 'forgejo-runner', 'home-assistant', 'openebs']"
+      expression: "['device-plugins', 'forgejo-runner', 'home-assistant', 'openebs', 'scrutiny-collector']"
     - name: hostPathNamespaces
-      expression: "['device-plugins', 'home-assistant', 'openebs', 'observability', 'velero', 'falco']"
+      expression: "['device-plugins', 'home-assistant', 'openebs', 'observability', 'velero', 'falco', 'scrutiny-collector']"
     - name: hostNamespaceNamespaces
       expression: "['home-assistant', 'observability']"
     - name: extraCapabilityNamespaces

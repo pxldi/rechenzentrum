@@ -77,6 +77,12 @@ locals {
       icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/adventurelog.png"
       description = "AdventureLog Django Admin"
     }
+    scrutiny = {
+      name        = "Scrutiny"
+      host        = "disks.${var.domain}"
+      icon        = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/scrutiny.png"
+      description = "Disk Health (SMART)"
+    }
     grafana = {
       name        = "Grafana"
       host        = "grafana.${var.domain}"

@@ -49,6 +49,8 @@ default-deny egress are `home-assistant` and the infrastructure ones:
 | `anchor` | own namespace, internet, Traefik, API server | Postgres here; barman ships WAL to B2; OIDC to authentik by its public name |
 | `romm` | own namespace, internet, Traefik, API server | Postgres here; barman ships WAL to B2; IGDB, ScreenScraper and other metadata sources; OIDC to authentik by its public name |
 | `audiobookshelf` | internet, Traefik | Book metadata, podcast feeds and covers; OIDC to authentik by its public name |
+| `scrutiny` | `gotify` | Disk warnings; InfluxDB is in the same pod |
+| `scrutiny-collector` | `scrutiny` | Posts SMART results to the API |
 | `forgejo` | own namespace, internet, API server | Postgres here; barman ships WAL to B2; webhooks and mirrors |
 | `forgejo-runner` | internet | Image pulls and package mirrors for Actions jobs; Forgejo by its public name through the router. Public DNS only |
 | `palworld` | internet | Server list and updates |
@@ -97,6 +99,8 @@ against it before it is locked.
 | --- | --- | --- |
 | `monitoring` | 10 Services in 6 namespaces | Gatus checks on house-only apps |
 | `observability` | `gotify` | alert delivery |
+| `scrutiny` | `gotify` | `gotify.gotify.svc.cluster.local`, disk warnings |
+| `scrutiny-collector` | `scrutiny` | `scrutiny.scrutiny.svc.cluster.local:8080` |
 | `media` (Schall) | `slskd` | an ExternalName alias onto `slskd.slskd.svc.cluster.local` |
 | `snacky` | `tandoor`, `opengym` | `tandoor.tandoor.svc.cluster.local`, `opengym.opengym.svc.cluster.local` |
 

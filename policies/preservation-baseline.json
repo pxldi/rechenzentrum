@@ -107,6 +107,9 @@
   "apps/v1/Deployment/romm/romm": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/scrutiny/scrutiny": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/slskd/slskd": {
     "kind": "Deployment"
   },
@@ -310,6 +313,12 @@
     "kind": "Namespace"
   },
   "v1/Namespace//romm": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//scrutiny": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//scrutiny-collector": {
     "kind": "Namespace"
   },
   "v1/Namespace//snacky": {
@@ -521,6 +530,14 @@
   "v1/PersistentVolumeClaim/romm/romm-library": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "934cc182bd99f0e1f42d476145b0e1da3ec0fa93acadfd79b3f7403236990211"
+  },
+  "v1/PersistentVolumeClaim/scrutiny/scrutiny-config": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "a6777e4e1b11fd9f8d491776e5fff1ea48ae86dc340612ff25e603bcf655d96d"
+  },
+  "v1/PersistentVolumeClaim/scrutiny/scrutiny-influxdb": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
   },
   "v1/PersistentVolumeClaim/slskd/slskd-config": {
     "kind": "PersistentVolumeClaim",

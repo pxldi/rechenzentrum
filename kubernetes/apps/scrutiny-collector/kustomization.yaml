@@ -1,0 +1,22 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: scrutiny-collector
+resources:
+  - cronjob.yaml
+  - networkpolicy.yaml
+components:
+  # Nothing comes in. Out: DNS and the Scrutiny API (networkpolicy.yaml).
+  - ../../../components/default-deny-egress
+  - ../../../components/allow-dns
+  - ../../infrastructure-config/networkpolicies/default-deny-ingress
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: scrutiny-collector
+      app.kubernetes.io/instance: scrutiny
+      app.kubernetes.io/component: collector
+      app.kubernetes.io/part-of: rechenzentrum
+      app.kubernetes.io/managed-by: flux
+    includeSelectors: false
+    includeTemplates: false

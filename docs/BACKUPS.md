@@ -276,6 +276,12 @@ A full loss therefore costs the audio files and nothing else. The database says
 what to fetch again. Backing up 59 GB of re-downloadable audio to Backblaze was
 judged not worth its cost.
 
+## Scrutiny
+
+`weekly-full-backup` copies `scrutiny-config` (the SQLite device list and
+settings). `scrutiny-influxdb` holds only the SMART history and is left out;
+the next collector run fills it again from the disks, without the old trend.
+
 ## Audiobookshelf
 
 `weekly-full-backup` copies `audiobookshelf-config` (the SQLite database) and

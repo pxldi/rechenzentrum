@@ -1,0 +1,139 @@
+---
+# Scrutiny's web UI and API, with its InfluxDB beside it in the same pod. The
+# collector in the scrutiny-collector namespace posts SMART data here once a
+# day; nothing here touches a disk device.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrutiny
+  namespace: scrutiny
+  labels:
+    app: scrutiny
+spec:
+  replicas: 1
+  # Both volumes are RWO and InfluxDB takes a lock on its data directory.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: scrutiny
+  template:
+    metadata:
+      labels:
+        app: scrutiny
+      annotations:
+        # The SQLite device list and settings. InfluxDB holds only the SMART
+        # history, which the next collector run starts again from the disks.
+        backup.velero.io/backup-volumes: config
+    spec:
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: ghcr.io/analogj/scrutiny:v0.10.0-web@sha256:1a3eb7802907e48c960c06b412592969efe5514b9c01b70fa634076f7e675adf
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: TZ
+              value: Europe/Berlin
+            # Scrutiny onboards the empty InfluxDB on first start with these,
+            # replacing its built-in default admin password and token.
+            - name: SCRUTINY_WEB_INFLUXDB_HOST
+              value: localhost
+            - name: SCRUTINY_WEB_INFLUXDB_INIT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: scrutiny-influxdb
+                  key: SCRUTINY_WEB_INFLUXDB_INIT_PASSWORD
+            - name: SCRUTINY_WEB_INFLUXDB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: scrutiny-influxdb
+                  key: SCRUTINY_WEB_INFLUXDB_TOKEN
+            # The Alertmanager bridges' Gotify app token, so disk warnings land
+            # in the same Gotify app as every other alert.
+            - name: GOTIFY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: scrutiny-gotify
+                  key: GOTIFY_TOKEN
+            - name: SCRUTINY_NOTIFY_URLS
+              value: "gotify://gotify.gotify.svc.cluster.local:80/$(GOTIFY_TOKEN)?disabletls=yes&title=Scrutiny"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 60
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36
+          resources:
+            requests:
+              cpu: 10m
+              memory: 48Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /opt/scrutiny/config
+            - name: tmp
+              mountPath: /tmp
+        - name: influxdb
+          # 2.8 is the version upstream's omnibus image ships with v0.10.0.
+          image: docker.io/library/influxdb:2.8.0-alpine@sha256:c689db1a67ff7dc9b95b54de37cdc6ef55c93a89f4b5d93c01898be9cfddbf2f
+          # Loopback only: the web container is the one client.
+          args: ["--http-bind-address=127.0.0.1:8086", "--reporting-disabled"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 20m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: influxdb
+              mountPath: /var/lib/influxdb2
+            - name: influxdb-etc
+              mountPath: /etc/influxdb2
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: scrutiny-config
+        - name: influxdb
+          persistentVolumeClaim:
+            claimName: scrutiny-influxdb
+        - name: influxdb-etc
+          emptyDir: {}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi

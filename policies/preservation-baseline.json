@@ -116,6 +116,9 @@
   "apps/v1/Deployment/planka/planka": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/romm/romm": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/searxng/searxng": {
     "kind": "Deployment"
   },
@@ -219,6 +222,10 @@
   "postgresql.cnpg.io/v1/Cluster/planka/planka-postgresql": {
     "kind": "Cluster",
     "spec_sha256": "afeae04f5d9133323a31683da4c6d72859467fa71ac58298312fc02ea3fb51de"
+  },
+  "postgresql.cnpg.io/v1/Cluster/romm/romm-postgresql": {
+    "kind": "Cluster",
+    "spec_sha256": "74f9c90da4eed5e54817ddd098c7cc613a0a53e6ecf479309065b0e1af67e64f"
   },
   "postgresql.cnpg.io/v1/Cluster/tandoor/tandoor-postgresql": {
     "kind": "Cluster",
@@ -330,6 +337,9 @@
     "kind": "Namespace"
   },
   "v1/Namespace//renovate": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//romm": {
     "kind": "Namespace"
   },
   "v1/Namespace//searxng": {
@@ -556,6 +566,14 @@
   "v1/PersistentVolumeClaim/planka/planka-data": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
+  },
+  "v1/PersistentVolumeClaim/romm/romm-data": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "96093a8145a2ec319c79a32d855e7f209747dc092a63846f3d7dd93e988714c4"
+  },
+  "v1/PersistentVolumeClaim/romm/romm-library": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "934cc182bd99f0e1f42d476145b0e1da3ec0fa93acadfd79b3f7403236990211"
   },
   "v1/PersistentVolumeClaim/slskd/slskd-config": {
     "kind": "PersistentVolumeClaim",

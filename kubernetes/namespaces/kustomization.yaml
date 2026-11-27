@@ -26,6 +26,7 @@ resources:
   - palworld.yaml
   - paperless-ngx.yaml
   - planka.yaml
+  - romm.yaml
   - searxng.yaml
   - slskd.yaml
   - snacky.yaml

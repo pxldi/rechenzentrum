@@ -2,7 +2,7 @@
 
 | Data | Backup path |
 | --- | --- |
-| Six CNPG databases | Barman Cloud plugin -> B2; base backup every Sunday, WAL continuously, 30-day recovery window |
+| Seven CNPG databases | Barman Cloud plugin -> B2; base backup every Sunday, WAL continuously, 30-day recovery window |
 | Selected application files | Velero/Kopia -> B2 |
 | Five databases outside CNPG (authentik, Nextcloud, Paperless, AdventureLog, Grimmory) | Nightly dump onto a volume Velero backs up daily or weekly, beside the raw data directory |
 | Daily critical namespaces | `daily-critical-backup`, `20 2 * * *` (UTC), 30-day retention |
@@ -31,7 +31,7 @@ day; see below.
 
 ## Weekly automated restore test
 
-Every Wednesday (Europe/Berlin) seven CronJobs named `restore-test` and one
+Every Wednesday (Europe/Berlin) eight CronJobs named `restore-test` and one
 named `restore-test-authentik-db` restore the newest backups and check what
 came back. Each run starts by removing whatever the previous one left, and ends
 by deleting its copy. A failed authentik run keeps its copy until
@@ -45,6 +45,7 @@ by deleting its copy. A failed authentik run keeps its copy until
 | `planka/restore-test` | 11:00 | `planka-postgresql`, likewise | likewise |
 | `forgejo/restore-test` | 11:15 | `forgejo-postgresql`, likewise | likewise |
 | `anchor/restore-test` | 11:30 | `anchor-postgresql`, likewise | likewise |
+| `romm/restore-test` | 11:45 | `romm-postgresql`, likewise | likewise |
 | `velero-restore-test/restore-test` | 10:45 | gotify's `data` volume from the newest `daily-critical-backup` | Restore `Completed`, PodVolumeRestore `Completed`, gotify Ready on the restored database |
 | `velero-restore-test/restore-test-authentik-db` | 12:00 | authentik's database volume from the newest `daily-critical-backup`, then its newest dump into an empty Postgres 17 | Restore and PodVolumeRestore `Completed`, a dump from the last 36 hours, `pg_restore` without errors, at least 200 tables, 20 applications, one user and one flow |
 
@@ -303,6 +304,7 @@ data carries the reason alongside it.
 | `ollama-models` | 2.6 GB | Pulled from the registry on demand |
 | `soundcloud-music-pvc` | 0.5 GB | Downloaded audio; Navidrome reindexes from the files |
 | Schall audio | 59 GB | Re-downloadable, and the database records what exists |
+| `romm-library` | empty on 2026-11-27 | ROMs are re-obtainable, and `romm-postgresql` records what the library held; covers and saves on `romm-data` are backed up |
 | `audiobookshelf-library` | empty on 2026-11-27 | Audiobooks are re-obtainable and podcasts re-download; the database and covers on the other two claims are backed up |
 | `slskd-config` | 6.2 GB on 2026-09-15 | Partial downloads, a search cache and transfer history; the configuration is a sops Secret, not on the volume |
 

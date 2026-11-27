@@ -53,6 +53,7 @@ The Excalidraw pilot is configured separately; this table records the state befo
 | media | Deployment/slskd | Recreate | slskd-config-pvc, downloads-pvc, cantus-music-pvc | yes |
 | media | Deployment/sonarr | Recreate | sonarr-config-pvc, downloads-pvc, media-pvc | yes |
 | anchor | Deployment/anchor | Recreate | anchor-data | yes |
+| romm | Deployment/romm | Recreate | romm-data, romm-library | yes |
 | audiobookshelf | Deployment/audiobookshelf | Recreate | audiobookshelf-config, audiobookshelf-metadata, audiobookshelf-library | yes |
 | forgejo | Deployment/forgejo | Recreate | forgejo-data | yes |
 | forgejo-runner | Deployment/forgejo-runner | Recreate | runner-data | yes |

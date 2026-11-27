@@ -449,3 +449,98 @@ resource "authentik_policy_binding" "audiobookshelf_users" {
   group  = authentik_group.audiobookshelf_users.id
   order  = 0
 }
+
+# --- RomM ---
+#
+# ROM library at games.<domain> (kubernetes/apps/romm). Its password login and
+# setup wizard are off, so this provider is its only login. The secret is set
+# here rather than generated, because RomM reads it from romm-app (SOPS); the
+# workflow passes the ROMM_OIDC_CLIENT_SECRET repository secret.
+resource "authentik_provider_oauth2" "romm" {
+  name          = "romm"
+  client_id     = "fJsh8W2Go9STabIZoNOIhTwmGELaIYxlZ7phtvqD"
+  client_type   = "confidential"
+  client_secret = var.romm_oidc_client_secret
+
+  authorization_flow  = data.authentik_flow.default-authorization-flow.id
+  invalidation_flow   = data.authentik_flow.default-invalidation-flow.id
+  authentication_flow = authentik_flow.authentication.uuid
+
+  # RomM reads the per-application discovery document (OIDC_SERVER_METADATA_URL)
+  # and authlib verifies the id_token against its JWKS, so RS256.
+  issuer_mode                = "per_provider"
+  signing_key                = data.authentik_certificate_key_pair.jwt.id
+  include_claims_in_id_token = true
+
+  grant_types = ["authorization_code", "refresh_token"]
+
+  allowed_redirect_uris = [
+    {
+      matching_mode     = "strict"
+      redirect_uri_type = "authorization"
+      url               = "https://games.${var.domain}/api/oauth/openid"
+    },
+  ]
+
+  # openid and profile from authentik; profile carries the groups claim RomM
+  # maps to roles. email is RomM's own, see below.
+  property_mappings = concat(
+    [for k, m in data.authentik_property_mapping_provider_scope.oidc : m.id if k != "email"],
+    [authentik_property_mapping_provider_scope.romm_email.id],
+  )
+}
+
+# authentik's managed email mapping sends email_verified = false, and RomM
+# refuses any login whose email is not verified when the provider advertises
+# the claim. Accounts here are created by the admin, who sets the address, so
+# this mapping asserts it. RomM matches a new login to an existing account by
+# email only when that account has no OIDC subject yet, and with password login
+# off every account is created through OIDC with one.
+resource "authentik_property_mapping_provider_scope" "romm_email" {
+  name        = "RomM: OpenID 'email' (verified)"
+  scope_name  = "email"
+  description = "Email address"
+  expression  = <<-EOT
+    return {
+        "email": request.user.email,
+        "email_verified": True,
+    }
+  EOT
+}
+
+resource "authentik_application" "romm" {
+  name = "RomM"
+  # The slug is the issuer: https://auth.<domain>/application/o/romm/.
+  slug              = "romm"
+  protocol_provider = authentik_provider_oauth2.romm.id
+  meta_launch_url   = "https://games.${var.domain}"
+  meta_description  = "Game Library"
+  meta_icon         = "https://cdn.jsdelivr.net/gh/selfhst/icons@main/png/romm.png"
+  open_in_new_tab   = true
+}
+
+# RomM maps these group names, from the groups claim, to its roles
+# (OIDC_ROLE_ADMIN and OIDC_ROLE_VIEWER in the deployment) on every login.
+# A member of either may open the application.
+resource "authentik_group" "romm_admins" {
+  name         = "romm-admins"
+  is_superuser = false
+  users        = [data.authentik_user.pxldi.id]
+}
+
+resource "authentik_group" "romm_users" {
+  name         = "romm-users"
+  is_superuser = false
+}
+
+resource "authentik_policy_binding" "romm_admins" {
+  target = authentik_application.romm.uuid
+  group  = authentik_group.romm_admins.id
+  order  = 0
+}
+
+resource "authentik_policy_binding" "romm_users" {
+  target = authentik_application.romm.uuid
+  group  = authentik_group.romm_users.id
+  order  = 1
+}

@@ -19,7 +19,13 @@
 #      `sops set`; commit and push those afterwards
 #   3. install the ping key on the node for nixos-upgrade, over ssh
 #      (HC_SSH_HOST, default "rechenzentrum"; HC_SSH_HOST=- skips it)
+#
+# --checks-only does step 1 alone and asks only for the API key: for new checks
+# when the ping key in the Secrets stays the same.
 set -euo pipefail
+
+checks_only=false
+[ "${1:-}" = --checks-only ] && checks_only=true
 
 api=https://healthchecks.io/api/v3/checks/
 ssh_host=${HC_SSH_HOST:-rechenzentrum}
@@ -27,10 +33,11 @@ ssh_host=${HC_SSH_HOST:-rechenzentrum}
 if [ -z "${HC_API_KEY:-}" ]; then
   read -rsp "healthchecks.io API key (read-write): " HC_API_KEY; echo
 fi
-if [ -z "${HC_PING_KEY:-}" ]; then
+if ! $checks_only && [ -z "${HC_PING_KEY:-}" ]; then
   read -rsp "healthchecks.io ping key: " HC_PING_KEY; echo
 fi
-[ -n "$HC_API_KEY" ] && [ -n "$HC_PING_KEY" ] || { echo "both keys are required" >&2; exit 1; }
+[ -n "$HC_API_KEY" ] || { echo "the API key is required" >&2; exit 1; }
+$checks_only || [ -n "$HC_PING_KEY" ] || { echo "the ping key is required" >&2; exit 1; }
 
 # name|schedule-or-period|grace seconds|description
 #
@@ -69,6 +76,11 @@ for entry in "${checks[@]}"; do
     *) echo "failed   $name (HTTP $code)" >&2; exit 1 ;;
   esac
 done
+
+if $checks_only; then
+  echo "Done. Checks only; the Secrets and the node are unchanged."
+  exit 0
+fi
 
 echo "== secrets"
 command -v sops >/dev/null || { echo "sops not found" >&2; exit 1; }

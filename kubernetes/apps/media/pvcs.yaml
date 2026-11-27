@@ -147,7 +147,7 @@ spec:
     requests:
       storage: 5Gi
 ---
-# Music Aurral fetches. Navidrome reads it as a second library.
+# Music Aurral fetches. Navidrome's main library since 2026-11-27.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

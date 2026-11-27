@@ -1,0 +1,26 @@
+---
+# authentik had no default-deny, and the Postgres chart's own policy allowed
+# 5432 from every pod in the cluster. Callers now: pods here (server, worker,
+# Postgres), Traefik for the login routes and forward-auth, and the chatops MCP
+# servers, which fetch the signing keys by Service name. Every app's OIDC
+# back-channel goes through Traefik by the public name, so it arrives from the
+# traefik namespace. 9000 is the server's container port behind Service port 80.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-jwks-from-chatops
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: server
+      app.kubernetes.io/name: authentik
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: chatops
+      ports:
+        - protocol: TCP
+          port: 9000

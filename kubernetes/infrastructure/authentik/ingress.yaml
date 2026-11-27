@@ -57,10 +57,11 @@ spec:
 # that are public (keep.pxldi.de). Forward-auth apps stay on websecure only and
 # are not reachable this way.
 #
-# Known gap: authentik takes the client address for its reputation policy from
-# the leftmost X-Forwarded-For entry. Cloudflare appends to an XFF the client
-# sent, so through the tunnel that entry is the client's own claim and the
-# reputation score can be dodged. The second factor still applies.
+# authentik's reputation policy takes the client address from the leftmost
+# X-Forwarded-For entry. Cloudflare would append to an XFF the client sent, so
+# a zone Transform Rule (http_request_late_transform, in the Cloudflare
+# dashboard) removes it, and Cloudflare's proxy re-adds it holding the visitor
+# address alone. Without that rule a client chooses the address it is scored as.
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:

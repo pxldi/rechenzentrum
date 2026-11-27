@@ -23,10 +23,13 @@ address, which on the `tunnel` entrypoint is a pod, so binding them needs an
 
 On the tunnel, authentik's flood guard is keyed on `Cf-Connecting-Ip`
 (`auth-rate-limit-tunnel`), because the remote address is a cloudflared pod.
-authentik's reputation policy reads the leftmost `X-Forwarded-For` entry, and
-Cloudflare appends to one a client sent, so through the tunnel a client can
-choose the address that policy counts against. The second factor still
-applies.
+authentik's reputation policy and Traefik's access log (which CrowdSec reads)
+take the leftmost `X-Forwarded-For` entry, and Cloudflare appends to one a
+client sent. A zone Transform Rule in the `http_request_late_transform` phase
+removes the header on every request, and Cloudflare's proxy re-adds it with
+the visitor address alone. It lives in the Cloudflare dashboard, not in this
+repository. Verified on 2026-11-27: a request sent with a forged
+`X-Forwarded-For` was logged under its real address by authentik and Traefik.
 
 Cloudflare's free plan caps a request body at 100 MB. Immich uploads of
 larger files fail through the tunnel and work on the LAN and the tailnet.

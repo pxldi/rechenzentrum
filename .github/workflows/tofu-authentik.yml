@@ -75,6 +75,9 @@ jobs:
         env:
           AUTHENTIK_URL: ${{ secrets.AUTHENTIK_URL }}
           AUTHENTIK_TOKEN: ${{ secrets.AUTHENTIK_TOKEN }}
+          # Sent as X-Tofu-Runner-Key; Cloudflare lets the runner past the
+          # country block only with it (terraform/authentik/provider.tf).
+          TF_VAR_waf_skip_key: ${{ secrets.OPENTF_WAF_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.B2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_SECRET_ACCESS_KEY }}
           AWS_ENDPOINT_URL_S3: ${{ secrets.B2_ENDPOINT_URL }}
@@ -108,6 +111,9 @@ jobs:
         env:
           AUTHENTIK_URL: ${{ secrets.AUTHENTIK_URL }}
           AUTHENTIK_TOKEN: ${{ secrets.AUTHENTIK_TOKEN }}
+          # Sent as X-Tofu-Runner-Key; Cloudflare lets the runner past the
+          # country block only with it (terraform/authentik/provider.tf).
+          TF_VAR_waf_skip_key: ${{ secrets.OPENTF_WAF_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.B2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_SECRET_ACCESS_KEY }}
           AWS_ENDPOINT_URL_S3: ${{ secrets.B2_ENDPOINT_URL }}

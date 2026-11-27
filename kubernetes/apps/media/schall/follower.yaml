@@ -70,6 +70,8 @@ metadata:
   name: schall-follower
   namespace: media
 spec:
+  # Schall is at 0 replicas, so there is nothing to follow.
+  suspend: true
   schedule: "*/5 * * * *"
   concurrencyPolicy: Forbid
   # A node restart can miss a few runs. Without a deadline the controller
@@ -218,15 +220,20 @@ spec:
     - name: media.schall-follower
       rules:
         # No successful run for two hours, or none since the CronJob first ran.
+        # A suspended CronJob never runs, so it is left out.
         - alert: SchallFollowerStale
           expr: |
-            time() - kube_cronjob_status_last_successful_time{namespace="media", cronjob="schall-follower"} > 2 * 3600
-            or
             (
-              kube_cronjob_status_last_schedule_time{namespace="media", cronjob="schall-follower"}
-                unless on (namespace, cronjob)
-              kube_cronjob_status_last_successful_time{namespace="media", cronjob="schall-follower"}
+              time() - kube_cronjob_status_last_successful_time{namespace="media", cronjob="schall-follower"} > 2 * 3600
+              or
+              (
+                kube_cronjob_status_last_schedule_time{namespace="media", cronjob="schall-follower"}
+                  unless on (namespace, cronjob)
+                kube_cronjob_status_last_successful_time{namespace="media", cronjob="schall-follower"}
+              )
             )
+            unless on (namespace, cronjob)
+            kube_cronjob_spec_suspend{namespace="media", cronjob="schall-follower"} == 1
           for: 15m
           labels:
             severity: warning

@@ -6,7 +6,9 @@ metadata:
   labels:
     app: schall
 spec:
-  replicas: 1
+  # Off since 2026-11-27: Aurral replaced Schall. The claims and the
+  # cantus-postgresql cluster stay until the removal PR.
+  replicas: 0
   strategy:
     type: Recreate
   selector:

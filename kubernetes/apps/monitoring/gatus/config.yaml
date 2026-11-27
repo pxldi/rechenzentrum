@@ -200,6 +200,12 @@ endpoints:
     <<: *house
     conditions:
       - "[STATUS] == 200"
+  - name: Anchor
+    group: house
+    url: http://anchor.anchor.svc.cluster.local:3000/api/health
+    <<: *house
+    conditions:
+      - "[STATUS] == 200"
   - name: Forgejo
     group: house
     url: http://forgejo.forgejo.svc.cluster.local:3000/api/healthz

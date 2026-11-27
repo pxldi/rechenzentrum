@@ -1,0 +1,159 @@
+# Anchor: offline-first notes for the web and the Android app. Notes live in
+# Postgres (kubernetes/databases/anchor), attachments and avatars on
+# anchor-data.
+#
+# One container runs supervisord, which starts the Nest API on 3001 and the
+# Next.js web on 3000. The web proxies /api to the API, so 3000 is the only
+# port the route needs. PG_HOST is set, so the image's embedded Postgres stays
+# off.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anchor
+  namespace: anchor
+  labels:
+    app: anchor
+spec:
+  replicas: 1
+  # anchor-data is RWO on the one node, and every start runs the Prisma
+  # migrations, so two pods must never run at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: anchor
+  template:
+    metadata:
+      labels:
+        app: anchor
+      annotations:
+        backup.velero.io/backup-volumes: data
+    spec:
+      automountServiceAccountToken: false
+      # A Service named anchor would inject ANCHOR_PORT and friends; Anchor
+      # reads none of them, and none is wanted.
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: anchor
+          image: ghcr.io/zhfahim/anchor:0.18.1@sha256:83121433fcbc60f1491f1d5c761d2bac59519884ad31d0c464b7fce931d75d8e
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: TZ
+              value: Europe/Berlin
+            # The OIDC callback and every post-login redirect are built from it.
+            - name: APP_URL
+              value: https://keep.pxldi.de
+            - name: PG_HOST
+              value: anchor-postgresql-rw
+            - name: PG_PORT
+              value: "5432"
+            - name: PG_DATABASE
+              value: anchor
+            # The entrypoint pastes these into DATABASE_URL without encoding,
+            # so the password in anchor-credentials is letters and digits only.
+            - name: PG_USER
+              valueFrom:
+                secretKeyRef:
+                  name: anchor-credentials
+                  key: username
+            - name: PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: anchor-credentials
+                  key: password
+            # Set, so the entrypoint does not generate one into /data.
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: anchor-app
+                  key: JWT_SECRET
+            # authentik is the only login. Anchor creates an account for anyone
+            # who completes the flow, so who gets in is decided by the
+            # anchor-users binding in terraform/authentik/oidc-apps.tf.
+            # The client is public (PKCE, no secret) because the Android app
+            # runs the same flow itself and cannot hold one.
+            - name: OIDC_ENABLED
+              value: "true"
+            - name: OIDC_PROVIDER_NAME
+              value: authentik
+            - name: OIDC_ISSUER_URL
+              value: https://auth.pxldi.de/application/o/anchor/
+            - name: OIDC_CLIENT_ID
+              value: 4Yv7fkWuNmN0XigjKjKVWnef5W8gzrG2oPkbaNnM
+            # The API refuses password sign-in and sign-up with this set, not
+            # just the form. USER_SIGNUP covers the same door if OIDC is ever
+            # switched off. OIDC sign-ups do not read it.
+            - name: DISABLE_INTERNAL_AUTH
+              value: "true"
+            - name: USER_SIGNUP
+              value: disabled
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: supervisord
+              mountPath: /etc/supervisord.conf
+              subPath: supervisord.conf
+              readOnly: true
+            # supervisord's pid file and control socket.
+            - name: scratch
+              mountPath: /var/run
+              subPath: run
+            - name: scratch
+              mountPath: /tmp
+              subPath: tmp
+            - name: scratch
+              mountPath: /app/web/.next/cache
+              subPath: next-cache
+          # Goes through the web to the API, so it covers both processes.
+          # Every start migrates the database before the API listens.
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          # 179Mi idle in a local test run.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              memory: 768Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: anchor-data
+        - name: supervisord
+          configMap:
+            name: anchor-supervisord
+        - name: scratch
+          emptyDir: {}

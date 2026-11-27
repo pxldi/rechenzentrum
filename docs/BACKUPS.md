@@ -20,7 +20,7 @@ day; see below.
 
 ## Weekly automated restore test
 
-Every Wednesday morning (Europe/Berlin) six CronJobs named `restore-test`
+Every Wednesday morning (Europe/Berlin) seven CronJobs named `restore-test`
 restore the newest backups and check what came back. Each run starts by removing
 whatever the previous one left, and ends by deleting its copy.
 
@@ -31,6 +31,7 @@ whatever the previous one left, and ends by deleting its copy.
 | `immich/restore-test` | 10:30 | `immich-postgresql`, likewise | likewise |
 | `planka/restore-test` | 11:00 | `planka-postgresql`, likewise | likewise |
 | `forgejo/restore-test` | 11:15 | `forgejo-postgresql`, likewise | likewise |
+| `anchor/restore-test` | 11:30 | `anchor-postgresql`, likewise | likewise |
 | `velero-restore-test/restore-test` | 10:45 | gotify's `data` volume from the newest `daily-critical-backup` | Restore `Completed`, PodVolumeRestore `Completed`, gotify Ready on the restored database |
 
 The database tests create a Cluster named `restore-test` in the source

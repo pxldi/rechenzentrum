@@ -1,0 +1,15 @@
+# Note attachments (images, audio) and avatars. The notes themselves are in
+# Postgres (kubernetes/databases/anchor), which barman archives to B2.
+# Velero copies this volume.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: anchor-data
+  namespace: anchor
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 5Gi

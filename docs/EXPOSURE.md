@@ -9,15 +9,24 @@ The house lost its own line and router. The cluster now sits behind a router
 in repeater mode on a network with no port forwards, so nothing reaches
 Traefik's LoadBalancer from the internet. `cloudflare-ddns` is scaled to 0.
 
-Only `cloud.pxldi.de` (Nextcloud) and `photos.pxldi.de` (Immich) are public,
-through the Cloudflare Tunnel (`infrastructure/networking/cloudflared`). They
-are the only routes bound to Traefik's `tunnel` entrypoint. Every other route
+Only `cloud.pxldi.de` (Nextcloud), `photos.pxldi.de` (Immich) and
+`keep.pxldi.de` (Anchor) are public, through the Cloudflare Tunnel
+(`infrastructure/networking/cloudflared`), with `auth.pxldi.de` and
+`branding.pxldi.de` beside them so Anchor's authentik login works from
+outside. These are the only routes bound to Traefik's `tunnel` entrypoint. Every other route
 marked "public" or "Authentik" below is reachable from the LAN and the tailnet
 only, until it is bound to `tunnel` and given a hostname in the tunnel's
 dashboard config. The claude.ai connectors (`*-mcp.pxldi.de`) are down for
 the same reason. Their `anthropic-and-house` allowlist checks the remote
 address, which on the `tunnel` entrypoint is a pod, so binding them needs an
 `ipStrategy` too.
+
+On the tunnel, authentik's flood guard is keyed on `Cf-Connecting-Ip`
+(`auth-rate-limit-tunnel`), because the remote address is a cloudflared pod.
+authentik's reputation policy reads the leftmost `X-Forwarded-For` entry, and
+Cloudflare appends to one a client sent, so through the tunnel a client can
+choose the address that policy counts against. The second factor still
+applies.
 
 Cloudflare's free plan caps a request body at 100 MB. Immich uploads of
 larger files fail through the tunnel and work on the LAN and the tailnet.
@@ -61,6 +70,11 @@ as it always did for every app without such a route. They were removed on
   OIDC login rather than forward-auth: its password form is off, and the browser
   extension and phone apps send bearer tokens to `/api`, which a forward-auth
   redirect would break.
+- **Anchor** (`keep.pxldi.de`) is public through the tunnel, gated by
+  Anchor's own OIDC login against authentik, the Karakeep shape: the Android
+  app sends bearer tokens to `/api`, which forward-auth would break. Password
+  sign-in is off in the API (`DISABLE_INTERNAL_AUTH`), and only
+  `anchor-users` completes the flow. It is for a user off the tailnet.
 - **Schall's API route** (`schall.pxldi.de` with a Bearer header) stays public so
   a client that cannot follow a login redirect works away from home. Schall
   validates the token and answers 401 to anything it did not mint. No proxy key
@@ -149,6 +163,7 @@ is on Tailscale" is not an answer on its own.
 | media | `watch.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `jellyfin.pxldi.de` | public | none |
 | karakeep | `links.pxldi.de` | public | none |
+| anchor | `keep.pxldi.de` | public (tunnel) | none |
 | opengym | `gym.pxldi.de` | public | none |
 | wealthfolio | `wealth.pxldi.de` | LAN/tailnet + Authentik | internal-only,authentik-forward-auth |
 | media | `music.pxldi.de` | public | none |

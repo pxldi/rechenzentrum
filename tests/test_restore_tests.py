@@ -20,6 +20,7 @@ CASES = {
     "cantus": ("postgres-cluster.yaml", None),
     "planka": ("postgres-cluster.yaml", "secret.yaml"),
     "forgejo": ("postgres-cluster.yaml", "secret.yaml"),
+    "anchor": ("postgres-cluster.yaml", "secret.yaml"),
 }
 
 

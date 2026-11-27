@@ -11,6 +11,9 @@
   "apps/v1/Deployment/adventurelog/adventurelog-frontend": {
     "kind": "Deployment"
   },
+  "apps/v1/Deployment/anchor/anchor": {
+    "kind": "Deployment"
+  },
   "apps/v1/Deployment/branding/branding": {
     "kind": "Deployment"
   },
@@ -197,6 +200,10 @@
   "helm.toolkit.fluxcd.io/v2/HelmRelease/velero/velero-ui": {
     "kind": "HelmRelease"
   },
+  "postgresql.cnpg.io/v1/Cluster/anchor/anchor-postgresql": {
+    "kind": "Cluster",
+    "spec_sha256": "9cc42f415147c164a5eb3b233e108a4ab84eb7d0513f3296ab64ed2f1a34066f"
+  },
   "postgresql.cnpg.io/v1/Cluster/forgejo/forgejo-postgresql": {
     "kind": "Cluster",
     "spec_sha256": "b0f290538077e38128aedda665930e32ae77d82d19938bf310d5caeeeab95338"
@@ -218,6 +225,9 @@
     "spec_sha256": "b9c190945d44f2db29f31d752bacf2ff25660f8462afce0fd80a7833f71fc58c"
   },
   "v1/Namespace//adventurelog": {
+    "kind": "Namespace"
+  },
+  "v1/Namespace//anchor": {
     "kind": "Namespace"
   },
   "v1/Namespace//authentik": {
@@ -353,6 +363,10 @@
   "v1/PersistentVolumeClaim/adventurelog/adventurelog-media": {
     "kind": "PersistentVolumeClaim",
     "spec_sha256": "12aa304e456bb83d8a9f73712a653df884b52c7843c3056b6c0f1165762446dd"
+  },
+  "v1/PersistentVolumeClaim/anchor/anchor-data": {
+    "kind": "PersistentVolumeClaim",
+    "spec_sha256": "45fe8f9b88f9eb134b614cfc7bc915635ee7e01b9aa2e04d10564c27eb15bc6d"
   },
   "v1/PersistentVolumeClaim/claudebox/claudebox-data-pvc": {
     "kind": "PersistentVolumeClaim",

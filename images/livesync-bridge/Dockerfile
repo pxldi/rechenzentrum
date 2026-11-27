@@ -5,8 +5,11 @@
 FROM docker.io/denoland/deno:2.9.8@sha256:a0d88a7fcbd44f062cba2748e19df67d30290ad12aa203c7c1e0b12462c483f0 AS src
 ARG BRIDGE_COMMIT=c3760beaa0851214da4860903445d7f6420ca025
 USER 0
-# hadolint ignore=DL3008
-RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
+# The upgrade pulls Debian's fixes the base image predates; the CI gate fails on
+# any fixable critical package, and libbrotli1 held the build since 2026-11-05.
+# hadolint ignore=DL3005,DL3008
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN git clone --quiet https://github.com/vrtmrz/livesync-bridge.git . \

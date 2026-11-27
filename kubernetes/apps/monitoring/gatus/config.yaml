@@ -31,6 +31,18 @@ x-public: &public
   client:
     timeout: 10s
 
+# For public apps not on the Cloudflare Tunnel. Their names have no public DNS
+# record since 2026-11-27, and CoreDNS asks AdGuard or Quad9 at random, so a
+# check on the name failed whenever Quad9 answered. These go to Traefik's
+# Service with the app's Host header instead, which still covers the route and
+# the app. insecure because the connection names the Service, not the app, so
+# the wildcard certificate does not match; Nextcloud's check covers expiry.
+x-via-traefik: &via-traefik
+  interval: 1m
+  client:
+    timeout: 10s
+    insecure: true
+
 x-house: &house
   interval: 1m
   client:
@@ -58,72 +70,94 @@ endpoints:
       - "[BODY].res == pong"
   - name: Jellyfin
     group: public
-    url: https://jellyfin.pxldi.de/health
-    <<: *public
+    url: https://traefik.traefik.svc.cluster.local/health
+    <<: *via-traefik
+    headers:
+      Host: jellyfin.pxldi.de
     conditions:
       - "[STATUS] == 200"
       - "[BODY] == Healthy"
   - name: Navidrome
     group: public
-    url: https://music.pxldi.de/ping
-    <<: *public
+    url: https://traefik.traefik.svc.cluster.local/ping
+    <<: *via-traefik
+    headers:
+      Host: music.pxldi.de
     conditions:
       - "[STATUS] == 200"
   - name: Home Assistant
     group: public
-    url: https://home.pxldi.de/manifest.json
-    <<: *public
+    url: https://traefik.traefik.svc.cluster.local/manifest.json
+    <<: *via-traefik
+    headers:
+      Host: home.pxldi.de
     conditions:
       - "[STATUS] == 200"
   - name: Gotify
     group: public
-    url: https://gotify.pxldi.de/health
-    <<: *public
+    url: https://traefik.traefik.svc.cluster.local/health
+    <<: *via-traefik
+    headers:
+      Host: gotify.pxldi.de
     conditions:
       - "[STATUS] == 200"
       - "[BODY].health == green"
       - "[BODY].database == green"
   - name: Paperless
     group: public
-    url: https://paperless.pxldi.de/accounts/login/
-    <<: *public
+    url: https://traefik.traefik.svc.cluster.local/accounts/login/
+    <<: *via-traefik
+    headers:
+      Host: paperless.pxldi.de
     conditions:
       - "[STATUS] == 200"
   - name: Tandoor
     group: public
-    url: https://recipes.pxldi.de/accounts/login/
-    <<: *public
+    url: https://traefik.traefik.svc.cluster.local/accounts/login/
+    <<: *via-traefik
+    headers:
+      Host: recipes.pxldi.de
     conditions:
       - "[STATUS] == 200"
   - name: Grimmory
     group: public
-    url: https://books.pxldi.de/
-    <<: *public
+    url: https://traefik.traefik.svc.cluster.local/
+    <<: *via-traefik
+    headers:
+      Host: books.pxldi.de
     conditions:
       - "[STATUS] == 200"
   - name: Obsidian LiveSync
     group: public
-    url: https://obsidian.pxldi.de/_up
-    <<: *public
+    url: https://traefik.traefik.svc.cluster.local/_up
+    <<: *via-traefik
+    headers:
+      Host: obsidian.pxldi.de
     conditions:
       - "[STATUS] == 200"
       - "[BODY].status == ok"
   - name: Karakeep
     group: public
-    url: https://links.pxldi.de/api/health
-    <<: *public
+    url: https://traefik.traefik.svc.cluster.local/api/health
+    <<: *via-traefik
+    headers:
+      Host: links.pxldi.de
     conditions:
       - "[STATUS] == 200"
   - name: Seerr
     group: public
-    url: https://request.pxldi.de/api/v1/status
-    <<: *public
+    url: https://traefik.traefik.svc.cluster.local/api/v1/status
+    <<: *via-traefik
+    headers:
+      Host: request.pxldi.de
     conditions:
       - "[STATUS] == 200"
   - name: openGym
     group: public
-    url: https://gym.pxldi.de/api/health
-    <<: *public
+    url: https://traefik.traefik.svc.cluster.local/api/health
+    <<: *via-traefik
+    headers:
+      Host: gym.pxldi.de
     conditions:
       - "[STATUS] == 200"
       - "[BODY].ok == true"

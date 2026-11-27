@@ -27,6 +27,25 @@ spec:
       - 192.168.8.0/24
       - 100.64.0.0/10
 ---
+# The same allowlist for the routes on the Cloudflare Tunnel. There the remote
+# address is always a cloudflared pod, so the client comes from
+# X-Forwarded-For. A zone Transform Rule in Cloudflare drops any XFF the client
+# sent, and Cloudflare re-adds it holding the visitor address alone
+# (docs/EXPOSURE.md), so depth 1 is that address and cannot be chosen by the
+# caller. Without that rule this check could be passed with a forged header.
+# House traffic arrives on websecure, so only Anthropic's range is here.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: anthropic-tunnel
+  namespace: chatops
+spec:
+  ipAllowList:
+    sourceRange:
+      - 160.79.104.0/21
+    ipStrategy:
+      depth: 1
+---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -40,6 +59,24 @@ spec:
       match: "Host(`vault-mcp.pxldi.de`) && (PathPrefix(`/mcp`) || PathPrefix(`/.well-known/`))"
       middlewares:
         - name: anthropic-and-house
+      priority: 10
+      services:
+        - name: vault-mcp
+          port: 8001
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: vault-mcp-tunnel
+  namespace: chatops
+spec:
+  entryPoints:
+    - tunnel
+  routes:
+    - kind: Rule
+      match: "Host(`vault-mcp.pxldi.de`) && (PathPrefix(`/mcp`) || PathPrefix(`/.well-known/`))"
+      middlewares:
+        - name: anthropic-tunnel
       priority: 10
       services:
         - name: vault-mcp

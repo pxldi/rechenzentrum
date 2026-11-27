@@ -4,7 +4,8 @@
 # middleware these reuse): no forward-auth, because claude.ai calls from
 # Anthropic's servers and cannot follow a login redirect; the servers refuse
 # /mcp without an Authentik token instead. Only the paths a connector uses are
-# routed.
+# routed. Each host has a second route on the Cloudflare Tunnel entrypoint,
+# with the tunnel allowlist, because claude.ai reaches the house only that way.
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -72,6 +73,78 @@ spec:
       match: "Host(`opengym-mcp.pxldi.de`) && (PathPrefix(`/mcp`) || PathPrefix(`/.well-known/`))"
       middlewares:
         - name: anthropic-and-house
+      priority: 10
+      services:
+        - name: opengym-mcp
+          port: 8000
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: tandoor-mcp-tunnel
+  namespace: chatops
+spec:
+  entryPoints:
+    - tunnel
+  routes:
+    - kind: Rule
+      match: "Host(`tandoor-mcp.pxldi.de`) && (PathPrefix(`/mcp`) || PathPrefix(`/.well-known/`))"
+      middlewares:
+        - name: anthropic-tunnel
+      priority: 10
+      services:
+        - name: tandoor-mcp
+          port: 8001
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: snacky-mcp-tunnel
+  namespace: chatops
+spec:
+  entryPoints:
+    - tunnel
+  routes:
+    - kind: Rule
+      match: "Host(`snacky-mcp.pxldi.de`) && (PathPrefix(`/mcp`) || PathPrefix(`/.well-known/`))"
+      middlewares:
+        - name: anthropic-tunnel
+      priority: 10
+      services:
+        - name: snacky-mcp-gate
+          port: 8000
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: calendar-mcp-tunnel
+  namespace: chatops
+spec:
+  entryPoints:
+    - tunnel
+  routes:
+    - kind: Rule
+      match: "Host(`calendar-mcp.pxldi.de`) && (PathPrefix(`/mcp`) || PathPrefix(`/.well-known/`))"
+      middlewares:
+        - name: anthropic-tunnel
+      priority: 10
+      services:
+        - name: calendar-mcp
+          port: 8001
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: opengym-mcp-tunnel
+  namespace: chatops
+spec:
+  entryPoints:
+    - tunnel
+  routes:
+    - kind: Rule
+      match: "Host(`opengym-mcp.pxldi.de`) && (PathPrefix(`/mcp`) || PathPrefix(`/.well-known/`))"
+      middlewares:
+        - name: anthropic-tunnel
       priority: 10
       services:
         - name: opengym-mcp

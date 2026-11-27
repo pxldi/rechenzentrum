@@ -5,10 +5,11 @@ namespace: monitoring
 resources:
   - gatus
 components:
-  # Egress. Gatus checks public apps on their public names (internet and
-  # Traefik, since in-cluster DNS may answer with either address) and house-only
-  # apps on their Services in other namespaces, which is why it takes the
-  # cluster-wide rule rather than a selector per target.
+  # Egress. Gatus checks the tunnel apps on their public names (internet and
+  # Traefik, since in-cluster DNS may answer with either address), the other
+  # public apps through Traefik's Service, and house-only apps on their
+  # Services in other namespaces, which is why it takes the cluster-wide rule
+  # rather than a selector per target.
   - ../../../components/default-deny-egress
   - ../../../components/allow-dns
   - ../../../components/allow-internet-egress

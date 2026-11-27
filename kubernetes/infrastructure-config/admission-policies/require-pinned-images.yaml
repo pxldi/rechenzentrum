@@ -4,8 +4,9 @@
 # nothing in particular, and Renovate cannot see a version to bump. Nothing in
 # this cluster does it today — all 92 workloads carry an explicit tag or digest —
 # so this is a ratchet, not a cleanup. CronJobs and Jobs were added on
-# 2026-11-27, after all 261 containers in the 17 CronJobs and 62 Jobs then in the
-# cluster were checked against the same rule.
+# 2026-11-27, after every container in the 24 CronJobs and 66 Jobs then in the
+# cluster passed the same rule. Helm hook Jobs that were not present at the time
+# were not checked.
 #
 # This checks for a tag or a digest. It does not require a digest: the
 # manifests in this repository carry one, but pods rendered from chart defaults

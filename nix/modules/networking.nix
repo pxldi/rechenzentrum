@@ -13,11 +13,12 @@
         # traffic to a closed port and implied an sshd that is not there.
         80    # HTTP
         443   # HTTPS
-        6443  # K3s API server
       ];
-      allowedUDPPorts = [
-        8472  # Flannel VXLAN
-      ];
+      # 8472/udp (flannel VXLAN) used to be open here. It carries traffic
+      # between nodes, and this cluster has one, so nothing ever sent to it.
+      # 6443 (the API server) is open on the tailnet only, in tailscale.nix.
+      # Pods reach the API through the kubernetes Service, which arrives on
+      # cni0 and is trusted below.
       # Trust K3s interfaces
       trustedInterfaces = [ "cni0" "flannel.1" ];
     };

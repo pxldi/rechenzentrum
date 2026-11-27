@@ -15,7 +15,10 @@ name: Flake Update
 # The PR body carries what actually changed, so the decision is informed:
 # k3s moving is a different conversation from a kernel patch bump.
 #
-# Nothing here reaches the node. flake.lock only takes effect on nixos-rebuild.
+# Merging the PR reaches the node. nix/modules/autoupgrade.nix rebuilds the
+# host from main every morning at 04:45 as root (`nixos-rebuild switch`), so a
+# merged flake.lock is live the next day. allowReboot is off, so a new kernel
+# is installed but only runs after a reboot somebody chooses to do.
 
 on:
   schedule:
@@ -116,7 +119,7 @@ jobs:
             "" \
             "**If the kernel series changed** (6.6 -> 6.12 and the like), three things here are driver-adjacent: otbr's Thread dongle, the device plugin's \`/dev/dri\`, and \`boot.supportedFilesystems\`." \
             "" \
-            "Nothing reaches the node on merge - flake.lock only takes effect on \`nixos-rebuild\`, and that should be \`boot\` plus a reboot when the kernel moves." \
+            "**Merging deploys this.** The node runs \`nixos-rebuild switch\` from main at 04:45 the next morning (nix/modules/autoupgrade.nix). A new kernel is installed but runs only after a manual reboot, because allowReboot is off." \
             > /tmp/pr-body.md
           gh pr create \
             --title "chore(nix): bump flake.lock (nixpkgs ${BEFORE} -> ${AFTER})" \

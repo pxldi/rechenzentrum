@@ -61,9 +61,13 @@
     };
   };
 
+  # 6443 is the API server. It used to be open on every interface, the LAN
+  # included. A kubeconfig names the node's tailnet address and sets
+  # tls-server-name to `rechenzentrum`: the serving certificate carries that
+  # name but not the tailnet address.
   networking.firewall.interfaces.tailscale0 = {
     allowedUDPPorts = [ 53 ];
-    allowedTCPPorts = [ 53 ];
+    allowedTCPPorts = [ 53 6443 ];
   };
 
   # tailscale0 is deliberately NOT added to networking.firewall.trustedInterfaces.
@@ -71,6 +75,6 @@
   # Trusting it would expose every listening port on the node to everything on
   # the tailnet, including etcd on 2379 and the kubelet on 10250. The two things
   # actually wanted over the tailnet -- sshd on 48222 and the API on 6443 -- are
-  # already open, so trusting the interface would buy nothing and cost the
+  # opened by name, so trusting the interface would buy nothing and cost the
   # principle. DNS on 53 is opened by name above for the same reason.
 }

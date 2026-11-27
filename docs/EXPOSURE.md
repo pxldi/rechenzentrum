@@ -31,6 +31,14 @@ route. Each claude.ai connector has a second IngressRoute on
 `X-Forwarded-For` (`ipStrategy.depth: 1`). That is safe only because of the
 Transform Rule below.
 
+Client-sent `X-Forwarded-Host` and `X-Forwarded-Uri` do not change what
+forward-auth decides on the tunnel, although `authentik-forward-auth` has
+`trustForwardHeader: true` and the entrypoint trusts the pod range. Tested on
+2026-11-27 against `todo.pxldi.de` through Cloudflare: with
+`X-Forwarded-Host: snacky.pxldi.de` and `X-Forwarded-Uri: /evil`, authentik
+still chose Planka's provider and the original path. Only cloudflared reaches
+the entrypoint since the Traefik NetworkPolicy.
+
 On the tunnel, authentik's flood guard is keyed on `Cf-Connecting-Ip`
 (`auth-rate-limit-tunnel`), because the remote address is a cloudflared pod.
 authentik's reputation policy and Traefik's access log (which CrowdSec reads)
@@ -44,9 +52,19 @@ repository. Verified on 2026-11-27: a request sent with a forged
 Custom firewall rules in the zone decide who reaches the tunnel at all, in
 this order (Cloudflare dashboard, Security, WAF, Custom rules):
 
-1. `OpenTF Action` skips the rest for `auth.pxldi.de` paths containing
-   `/api/`, so the OpenTofu workflow's GitHub runner can reach authentik's API.
-   It applies to any source address.
+1. `OpenTF Action` skips the rest for `auth.pxldi.de` paths under
+   `/api/v3/`, so the OpenTofu workflow's GitHub runner can reach authentik's
+   API. Narrowed on 2026-11-27 from any path containing `/api/`; the login
+   flow's executor (`/api/v3/flows/executor/`) is still inside it, so without
+   the key below anyone outside AT, DE and CH can still reach the login form
+   through the API. GitHub's Actions ranges are
+   thousands of prefixes, too many for an expression, so the rule cannot name
+   the runner by address. Instead the provider sends `X-Tofu-Runner-Key` from
+   the `OPENTF_WAF_KEY` secret (`terraform/authentik/provider.tf`), and the
+   rule is meant to require it. Until that secret exists the rule still
+   applies to any source on `/api/v3/`. authentik answers 403 to its admin
+   endpoints without a token; public ones such as `/api/v3/root/config/`
+   answer 200.
 2. `claude.ai connectors` skips the rest for Anthropic's range
    (`160.79.104.0/21`) on the five `*-mcp` hosts and on `auth.pxldi.de`
    paths under `/application/o/` (token and discovery).

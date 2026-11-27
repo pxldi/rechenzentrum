@@ -404,16 +404,19 @@ resource "authentik_provider_oauth2" "audiobookshelf" {
 
   grant_types = ["authorization_code", "refresh_token"]
 
+  # Audiobookshelf serves under its ROUTER_BASE_PATH, /audiobookshelf by
+  # default, and builds the redirect from it ("Subfolder for redirect URLs" in
+  # its settings).
   allowed_redirect_uris = [
     {
       matching_mode     = "strict"
       redirect_uri_type = "authorization"
-      url               = "https://listen.${var.domain}/auth/openid/callback"
+      url               = "https://listen.${var.domain}/audiobookshelf/auth/openid/callback"
     },
     {
       matching_mode     = "strict"
       redirect_uri_type = "authorization"
-      url               = "https://listen.${var.domain}/auth/openid/mobile-redirect"
+      url               = "https://listen.${var.domain}/audiobookshelf/auth/openid/mobile-redirect"
     },
   ]
 

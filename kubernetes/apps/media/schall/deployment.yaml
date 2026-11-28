@@ -38,7 +38,7 @@ spec:
           # rolls this Deployment within five minutes of a new build by
           # writing the build's digest into the rechenzentrum.dev/image-digest
           # template annotation. Always, so that rollout pulls the new build.
-          image: ghcr.io/pxldi/schall:main
+          image: ghcr.io/pxldi/schall:main@sha256:a9bae090281c366aed3b16a1f68798fc2f40df07f5923360679f2c58bf9c2679
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

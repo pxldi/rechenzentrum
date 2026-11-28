@@ -26,7 +26,7 @@ spec:
   values:
     image:
       repository: nextcloud
-      tag: 35.0.2@sha256:3f05f4d5eded9d3d029e617926500645cca6344710364737a374088f6811095a
+      tag: 35.0.3@sha256:f44180601f18e7664557232b4c5edb0eb4a82d649c05b93313f4e15909553d42
       flavor: apache
       pullPolicy: IfNotPresent
 

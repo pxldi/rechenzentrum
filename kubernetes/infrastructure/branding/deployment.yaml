@@ -30,7 +30,7 @@ spec:
         # dance that lived here (and the branding-app secret with it) only
         # existed because the private pxldi-labs repo rejected the old PAT.
         - name: git-sync
-          image: alpine/git:2.45.2@sha256:16ad8e788e1d3b0c30f18da8dde5c0ace3b187445a62d8af893b003ca1e70592
+          image: alpine/git:v2.54.1@sha256:29cff25811f790b9f72fc266bf8009a5a911714c0e03c31c47339c50909d9aef
           restartPolicy: Always
           command:
             - sh

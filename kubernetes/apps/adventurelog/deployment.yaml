@@ -93,7 +93,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: ghcr.io/seanmorley15/adventurelog-backend:beta@sha256:bf3f1e2631ef3fc4e5f58cddf63ef1425bc7bdc110adca521e49ea2fb68d7250
+          image: ghcr.io/seanmorley15/adventurelog-backend:beta@sha256:51822ca6d5b5c72fdd9b8ae2a62d7a1f455fa7e1de86603c335e19f7970f1dbb
           imagePullPolicy: IfNotPresent
           env:
             - name: PGHOST

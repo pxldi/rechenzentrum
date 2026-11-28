@@ -103,7 +103,7 @@ spec:
               mountPath: /tmp
         - name: influxdb
           # 2.8 is the version upstream's omnibus image ships with v0.10.0.
-          image: docker.io/library/influxdb:2.8.0-alpine@sha256:c689db1a67ff7dc9b95b54de37cdc6ef55c93a89f4b5d93c01898be9cfddbf2f
+          image: docker.io/library/influxdb:2.10.1-alpine@sha256:6df3d6c5b8530ed149ecdd66086d251f40295330aa0620ae0bfdbbf3ddab4fdc
           # Loopback only: the web container is the one client.
           args: ["--http-bind-address=127.0.0.1:8086", "--reporting-disabled"]
           securityContext:

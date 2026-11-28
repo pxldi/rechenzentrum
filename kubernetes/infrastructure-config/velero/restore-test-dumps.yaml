@@ -86,7 +86,7 @@ data:
               $patch: delete
             - name: check
               # The server's image, so the restore runs on the same major.
-              image: postgres:17.11-trixie@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+              image: postgres:17.12-trixie@sha256:97fb53376be3e4fb1a8a61421daa69dcc3bf2fa39bda3259f5245f9a455af1a9
               command:
               - sh
               - -c

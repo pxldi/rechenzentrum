@@ -45,7 +45,7 @@ spec:
             - name: dump
               # The server's own image string, so the client is the same build
               # and moves with it.
-              image: postgres:18.3-alpine@sha256:b73cfacf3ab6dd856b34313193598dc9ff12e835715675bcdcfd3ac8732f5842
+              image: postgres:19.0-alpine@sha256:cac45fb483caee3668946088a1c0532db89d5285c28dbfeac889b4068296e06f
               command:
                 - sh
                 - -c

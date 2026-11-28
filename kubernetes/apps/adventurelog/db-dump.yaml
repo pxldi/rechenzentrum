@@ -49,7 +49,7 @@ spec:
               # server's PostGIS image, which has no wget: a dump of a PostGIS
               # database only names the extension, so the client needs none
               # of it. A restore needs a PostGIS server.
-              image: postgres:15.20-alpine@sha256:e18480a22d6e48f4d816a6696769b1ec09ac73a824c5649e49c7d8b684913f3d
+              image: postgres:19.0-alpine@sha256:cac45fb483caee3668946088a1c0532db89d5285c28dbfeac889b4068296e06f
               command:
                 - sh
                 - -c

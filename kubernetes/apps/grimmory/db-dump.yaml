@@ -46,7 +46,7 @@ spec:
             - name: dump
               # The server's own image: the same mariadb-dump as the server,
               # and wget for the pings. command replaces its s6 entrypoint.
-              image: lscr.io/linuxserver/mariadb:11.8.9@sha256:d0f9ffd4d00878b8892888e70cb8ea12f4d2dfa63ac940ceb9fd1b36a1b449e3
+              image: lscr.io/linuxserver/mariadb:11.8.9@sha256:cc9c523dead7690487d5892419b5c513c78bf398fe03b115e43a652ab75a237c
               command:
                 - sh
                 - -c
